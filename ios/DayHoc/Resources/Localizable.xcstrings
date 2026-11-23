@@ -408,6 +408,17 @@
         }
       }
     },
+    "onboarding.courseFeePending": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học phí trọn khóa được lưu khi bạn bấm Hoàn tất. Bỏ qua bước này thì lớp chưa có học phí."
+          }
+        }
+      }
+    },
     "onboarding.endDate": {
       "extractionState": "manual",
       "localizations": {

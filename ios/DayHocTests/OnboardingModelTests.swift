@@ -109,6 +109,51 @@ struct OnboardingModelTests {
         #expect(feeBody["feeType"] as? String == "per_session")
         #expect(feeBody["feeAmount"] as? Int == 150_000)
         #expect(model.step == .addStudents)
+        // PATCH /onboarding/steps bắt buộc Idempotency-Key.
+        let stepRequest = try #require(server.requests(to: "onboarding/steps/create_class").first)
+        #expect(stepRequest.value(forHTTPHeaderField: "Idempotency-Key") != nil)
+    }
+
+    @Test func lostResponseThenEditedFormDoesNotCreateSecondClass() async throws {
+        let attempts = OSAllocatedUnfairLock(initialState: 0)
+        // Lần 1 server đã tạo lớp nhưng mất phản hồi (503); lần 2 cùng id, body khác → CONFLICT_STALE.
+        let server = FakeBackend(current: "create_class").server { request in
+            guard request.url?.path == "/v1/classes", request.httpMethod == "POST" else { return nil }
+            return attempts.withLock { n in
+                n += 1
+                return n == 1 ? .error(503, "SERVICE_UNAVAILABLE") : .error(409, "CONFLICT_STALE")
+            }
+        }
+        let model = makeModel(server)
+        await model.load()
+        model.classForm = ClassForm(name: "Toán 9A", subject: "Toán", grade: 9, feeType: FeeTypes.perSession, amount: "150000")
+        await model.createClass()
+        model.classForm.name = "Toán 9B"
+        await model.createClass()
+
+        let creates = server.requests.filter { $0.url?.path == "/v1/classes" && $0.httpMethod == "POST" }
+        try #require(creates.count == 2)
+        let firstId = creates[0].jsonObject["id"] as? String
+        #expect(firstId == creates[1].jsonObject["id"] as? String)
+        let patches = server.requests.filter { $0.httpMethod == "PATCH" && ($0.url?.path ?? "").hasPrefix("/v1/classes/") }
+        #expect(patches.map { $0.url?.lastPathComponent } == [firstId])
+        #expect(model.step == .addStudents)
+    }
+
+    @Test func rejectedEnrollmentExplainsAndFreesForm() async {
+        let server = FakeBackend(current: "add_students", classes: Self.oneClass).server { request in
+            request.url?.path == "/v1/classes/c1/enrollments" ? .error(402, "PLAN_LIMIT_EXCEEDED") : nil
+        }
+        let model = makeModel(server)
+        await model.load()
+
+        model.studentName = "Nguyễn Văn Nam"
+        await model.addStudent(guardian: "Phụ huynh của Nguyễn Văn Nam")
+
+        #expect(model.message == String(localized: "students.errorLimit"))
+        #expect(!model.enrollFailed)
+        #expect(!model.studentBusy)
+        #expect(model.added.isEmpty)
     }
 
     @Test func reopeningWithExistingClassOnlyRecordsStep() async {

@@ -122,8 +122,12 @@ struct OnboardingAPI: Sendable {
 
     func get() async throws -> OnboardingDTO { try await api.request("GET", "onboarding") }
 
-    func setStep(_ step: OnboardingStep, _ status: String) async throws -> OnboardingDTO {
-        try await api.request("PATCH", "onboarding/steps/\(step.rawValue)", body: StepStatus(status: status))
+    func setStep(_ step: OnboardingStep, _ status: String, key: String) async throws -> OnboardingDTO {
+        try await api.request(
+            "PATCH", "onboarding/steps/\(step.rawValue)",
+            body: StepStatus(status: status),
+            headers: ["Idempotency-Key": key]
+        )
     }
 
     func classes() async throws -> [ClassDTO] {

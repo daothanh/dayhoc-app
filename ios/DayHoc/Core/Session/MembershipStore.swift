@@ -68,6 +68,8 @@ final class MembershipStore {
     /// `Idempotency-Key` của lần thêm Giáo viên đang dở: giữ qua các lần thử lại sau lỗi mạng
     /// để `POST /workspaces` không tạo hai tenant.
     @ObservationIgnored private var workspaceKey: String?
+    /// Như `workspaceKey` cho `POST /me/roles`, theo vai trò.
+    @ObservationIgnored private var roleKeys: [String: String] = [:]
 
     private static let activeKey = "active_membership_id"
 
@@ -103,11 +105,9 @@ final class MembershipStore {
                 workspaceKey = key
                 try await api.send("POST", "workspaces", body: EmptyBody(), headers: ["Idempotency-Key": key])
             } else {
-                try await api.send(
-                    "POST", "me/roles",
-                    body: AddRoleRequest(role: role),
-                    headers: ["Idempotency-Key": UUID().uuidString.lowercased()]
-                )
+                let key = roleKeys[role] ?? UUID().uuidString.lowercased()
+                roleKeys[role] = key
+                try await api.send("POST", "me/roles", body: AddRoleRequest(role: role), headers: ["Idempotency-Key": key])
             }
             posted = true
             try await load()
@@ -115,20 +115,36 @@ final class MembershipStore {
             guard let created = items.first(where: { $0.role == role }) else { throw APIError(kind: .invalidResponse) }
             select(created)
             workspaceKey = nil
+            roleKeys[role] = nil
             return created
         } catch {
+            // 409: vai trò có thể đã được tạo ở lần trước (mất phản hồi). Tải lại, có thì mở luôn.
+            if !posted, (error as? APIError)?.status == 409, (try? await load()) != nil,
+               let existing = items.first(where: { $0.role == role }) {
+                workspaceKey = nil
+                roleKeys[role] = nil
+                select(existing)
+                return existing
+            }
             // Server từ chối hẳn (409, 422…): lần sau là lệnh mới.
-            if !posted, (error as? APIError)?.retryable != true { workspaceKey = nil }
+            if !posted, (error as? APIError)?.retryable != true {
+                workspaceKey = nil
+                roleKeys[role] = nil
+            }
             throw error
         }
     }
 
     /// Người dùng đổi ý (chọn vai trò khác): lần thêm Giáo viên sau là lệnh mới.
-    func resetPendingAdd() { workspaceKey = nil }
+    func resetPendingAdd() {
+        workspaceKey = nil
+        roleKeys = [:]
+    }
 
     /// Đăng xuất hoặc hết phiên: quên vai trò của phiên này.
     func clear() {
         workspaceKey = nil
+        roleKeys = [:]
         items = []
         active = nil
         defaults.removeObject(forKey: Self.activeKey)

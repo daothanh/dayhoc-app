@@ -61,6 +61,8 @@ final class OnboardingModel {
 
     // Bước 3
     var rows: [ScheduleRow] = []
+    /// Học phí Trọn khóa đang chờ lịch của lớp này (nhắc giáo viên: bỏ qua thì chưa ghi học phí).
+    private(set) var pendingCourseFee: Int?
 
     private let api: OnboardingAPI
     private let pendingFee: PendingFeeStore
@@ -85,6 +87,8 @@ final class OnboardingModel {
         loadFailed = false
         do {
             await show(try await api.get())
+        } catch is CancellationError {
+            // View dựng lại hủy `.task`: lần chạy mới sẽ tải, không báo lỗi.
         } catch {
             loading = false
             loadFailed = true
@@ -92,13 +96,15 @@ final class OnboardingModel {
     }
 
     func skip() async {
-        guard let step, step.skippable, !saving else { return }
+        // Đang thêm học viên dở: chờ xong, kẻo kết quả về sau ghi vào bước kế.
+        guard let step, step.skippable, !saving, !studentBusy, pendingStudentId == nil else { return }
         await mark(step, "skipped")
     }
 
     /// "Thử lại" khi dữ liệu đã lưu mà ghi bước lỗi.
     func retryRecord() async {
-        if let step { await mark(step, "done") }
+        guard !saving, let step else { return }
+        await mark(step, "done")
     }
 
     func retryStep() async {
@@ -117,6 +123,7 @@ final class OnboardingModel {
             if let createdClassId {
                 id = createdClassId
             } else {
+                let retry = draftClassId != nil
                 let draftId = draftClassId ?? UUID().uuidString.lowercased()
                 draftClassId = draftId
                 let body = CreateClassRequest(
@@ -129,7 +136,12 @@ final class OnboardingModel {
                     endDate: course ? f.endDate.map(isoDate) : nil
                 )
                 let api = api
-                try await keys.run("class", body) { try await api.createClass(body, key: $0) }
+                do {
+                    try await keys.run("class", body) { try await api.createClass(body, key: $0) }
+                } catch let error as APIError where retry && error.code == "CONFLICT_STALE" {
+                    // Lần trước lỗi mạng nhưng server đã tạo lớp với id này; giáo viên sửa form nên body khác
+                    // và server trả CONFLICT_STALE: coi như đã tạo, không sinh lớp thứ hai.
+                }
                 createdClassId = draftId
                 id = draftId
             }
@@ -149,7 +161,7 @@ final class OnboardingModel {
             return
         }
         // Lớp đã có: ẩn form để không tạo lần nữa, chỉ còn ghi bước.
-        classItem = ClassDTO(id: id, name: f.name, startDate: isoDate(today()))
+        classItem = ClassDTO(id: id, name: f.name.trimmingCharacters(in: .whitespaces), startDate: isoDate(today()))
         await mark(.createClass, "done")
     }
 
@@ -173,7 +185,8 @@ final class OnboardingModel {
 
     /// `guardian` = "Phụ huynh của <tên>": bước 2 chỉ hỏi SĐT (Figma B08).
     func addStudent(guardian: String, confirmNew: Bool = false) async {
-        guard !studentBusy, classItem != nil else { return }
+        // Còn học viên đã tạo mà chưa ghi danh: xử lý xong (Thử lại) rồi mới thêm em khác.
+        guard !studentBusy, classItem != nil, pendingStudentId == nil else { return }
         let name = studentName.trimmingCharacters(in: .whitespaces)
         let typed = !studentPhone.trimmingCharacters(in: .whitespaces).isEmpty
         let phone = typed ? normalizedPhone : nil
@@ -182,6 +195,7 @@ final class OnboardingModel {
             return
         }
         guardianName = guardian
+        let retry = draftStudentId != nil
         let id = draftStudentId ?? UUID().uuidString.lowercased()
         draftStudentId = id
         let body = CreateStudentRequest(
@@ -197,6 +211,9 @@ final class OnboardingModel {
         do {
             let api = api
             created = try await keys.run("student", body) { try await api.createStudent(body, key: $0) }
+        } catch let error as APIError where retry && error.code == "CONFLICT_STALE" {
+            // Lần trước lỗi mạng nhưng server đã tạo học viên với id này: ghi danh tiếp, không tạo thêm.
+            created = StudentDTO(id: id, fullName: name, guardians: nil)
         } catch let error as APIError where error.code == "STUDENT_POSSIBLE_DUPLICATE" {
             studentBusy = false
             duplicates = Self.candidates(error)
@@ -215,7 +232,7 @@ final class OnboardingModel {
 
     /// "Đúng, là em này": ghi danh hồ sơ có sẵn, không tạo mới.
     func pickExisting(_ candidate: StudentCandidate) async {
-        guard !studentBusy else { return }
+        guard !studentBusy, pendingStudentId == nil else { return }
         draftStudentId = nil
         pendingStudentId = candidate.id
         pendingStudent = AddedStudent(name: candidate.fullName, phone: normalizedPhone)
@@ -234,7 +251,10 @@ final class OnboardingModel {
     }
 
     private func enroll() async {
-        guard let classId = classItem?.id, let studentId = pendingStudentId else { return }
+        guard let classId = classItem?.id, let studentId = pendingStudentId else {
+            studentBusy = false
+            return
+        }
         do {
             let api = api
             try await keys.run("enroll", "\(classId)|\(studentId)") {
@@ -242,7 +262,14 @@ final class OnboardingModel {
             }
         } catch {
             studentBusy = false
-            enrollFailed = true
+            if (error as? APIError)?.retryable == false {
+                // Server từ chối hẳn (hết hạn mức gói, lớp đã lưu trữ…): báo lý do, thôi giữ em này để thêm em khác.
+                pendingStudentId = nil
+                pendingStudent = nil
+                message = Self.studentError(error)
+            } else {
+                enrollFailed = true
+            }
             return
         }
         if let pendingStudent { added.append(pendingStudent) }
@@ -305,7 +332,9 @@ final class OnboardingModel {
         saving = true
         recordFailed = false
         do {
-            await show(try await api.setStep(step, status))
+            // `PATCH /onboarding/steps` bắt buộc `Idempotency-Key`; thử lại cùng bước, cùng trạng thái dùng lại khóa.
+            let api = api
+            await show(try await keys.run("step", "\(step.rawValue)|\(status)") { try await api.setStep(step, status, key: $0) })
         } catch {
             saving = false
             // Bỏ qua lỗi: toast. Ghi `done` lỗi (dữ liệu đã lưu): thông báo kèm Thử lại.
@@ -367,6 +396,7 @@ final class OnboardingModel {
             // Figma: mặc định "T2 · 17:30 · 90 phút".
             let rules = cls.scheduleRules.isEmpty ? [RuleDTO(weekday: 1, startTime: "17:30", durationMin: 90)] : cls.scheduleRules
             rows = rules.map { ScheduleRow(id: nextId(), weekday: $0.weekday, start: $0.startTime, duration: $0.durationMin) }
+            pendingCourseFee = pendingFee.get(classId: cls.id)
             stepLoading = false
         case .addStudents:
             stepLoading = true

@@ -325,6 +325,9 @@ private struct ScheduleStep: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Heading(title: "onboarding.scheduleTitle", caption: "onboarding.scheduleCaption")
+                if model.pendingCourseFee != nil {
+                    Text("onboarding.courseFeePending").font(.footnote).foregroundStyle(colors.onSurfaceVariant)
+                }
                 Text("onboarding.rulesLabel").font(.subheadline.bold())
                 HStack(spacing: 8) {
                     Text("onboarding.ruleWeekday").frame(maxWidth: .infinity, alignment: .leading)

@@ -73,11 +73,16 @@ final class AppModel {
     }
 
     func exitOnboarding() {
+        guard case .onboarding = route else { return }
         onboardingDismissed = true
         route = .teacher
     }
 
-    func finishOnboarding() { route = .teacher }
+    func finishOnboarding() {
+        // Phiên có thể vừa hết (route đã về Đăng nhập): callback đến muộn không được mở lại không gian.
+        guard case .onboarding = route else { return }
+        route = .teacher
+    }
 
     private func enter() async {
         guard env.auth.hasSession else { return showLogin() }
@@ -129,8 +134,8 @@ final class AppModel {
 
     /// Về Đăng nhập và quên mọi trạng thái của phiên trên máy.
     private func showLogin() {
+        // Học phí Trọn khóa đang chờ thì giữ: chỉ có id lớp và số tiền, đăng nhập lại vẫn ghi được ở bước 3.
         memberships.clear()
-        PendingFeeStore().clear()
         onboardingDismissed = false
         addingRole = nil
         if case .login = route { return }
