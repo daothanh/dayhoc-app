@@ -11,6 +11,12 @@ struct DhColors: Sendable {
     let onSurfaceVariant: Color
     let surfaceContainerHighest: Color
     let outline: Color
+    let outlineVariant: Color
+    let surfaceContainerLow: Color
+    let secondaryContainer: Color
+    let onSecondaryContainer: Color
+    let onInverseSurface: Color
+    let warning: Color
     let error: Color
     let errorContainer: Color
     let onErrorContainer: Color
@@ -26,6 +32,12 @@ struct DhColors: Sendable {
         onSurfaceVariant: TeachHubTokens.Light.onSurfaceVariant,
         surfaceContainerHighest: TeachHubTokens.Light.surfaceContainerHighest,
         outline: TeachHubTokens.Light.outline,
+        outlineVariant: TeachHubTokens.Light.outlineVariant,
+        surfaceContainerLow: TeachHubTokens.Light.surfaceContainerLow,
+        secondaryContainer: TeachHubTokens.Light.secondaryContainer,
+        onSecondaryContainer: TeachHubTokens.Light.onSecondaryContainer,
+        onInverseSurface: TeachHubTokens.Light.onInverseSurface,
+        warning: TeachHubTokens.Light.warningColor,
         error: TeachHubTokens.Light.error,
         errorContainer: TeachHubTokens.Light.errorContainer,
         onErrorContainer: TeachHubTokens.Light.onErrorContainer,
@@ -42,6 +54,12 @@ struct DhColors: Sendable {
         onSurfaceVariant: TeachHubTokens.Dark.onSurfaceVariant,
         surfaceContainerHighest: TeachHubTokens.Dark.surfaceContainerHighest,
         outline: TeachHubTokens.Dark.outline,
+        outlineVariant: TeachHubTokens.Dark.outlineVariant,
+        surfaceContainerLow: TeachHubTokens.Dark.surfaceContainerLow,
+        secondaryContainer: TeachHubTokens.Dark.secondaryContainer,
+        onSecondaryContainer: TeachHubTokens.Dark.onSecondaryContainer,
+        onInverseSurface: TeachHubTokens.Dark.onInverseSurface,
+        warning: TeachHubTokens.Dark.warningColor,
         error: TeachHubTokens.Dark.error,
         errorContainer: TeachHubTokens.Dark.errorContainer,
         onErrorContainer: TeachHubTokens.Dark.onErrorContainer,

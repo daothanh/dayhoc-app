@@ -24,13 +24,16 @@ final class APIClient: Sendable {
     /// Gọi API và giải mã JSON trả về.
     /// - Parameter authorized: `false` cho endpoint công khai (`/auth/otp/send`, `/auth/login`,
     ///   `/auth/refresh`): không gắn Bearer, 401 không kích hoạt làm mới.
+    /// - Parameter headers: header riêng của lệnh, vd `Idempotency-Key`.
     func request<Response: Decodable>(
         _ method: String,
         _ path: String,
+        query: [URLQueryItem] = [],
         body: (any Encodable & Sendable)? = nil,
+        headers: [String: String] = [:],
         authorized: Bool = true
     ) async throws -> Response {
-        let data = try await perform(method, path, body: body, authorized: authorized)
+        let data = try await perform(method, path, query: query, body: body, headers: headers, authorized: authorized)
         do {
             return try JSONDecoder().decode(Response.self, from: data)
         } catch {
@@ -43,26 +46,31 @@ final class APIClient: Sendable {
         _ method: String,
         _ path: String,
         body: (any Encodable & Sendable)? = nil,
+        headers: [String: String] = [:],
         authorized: Bool = true
     ) async throws {
-        _ = try await perform(method, path, body: body, authorized: authorized)
+        _ = try await perform(method, path, query: [], body: body, headers: headers, authorized: authorized)
     }
 
     private func perform(
         _ method: String,
         _ path: String,
+        query: [URLQueryItem],
         body: (any Encodable & Sendable)?,
+        headers: [String: String],
         authorized: Bool
     ) async throws -> Data {
         let payload = try body.map { try JSONEncoder().encode($0) }
+        var url = baseURL.appending(path: path)
+        if !query.isEmpty { url.append(queryItems: query) }
         guard authorized else {
-            return try check(await load(method, path, payload, token: nil))
+            return try check(await load(method, url, payload, headers, token: nil))
         }
         let token = tokenStore.load()?.accessToken
-        var result = try await load(method, path, payload, token: token)
+        var result = try await load(method, url, payload, headers, token: token)
         if result.response.statusCode == 401 {
             let fresh = try await refreshedToken(replacing: token)
-            result = try await load(method, path, payload, token: fresh)
+            result = try await load(method, url, payload, headers, token: fresh)
             // Token vừa làm mới vẫn bị từ chối: phiên không dùng được nữa.
             if result.response.statusCode == 401 { expire() }
         }
@@ -71,11 +79,13 @@ final class APIClient: Sendable {
 
     private func load(
         _ method: String,
-        _ path: String,
+        _ url: URL,
         _ body: Data?,
+        _ headers: [String: String],
         token: String?
     ) async throws -> (data: Data, response: HTTPURLResponse) {
-        var request = URLRequest(url: baseURL.appending(path: path))
+        var request = URLRequest(url: url)
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         request.httpMethod = method
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Accept")

@@ -20,6 +20,10 @@ struct APIError: Error, Equatable {
     var code: String?
     /// Thời gian chờ của 429: `details.retryAfterSec`, không có thì header `Retry-After`.
     var retryAfterSec: Int?
+    /// Lỗi theo trường của 422: `{ "endDate": ["…"] }`.
+    var fieldErrors: [String: [String]] = [:]
+    /// Body lỗi gốc, để feature đọc `details` riêng (vd `candidates` của học viên trùng).
+    var body: Data?
 
     init(kind: Kind, status: Int? = nil, code: String? = nil, retryAfterSec: Int? = nil) {
         self.kind = kind
@@ -27,6 +31,19 @@ struct APIError: Error, Equatable {
         self.code = code
         self.retryAfterSec = retryAfterSec
     }
+
+    /// Lệnh ghi có thể đã tới server (mất mạng, hết giờ, 5xx, server đang xử lý cùng khóa):
+    /// thử lại phải giữ nguyên `Idempotency-Key`. Lỗi khác là server đã từ chối hẳn.
+    var retryable: Bool {
+        switch kind {
+        case .offline, .timeout: true
+        case .invalidResponse: false
+        case .http: (status ?? 0) >= 500 || code == "IDEMPOTENCY_IN_PROGRESS"
+        }
+    }
+
+    /// Thông báo đầu tiên của server theo trường, nếu có.
+    var firstFieldError: String? { fieldErrors.values.lazy.compactMap(\.first).first }
 
     init(status: Int, body: Data, retryAfterHeader: String?) {
         let parsed = try? JSONDecoder().decode(ErrorBody.self, from: body)
@@ -36,6 +53,8 @@ struct APIError: Error, Equatable {
             code: parsed?.code,
             retryAfterSec: parsed?.details?.retryAfterSec ?? retryAfterHeader.flatMap { Int($0) }
         )
+        fieldErrors = parsed?.errors ?? [:]
+        self.body = body
     }
 
     init(_ error: URLError) {
@@ -51,4 +70,5 @@ private struct ErrorBody: Decodable {
 
     let code: String
     let details: Details?
+    let errors: [String: [String]]?
 }

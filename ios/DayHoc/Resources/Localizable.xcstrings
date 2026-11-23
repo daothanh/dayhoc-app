@@ -1,358 +1,1568 @@
 {
-  "sourceLanguage" : "vi",
-  "strings" : {
-    "app.name" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DayHoc"
+  "sourceLanguage": "vi",
+  "strings": {
+    "app.name": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DayHoc"
           }
         }
       }
     },
-    "error.offline" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không có mạng. Thử lại sau."
+    "back": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại"
           }
         }
       }
     },
-    "home.hello %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Xin chào %@"
+    "cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy"
           }
         }
       }
     },
-    "login.email" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Email"
+    "contacts.noPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có số điện thoại"
           }
         }
       }
     },
-    "login.emailHelper" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chúng tôi gửi mã 6 số, không cần mật khẩu."
+    "contacts.pickPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn số từ danh bạ"
           }
         }
       }
     },
-    "login.emailHint" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ten@email.com"
+    "error.offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không có mạng. Thử lại sau."
           }
         }
       }
     },
-    "login.emailInvalid" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Email chưa đúng định dạng, ví dụ: ten@gmail.com"
+    "feeType.course": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trọn khóa"
           }
         }
       }
     },
-    "login.failed" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đăng nhập không thành công. Vui lòng thử lại."
+    "feeType.monthly": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo tháng"
           }
         }
       }
     },
-    "login.rateLimited" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bạn thao tác quá nhanh, vui lòng thử lại sau."
+    "feeType.perSession": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo buổi"
           }
         }
       }
     },
-    "login.resend" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gửi lại mã"
+    "loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tải…"
           }
         }
       }
     },
-    "login.sendOtp" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gửi mã đăng nhập"
+    "login.email": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
           }
         }
       }
     },
-    "login.sending" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang gửi mã…"
+    "login.emailHelper": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chúng tôi gửi mã 6 số, không cần mật khẩu."
           }
         }
       }
     },
-    "login.slogan" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kết nối thầy, trò và gia đình."
+    "login.emailHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ten@email.com"
           }
         }
       }
     },
-    "login.tagline" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quản lý lớp dạy thêm thật đơn giản."
+    "login.emailInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email chưa đúng định dạng, ví dụ: ten@gmail.com"
           }
         }
       }
     },
-    "login.terms" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tiếp tục nghĩa là bạn đồng ý với Điều khoản sử dụng và Chính sách dữ liệu của DayHoc."
+    "login.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập không thành công. Vui lòng thử lại."
           }
         }
       }
     },
-    "login.unavailable" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hệ thống đang bận, vui lòng thử lại sau ít phút."
+    "login.rateLimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn thao tác quá nhanh, vui lòng thử lại sau."
           }
         }
       }
     },
-    "logout" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đăng xuất"
+    "login.resend": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã"
           }
         }
       }
     },
-    "otp.codeLabel" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mã xác thực 6 số"
+    "login.sendOtp": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi mã đăng nhập"
           }
         }
       }
     },
-    "otp.confirm" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Xác nhận"
+    "login.sending": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang gửi mã…"
           }
         }
       }
     },
-    "otp.heading" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nhập mã xác thực"
+    "login.slogan": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết nối thầy, trò và gia đình."
           }
         }
       }
     },
-    "otp.invalid" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mã chưa đúng."
+    "login.tagline": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quản lý lớp dạy thêm thật đơn giản."
           }
         }
       }
     },
-    "otp.locked" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tạm khóa"
+    "login.terms": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục nghĩa là bạn đồng ý với Điều khoản sử dụng và Chính sách dữ liệu của DayHoc."
           }
         }
       }
     },
-    "otp.lockedBody" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Xác thực tạm khóa 15 phút để bảo vệ tài khoản."
+    "login.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hệ thống đang bận, vui lòng thử lại sau ít phút."
           }
         }
       }
     },
-    "otp.lockedTitle" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nhập sai 5 lần"
+    "logout": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng xuất"
           }
         }
       }
     },
-    "otp.resendIn %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gửi lại mã sau %@"
+    "nav.classes": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lớp"
           }
         }
       }
     },
-    "otp.retryIn %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thử lại sau %@"
+    "nav.fees": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học phí"
           }
         }
       }
     },
-    "otp.sentTo %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mã 6 số đã gửi tới %@"
+    "nav.more": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm"
           }
         }
       }
     },
-    "otp.title" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Xác thực email"
+    "nav.schedule": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch"
           }
         }
       }
     },
-    "otp.verifying" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đang xác thực…"
+    "nav.today": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay"
           }
         }
       }
     },
-    "placeholder.chooseRole" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chọn vai trò (đang làm)"
+    "ok": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn"
           }
         }
       }
     },
-    "placeholder.note" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Màn tạm, sẽ thay ở NA-04."
+    "onboarding.addStudent": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Thêm học sinh"
           }
         }
       }
     },
-    "retry" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thử lại"
+    "onboarding.addedCount %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ĐÃ THÊM (%lld)"
+          }
+        }
+      }
+    },
+    "onboarding.addedPhone %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PH: %@"
+          }
+        }
+      }
+    },
+    "onboarding.classCaption": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ cần tên lớp và cách thu học phí, các mục khác sửa sau."
+          }
+        }
+      }
+    },
+    "onboarding.className": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên lớp *"
+          }
+        }
+      }
+    },
+    "onboarding.classNameHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VD: Toán 9 tối T2-4-6"
+          }
+        }
+      }
+    },
+    "onboarding.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "onboarding.endDate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày kết thúc khóa *"
+          }
+        }
+      }
+    },
+    "onboarding.errorBusy": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu đang xử lý. Thử lại sau giây lát."
+          }
+        }
+      }
+    },
+    "onboarding.errorGeneric": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa lưu được. Thử lại sau."
+          }
+        }
+      }
+    },
+    "onboarding.errorValidation": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bước này chưa lưu được. Kiểm tra lại."
+          }
+        }
+      }
+    },
+    "onboarding.exit": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thoát thiết lập"
+          }
+        }
+      }
+    },
+    "onboarding.exitBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có thể tiếp tục từ bước này lần sau."
+          }
+        }
+      }
+    },
+    "onboarding.exitLeave": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thoát"
+          }
+        }
+      }
+    },
+    "onboarding.exitStay": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ở lại"
+          }
+        }
+      }
+    },
+    "onboarding.exitTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thoát thiết lập?"
+          }
+        }
+      }
+    },
+    "onboarding.feeAmountCourse": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức phí trọn khóa"
+          }
+        }
+      }
+    },
+    "onboarding.feeAmountMonthly": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức phí mỗi tháng"
+          }
+        }
+      }
+    },
+    "onboarding.feeAmountPerSession": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mức phí mỗi buổi"
+          }
+        }
+      }
+    },
+    "onboarding.feeCaption": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mặc định tính tiền cả buổi vắng. Đổi quy tắc trong Cài đặt lớp."
+          }
+        }
+      }
+    },
+    "onboarding.feeSection": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cách thu học phí *"
+          }
+        }
+      }
+    },
+    "onboarding.finishSetup": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn tất"
+          }
+        }
+      }
+    },
+    "onboarding.firstSession %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi đầu tiên: %@"
+          }
+        }
+      }
+    },
+    "onboarding.grade": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khối *"
+          }
+        }
+      }
+    },
+    "onboarding.gradeHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn khối"
+          }
+        }
+      }
+    },
+    "onboarding.guardianDefaultName %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ huynh của %@"
+          }
+        }
+      }
+    },
+    "onboarding.guardianPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số điện thoại phụ huynh"
+          }
+        }
+      }
+    },
+    "onboarding.loadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được tiến độ. Thử lại."
+          }
+        }
+      }
+    },
+    "onboarding.progress %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bước %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "onboarding.ruleAdd": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Thêm"
+          }
+        }
+      }
+    },
+    "onboarding.ruleDuration": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời lượng"
+          }
+        }
+      }
+    },
+    "onboarding.ruleDurationValue %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld phút"
+          }
+        }
+      }
+    },
+    "onboarding.ruleOverlap %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trùng giờ với buổi %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "onboarding.ruleRemove %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa buổi %lld"
+          }
+        }
+      }
+    },
+    "onboarding.ruleStart": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giờ bắt đầu"
+          }
+        }
+      }
+    },
+    "onboarding.ruleWeekday": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ"
+          }
+        }
+      }
+    },
+    "onboarding.rulesLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi học trong tuần *"
+          }
+        }
+      }
+    },
+    "onboarding.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu. Chưa ghi nhận được bước này."
+          }
+        }
+      }
+    },
+    "onboarding.saving": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang lưu…"
+          }
+        }
+      }
+    },
+    "onboarding.scheduleCaption": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mỗi ngày học có thể khác giờ. Hệ thống tự tạo các buổi 8 tuần tới, bỏ qua ngày lễ."
+          }
+        }
+      }
+    },
+    "onboarding.scheduleChooseClass": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có nhiều lớp. Chọn lớp cần đặt lịch."
+          }
+        }
+      }
+    },
+    "onboarding.scheduleNoClass": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có lớp để đặt lịch. Hãy tạo lớp ở bước 1."
+          }
+        }
+      }
+    },
+    "onboarding.scheduleTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch học hằng tuần"
+          }
+        }
+      }
+    },
+    "onboarding.skip": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ qua"
+          }
+        }
+      }
+    },
+    "onboarding.stepCreateClass": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo lớp đầu tiên"
+          }
+        }
+      }
+    },
+    "onboarding.studentName": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Họ tên học sinh *"
+          }
+        }
+      }
+    },
+    "onboarding.studentNameHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VD: Nguyễn Văn Nam"
+          }
+        }
+      }
+    },
+    "onboarding.studentNotEnrolled": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu học viên. Chưa thêm được vào lớp."
+          }
+        }
+      }
+    },
+    "onboarding.studentsCaption": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm ít nhất 1 học sinh để điểm danh và gửi hóa đơn."
+          }
+        }
+      }
+    },
+    "onboarding.studentsContinue %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục (%lld học sinh)"
+          }
+        }
+      }
+    },
+    "onboarding.studentsTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm học sinh"
+          }
+        }
+      }
+    },
+    "onboarding.subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Môn *"
+          }
+        }
+      }
+    },
+    "onboarding.subjectHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn môn"
+          }
+        }
+      }
+    },
+    "onboarding.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiết lập lớp học"
+          }
+        }
+      }
+    },
+    "otp.codeLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã xác thực 6 số"
+          }
+        }
+      }
+    },
+    "otp.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận"
+          }
+        }
+      }
+    },
+    "otp.heading": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập mã xác thực"
+          }
+        }
+      }
+    },
+    "otp.invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã chưa đúng."
+          }
+        }
+      }
+    },
+    "otp.locked": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạm khóa"
+          }
+        }
+      }
+    },
+    "otp.lockedBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác thực tạm khóa 15 phút để bảo vệ tài khoản."
+          }
+        }
+      }
+    },
+    "otp.lockedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập sai 5 lần"
+          }
+        }
+      }
+    },
+    "otp.resendIn %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã sau %@"
+          }
+        }
+      }
+    },
+    "otp.retryIn %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử lại sau %@"
+          }
+        }
+      }
+    },
+    "otp.sentTo %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã 6 số đã gửi tới %@"
+          }
+        }
+      }
+    },
+    "otp.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác thực email"
+          }
+        }
+      }
+    },
+    "otp.verifying": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang xác thực…"
+          }
+        }
+      }
+    },
+    "retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử lại"
+          }
+        }
+      }
+    },
+    "role.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm vai trò"
+          }
+        }
+      }
+    },
+    "role.addFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thêm được vai trò. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "role.centerOwner": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chủ trung tâm"
+          }
+        }
+      }
+    },
+    "role.centerOwnerDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quản lý nhiều giáo viên, nhiều lớp"
+          }
+        }
+      }
+    },
+    "role.comingSoon": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp ra mắt"
+          }
+        }
+      }
+    },
+    "role.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "role.intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn để DayHoc hiện đúng những gì bạn cần. Bạn có thể thêm vai trò khác sau."
+          }
+        }
+      }
+    },
+    "role.owned": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang có"
+          }
+        }
+      }
+    },
+    "role.parent": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ huynh"
+          }
+        }
+      }
+    },
+    "role.parentDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo dõi việc học của con, đóng học phí"
+          }
+        }
+      }
+    },
+    "role.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã chọn"
+          }
+        }
+      }
+    },
+    "role.student": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học sinh"
+          }
+        }
+      }
+    },
+    "role.studentDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem lịch, nộp bài, xem điểm"
+          }
+        }
+      }
+    },
+    "role.switchTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chuyển vai trò"
+          }
+        }
+      }
+    },
+    "role.switchedTo %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang ở vai trò %@"
+          }
+        }
+      }
+    },
+    "role.teacher": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giáo viên"
+          }
+        }
+      }
+    },
+    "role.teacherDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quản lý lớp, điểm danh, thu học phí"
+          }
+        }
+      }
+    },
+    "role.whoAreYou": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn là…?"
+          }
+        }
+      }
+    },
+    "space.coming": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Màn này đang được chuyển sang bản mới."
+          }
+        }
+      }
+    },
+    "space.noInvite": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa kết nối với lớp nào. Nhờ thầy cô gửi link mời."
+          }
+        }
+      }
+    },
+    "splash.loadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được vai trò của bạn."
+          }
+        }
+      }
+    },
+    "students.duplicateBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã có hồ sơ trùng họ tên và ngày sinh. Chọn đúng em, hoặc thêm em mới."
+          }
+        }
+      }
+    },
+    "students.duplicateCancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại sửa"
+          }
+        }
+      }
+    },
+    "students.duplicateNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không, thêm em mới"
+          }
+        }
+      }
+    },
+    "students.duplicateSame": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đúng, là em này"
+          }
+        }
+      }
+    },
+    "students.duplicateTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có phải cùng một em?"
+          }
+        }
+      }
+    },
+    "students.errorLimit": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gói hiện tại đã đủ số học viên. Nâng cấp để thêm."
+          }
+        }
+      }
+    },
+    "students.fullNameRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập họ tên học viên."
+          }
+        }
+      }
+    },
+    "students.phoneInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số điện thoại chưa đúng."
+          }
+        }
+      }
+    },
+    "update.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên bản bạn đang dùng không còn được hỗ trợ. Vui lòng cập nhật để tiếp tục."
+          }
+        }
+      }
+    },
+    "update.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần cập nhật DayHoc"
+          }
+        }
+      }
+    },
+    "waitlist.centerName": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên trung tâm *"
+          }
+        }
+      }
+    },
+    "waitlist.centerNameRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập tên trung tâm."
+          }
+        }
+      }
+    },
+    "waitlist.errorBusy": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu đang xử lý. Thử lại sau giây lát."
+          }
+        }
+      }
+    },
+    "waitlist.errorGeneric": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa gửi được đăng ký. Thử lại sau."
+          }
+        }
+      }
+    },
+    "waitlist.errorValidation": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông tin chưa hợp lệ. Kiểm tra lại các ô."
+          }
+        }
+      }
+    },
+    "waitlist.intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính năng cho trung tâm sắp ra mắt. Để lại thông tin, chúng tôi sẽ liên hệ khi sẵn sàng."
+          }
+        }
+      }
+    },
+    "waitlist.sent": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã nhận đăng ký"
+          }
+        }
+      }
+    },
+    "waitlist.sentBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cảm ơn bạn. Chúng tôi sẽ liên hệ sớm."
+          }
+        }
+      }
+    },
+    "waitlist.submit": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi đăng ký"
+          }
+        }
+      }
+    },
+    "waitlist.teacherCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số giáo viên *"
+          }
+        }
+      }
+    },
+    "waitlist.teacherCountInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập số từ 1 đến 1000."
+          }
+        }
+      }
+    },
+    "waitlist.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng ký sớm cho Chủ trung tâm"
+          }
+        }
+      }
+    },
+    "waitlist.trialAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng thử vai trò Giáo viên"
+          }
+        }
+      }
+    },
+    "waitlist.trialHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trong lúc chờ, bạn có thể dùng thử với vai trò Giáo viên."
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

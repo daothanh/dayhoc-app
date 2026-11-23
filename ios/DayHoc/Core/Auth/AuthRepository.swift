@@ -25,10 +25,6 @@ struct AuthRepository: Sendable {
         try await api.request("GET", "auth/me")
     }
 
-    func memberships() async throws -> MembershipsDTO {
-        try await api.request("GET", "me/memberships")
-    }
-
     /// Thu hồi phiên ở server rồi xóa token trên máy; lỗi mạng không chặn đăng xuất.
     func logout() async {
         try? await api.send("POST", "auth/logout")
