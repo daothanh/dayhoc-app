@@ -8,7 +8,7 @@ import vn.dayhoc.app.core.network.ApiError
 import vn.dayhoc.app.core.network.apiCall
 
 /**
- * Đăng nhập email OTP, phiên và vai trò. Lỗi API ném ra là [ApiError].
+ * Đăng nhập email OTP và phiên. Lỗi API ném ra là [ApiError].
  * [sessionMutex] dùng chung với [vn.dayhoc.app.core.network.TokenAuthenticator]: chỉ khóa quanh lúc ghi token,
  * không khóa quanh lời gọi mạng (request có thể 401 và cần chính khóa này để refresh).
  */
@@ -26,8 +26,6 @@ class AuthRepository(
     }
 
     suspend fun me(): UserDto = apiCall { api.me() }
-
-    suspend fun memberships(): MembershipsResponse = apiCall { api.memberships() }
 
     /** Thu hồi phiên trên server nếu được; token trên máy luôn bị xóa. */
     suspend fun logout() {

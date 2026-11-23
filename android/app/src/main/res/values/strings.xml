@@ -36,10 +36,149 @@
     <string name="otp_retry_in">Thử lại sau %1$s</string>
     <string name="otp_locked">Tạm khóa</string>
 
-    <!-- Màn tạm, thay ở NA-04 -->
+    <!-- [T00s] Splash · phiên bản tối thiểu -->
     <string name="splash_load_failed">Không tải được vai trò của bạn.</string>
-    <string name="home_greeting">Xin chào %1$s</string>
-    <string name="home_role">Vai trò: %1$s</string>
-    <string name="role_pick_placeholder">Chọn vai trò (đang làm)</string>
-    <string name="placeholder_note">Màn tạm (placeholder NA-04): sẽ thay bằng màn chọn vai trò và không gian vai trò.</string>
+    <string name="update_title">Cần cập nhật DayHoc</string>
+    <string name="update_body">Phiên bản bạn đang dùng không còn được hỗ trợ. Vui lòng cập nhật để tiếp tục.</string>
+    <string name="update_action">Cập nhật</string>
+    <string name="loading">Đang tải...</string>
+    <string name="back">Quay lại</string>
+    <string name="ok">Chọn</string>
+    <string name="cancel">Hủy</string>
+
+    <!-- [T01c] Chọn vai trò · [T00] Chuyển vai trò -->
+    <string name="role_who_are_you">Bạn là…?</string>
+    <string name="role_intro">Chọn để DayHoc hiện đúng những gì bạn cần. Bạn có thể thêm vai trò khác sau.</string>
+    <string name="role_teacher">Giáo viên</string>
+    <string name="role_parent">Phụ huynh</string>
+    <string name="role_student">Học sinh</string>
+    <string name="role_teacher_desc">Quản lý lớp, điểm danh, thu học phí</string>
+    <string name="role_parent_desc">Theo dõi việc học của con, đóng học phí</string>
+    <string name="role_student_desc">Xem lịch, nộp bài, xem điểm</string>
+    <string name="role_center_owner">Chủ trung tâm</string>
+    <string name="role_center_owner_desc">Quản lý nhiều giáo viên, nhiều lớp</string>
+    <string name="role_coming_soon">Sắp ra mắt</string>
+    <string name="role_selected">Đã chọn</string>
+    <string name="role_owned">Đang có</string>
+    <string name="role_continue">Tiếp tục</string>
+    <string name="role_add_failed">Không thêm được vai trò. Vui lòng thử lại.</string>
+    <string name="role_switch_title">Chuyển vai trò</string>
+    <string name="role_add">Thêm vai trò</string>
+    <string name="role_switched_to">Đang ở vai trò %1$s</string>
+
+    <!-- [T01d] Đăng ký sớm Chủ trung tâm -->
+    <string name="waitlist_title">Đăng ký sớm cho Chủ trung tâm</string>
+    <string name="waitlist_intro">Tính năng cho trung tâm sắp ra mắt. Để lại thông tin, chúng tôi sẽ liên hệ khi sẵn sàng.</string>
+    <string name="waitlist_center_name">Tên trung tâm</string>
+    <string name="waitlist_center_name_required">Nhập tên trung tâm.</string>
+    <string name="waitlist_teacher_count">Số giáo viên</string>
+    <string name="waitlist_teacher_count_invalid">Nhập số từ 1 đến 1000.</string>
+    <string name="waitlist_submit">Gửi đăng ký</string>
+    <string name="waitlist_trial_hint">Trong lúc chờ, bạn có thể dùng thử với vai trò Giáo viên.</string>
+    <string name="waitlist_trial_action">Dùng thử vai trò Giáo viên</string>
+    <string name="waitlist_sent">Đã nhận đăng ký</string>
+    <string name="waitlist_sent_body">Cảm ơn bạn. Chúng tôi sẽ liên hệ sớm.</string>
+    <string name="waitlist_error_busy">Yêu cầu đang xử lý. Thử lại sau giây lát.</string>
+    <string name="waitlist_error_validation">Thông tin chưa hợp lệ. Kiểm tra lại các ô.</string>
+    <string name="waitlist_error_generic">Chưa gửi được đăng ký. Thử lại sau.</string>
+
+    <!-- Không gian vai trò -->
+    <string name="nav_today">Hôm nay</string>
+    <string name="nav_schedule">Lịch</string>
+    <string name="nav_classes">Lớp</string>
+    <string name="nav_fees">Học phí</string>
+    <string name="nav_more">Thêm</string>
+    <string name="space_coming">Màn này đang được chuyển sang bản mới.</string>
+    <string name="space_no_invite">Chưa kết nối với lớp nào. Nhờ thầy cô gửi link mời.</string>
+
+    <!-- [T02] Onboarding giáo viên (Figma B07–B09) -->
+    <string name="onboarding_title">Thiết lập lớp học</string>
+    <string name="onboarding_progress">Bước %1$d/%2$d</string>
+    <string name="onboarding_skip">Bỏ qua</string>
+    <string name="onboarding_exit">Thoát thiết lập</string>
+    <string name="onboarding_exit_title">Thoát thiết lập?</string>
+    <string name="onboarding_exit_body">Bạn có thể tiếp tục từ bước này lần sau.</string>
+    <string name="onboarding_exit_stay">Ở lại</string>
+    <string name="onboarding_exit_leave">Thoát</string>
+    <string name="onboarding_load_failed">Không tải được tiến độ. Thử lại.</string>
+    <string name="onboarding_error_busy">Yêu cầu đang xử lý. Thử lại sau giây lát.</string>
+    <string name="onboarding_error_validation">Bước này chưa lưu được. Kiểm tra lại.</string>
+    <string name="onboarding_error_generic">Chưa lưu được. Thử lại sau.</string>
+    <string name="onboarding_saved">Đã lưu. Chưa ghi nhận được bước này.</string>
+    <string name="onboarding_continue">Tiếp tục</string>
+    <string name="onboarding_saving">Đang lưu…</string>
+
+    <string name="onboarding_step_create_class">Tạo lớp đầu tiên</string>
+    <string name="onboarding_class_caption">Chỉ cần tên lớp và cách thu học phí, các mục khác sửa sau.</string>
+    <string name="onboarding_class_name">Tên lớp</string>
+    <string name="onboarding_class_name_hint">VD: Toán 9 tối T2-4-6</string>
+    <string name="onboarding_subject">Môn</string>
+    <string name="onboarding_subject_hint">Chọn môn</string>
+    <string-array name="onboarding_subjects">
+        <item>Toán</item>
+        <item>Ngữ văn</item>
+        <item>Tiếng Anh</item>
+        <item>Vật lý</item>
+        <item>Hóa học</item>
+        <item>Sinh học</item>
+        <item>Năng khiếu</item>
+        <item>Khác</item>
+    </string-array>
+    <string name="onboarding_grade">Khối</string>
+    <string name="onboarding_grade_hint">Chọn khối</string>
+    <string name="onboarding_fee_section">Cách thu học phí</string>
+    <string name="fee_type_per_session">Theo buổi</string>
+    <string name="fee_type_monthly">Theo tháng</string>
+    <string name="fee_type_course">Trọn khóa</string>
+    <string name="onboarding_fee_amount_per_session">Mức phí mỗi buổi</string>
+    <string name="onboarding_fee_amount_monthly">Mức phí mỗi tháng</string>
+    <string name="onboarding_fee_amount_course">Mức phí trọn khóa</string>
+    <string name="onboarding_fee_caption">Mặc định tính tiền cả buổi vắng. Đổi quy tắc trong Cài đặt lớp.</string>
+    <string name="onboarding_end_date">Ngày kết thúc khóa</string>
+
+    <string name="onboarding_students_title">Thêm học sinh</string>
+    <string name="onboarding_students_caption">Thêm ít nhất 1 học sinh để điểm danh và gửi hóa đơn.</string>
+    <string name="onboarding_student_name">Họ tên học sinh</string>
+    <string name="onboarding_student_name_hint">VD: Nguyễn Văn Nam</string>
+    <string name="onboarding_guardian_phone">Số điện thoại phụ huynh</string>
+    <string name="onboarding_add_student">+ Thêm học sinh</string>
+    <string name="onboarding_added_count">ĐÃ THÊM (%1$d)</string>
+    <string name="onboarding_added_phone">PH: %1$s</string>
+    <string name="onboarding_guardian_default_name">Phụ huynh của %1$s</string>
+    <string name="onboarding_students_continue">Tiếp tục (%1$d học sinh)</string>
+    <string name="onboarding_student_not_enrolled">Đã lưu học viên. Chưa thêm được vào lớp.</string>
+    <string name="students_full_name_required">Nhập họ tên học viên.</string>
+    <string name="students_phone_invalid">Số điện thoại chưa đúng.</string>
+    <string name="students_error_limit">Gói hiện tại đã đủ số học viên. Nâng cấp để thêm.</string>
+    <string name="students_duplicate_title">Có phải cùng một em?</string>
+    <string name="students_duplicate_body">Đã có hồ sơ trùng họ tên và ngày sinh. Chọn đúng em, hoặc thêm em mới.</string>
+    <string name="students_duplicate_same">Đúng, là em này</string>
+    <string name="students_duplicate_new">Không, thêm em mới</string>
+    <string name="students_duplicate_cancel">Quay lại sửa</string>
+    <string name="contacts_pick_phone">Chọn số từ danh bạ</string>
+    <string name="contacts_no_phone">Chưa có số điện thoại</string>
+
+    <string name="onboarding_schedule_title">Lịch học hằng tuần</string>
+    <string name="onboarding_schedule_caption">Mỗi ngày học có thể khác giờ. Hệ thống tự tạo các buổi 8 tuần tới, bỏ qua ngày lễ.</string>
+    <string name="onboarding_schedule_choose_class">Bạn có nhiều lớp. Chọn lớp cần đặt lịch.</string>
+    <string name="onboarding_schedule_no_class">Chưa có lớp để đặt lịch. Hãy tạo lớp ở bước 1.</string>
+    <string name="onboarding_rules_label">Buổi học trong tuần</string>
+    <string name="onboarding_rule_weekday">Thứ</string>
+    <string name="onboarding_rule_start">Giờ bắt đầu</string>
+    <string name="onboarding_rule_duration">Thời lượng</string>
+    <string name="onboarding_rule_duration_value">%1$d phút</string>
+    <string name="onboarding_rule_add">+ Thêm</string>
+    <string name="onboarding_rule_remove">Xóa buổi %1$d</string>
+    <string name="onboarding_rule_overlap">Trùng giờ với buổi %1$s %2$s</string>
+    <string name="onboarding_first_session">Buổi đầu tiên: %1$s</string>
+    <string name="onboarding_finish_setup">Hoàn tất</string>
+    <string-array name="weekday_short">
+        <item>T2</item>
+        <item>T3</item>
+        <item>T4</item>
+        <item>T5</item>
+        <item>T6</item>
+        <item>T7</item>
+        <item>CN</item>
+    </string-array>
 </resources>

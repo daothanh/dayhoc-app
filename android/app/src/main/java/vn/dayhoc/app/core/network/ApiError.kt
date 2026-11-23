@@ -6,8 +6,10 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import retrofit2.HttpException
 
@@ -19,8 +21,15 @@ sealed class ApiError : Exception() {
         val httpStatus: Int,
         val details: JsonObject = JsonObject(emptyMap()),
         val retryAfterSec: Int? = null,
+        /** Lỗi theo trường của 422: `{ "endDate": ["…"] }`. */
+        val errors: JsonObject = JsonObject(emptyMap()),
     ) : ApiError() {
         fun detailInt(key: String): Int? = (details[key] as? JsonPrimitive)?.intOrNull
+
+        /** Thông báo đầu tiên của server theo trường, nếu có. */
+        fun firstFieldError(): String? = errors.values.firstNotNullOfOrNull { v ->
+            (v as? JsonArray)?.firstOrNull()?.let { (it as? JsonPrimitive)?.contentOrNull }
+        }
     }
 
     /** Không kết nối được (mất mạng, DNS, từ chối kết nối). */
@@ -32,6 +41,17 @@ sealed class ApiError : Exception() {
     /** Body thành công nhưng sai hợp đồng (không giải mã được). */
     data object InvalidResponse : ApiError()
 
+    /**
+     * Lệnh ghi có thể đã tới server (mất mạng, hết giờ, 5xx, server đang xử lý cùng khóa):
+     * thử lại phải giữ nguyên `Idempotency-Key`. Lỗi khác là server đã từ chối hẳn.
+     */
+    val retryable: Boolean
+        get() = when (this) {
+            Network, Timeout -> true
+            InvalidResponse -> false
+            is Http -> httpStatus >= 500 || code == IDEMPOTENCY_IN_PROGRESS
+        }
+
     companion object {
         // shortcut: chỉ khai mã cần cho đăng nhập; sinh đủ từ error_codes.json bằng script khi làm các feature sau.
         const val OTP_INVALID = "OTP_INVALID"
@@ -39,11 +59,19 @@ sealed class ApiError : Exception() {
         const val RATE_LIMITED = "RATE_LIMITED"
         const val SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
         const val UNAUTHENTICATED = "UNAUTHENTICATED"
+        const val VALIDATION_FAILED = "VALIDATION_FAILED"
+        const val PLAN_LIMIT_EXCEEDED = "PLAN_LIMIT_EXCEEDED"
+        const val STUDENT_POSSIBLE_DUPLICATE = "STUDENT_POSSIBLE_DUPLICATE"
+        const val IDEMPOTENCY_IN_PROGRESS = "IDEMPOTENCY_IN_PROGRESS"
     }
 }
 
 @Serializable
-private data class ErrorBody(val code: String = "", val details: JsonObject = JsonObject(emptyMap()))
+private data class ErrorBody(
+    val code: String = "",
+    val details: JsonObject = JsonObject(emptyMap()),
+    val errors: JsonObject = JsonObject(emptyMap()),
+)
 
 private val errorJson = Json { ignoreUnknownKeys = true }
 
@@ -67,6 +95,7 @@ suspend fun <T> apiCall(block: suspend () -> T): T =
             details = body?.details ?: JsonObject(emptyMap()),
             retryAfterSec = (body?.details?.get("retryAfterSec") as? JsonPrimitive)?.intOrNull
                 ?: response?.headers()?.get("Retry-After")?.toIntOrNull(),
+            errors = body?.errors ?: JsonObject(emptyMap()),
         )
     } catch (e: SerializationException) {
         throw ApiError.InvalidResponse
