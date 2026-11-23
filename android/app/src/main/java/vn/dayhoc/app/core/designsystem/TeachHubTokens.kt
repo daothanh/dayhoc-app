@@ -1,4 +1,4 @@
-// File sinh bởi native/tool/gen_tokens.py từ app/assets/tokens/teachhub.tokens.json. Không sửa tay.
+// File sinh bởi tool/gen_tokens.py từ tokens/teachhub.tokens.json. Không sửa tay.
 package vn.dayhoc.app.core.designsystem
 
 import androidx.compose.ui.graphics.Color

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Sinh TeachHubTokens.kt (Android) và TeachHubTokens.swift (iOS) từ app/assets/tokens/teachhub.tokens.json.
+"""Sinh TeachHubTokens.kt (Android) và TeachHubTokens.swift (iOS) từ tokens/teachhub.tokens.json.
 
-Chạy:   python3 native/tool/gen_tokens.py          # ghi file
-        python3 native/tool/gen_tokens.py --check  # CI: báo lỗi nếu file sinh lệch nguồn
+Chạy:   python3 tool/gen_tokens.py          # ghi file
+        python3 tool/gen_tokens.py --check  # CI: báo lỗi nếu file sinh lệch nguồn
 """
 import json
 import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-SRC = ROOT / "app/assets/tokens/teachhub.tokens.json"
-KT = ROOT / "native/android/app/src/main/java/vn/dayhoc/app/core/designsystem/TeachHubTokens.kt"
-SWIFT = ROOT / "native/ios/DayHoc/Core/DesignSystem/TeachHubTokens.swift"
-HEADER = "// File sinh bởi native/tool/gen_tokens.py từ app/assets/tokens/teachhub.tokens.json. Không sửa tay."
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "tokens/teachhub.tokens.json"
+KT = ROOT / "android/app/src/main/java/vn/dayhoc/app/core/designsystem/TeachHubTokens.kt"
+SWIFT = ROOT / "ios/DayHoc/Core/DesignSystem/TeachHubTokens.swift"
+HEADER = "// File sinh bởi tool/gen_tokens.py từ tokens/teachhub.tokens.json. Không sửa tay."
 
 
 def load():
@@ -84,7 +84,7 @@ def main():
     if "--check" in sys.argv:
         stale = [str(p.relative_to(ROOT)) for p, text in outputs.items() if not p.exists() or p.read_text() != text]
         if stale:
-            raise SystemExit("Token sinh lệch nguồn, chạy lại native/tool/gen_tokens.py: " + ", ".join(stale))
+            raise SystemExit("Token sinh lệch nguồn, chạy lại tool/gen_tokens.py: " + ", ".join(stale))
         print("Token khớp nguồn")
         return
     for path, text in outputs.items():
