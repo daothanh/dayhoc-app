@@ -472,6 +472,13 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
 
     ScrollBody {
         Heading(stringResource(R.string.onboarding_schedule_title), stringResource(R.string.onboarding_schedule_caption))
+        if (state.pendingCourseFee != null) {
+            Text(
+                stringResource(R.string.onboarding_course_fee_pending),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(stringResource(R.string.onboarding_rules_label) + " *", style = MaterialTheme.typography.titleSmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val style = MaterialTheme.typography.labelMedium

@@ -24,7 +24,11 @@ interface OnboardingApi {
     suspend fun get(): OnboardingDto
 
     @PATCH("onboarding/steps/{step}")
-    suspend fun setStep(@Path("step") step: String, @Body body: StepStatusRequest): OnboardingDto
+    suspend fun setStep(
+        @Path("step") step: String,
+        @Header("Idempotency-Key") key: String,
+        @Body body: StepStatusRequest,
+    ): OnboardingDto
 
     @GET("classes")
     suspend fun classes(@Query("status") status: String = "active", @Query("pageSize") pageSize: Int = 100): ClassPage
@@ -155,9 +159,9 @@ class PendingFeeStore(private val prefs: DataStore<Preferences>) {
         prefs.data.first()[KEY]?.split('|')?.takeIf { it.size == 2 && it[0] == classId }?.get(1)?.toLongOrNull()
     }
 
-    suspend fun set(classId: String, amount: Long) {
-        orNull { prefs.edit { it[KEY] = "$classId|$amount" } }
-    }
+    /** `false` khi ghi đĩa lỗi: bước 1 báo lỗi thay vì đi tiếp rồi mất học phí. */
+    suspend fun set(classId: String, amount: Long): Boolean =
+        orNull { prefs.edit { it[KEY] = "$classId|$amount" } } != null
 
     suspend fun clear() {
         orNull { prefs.edit { it.remove(KEY) } }

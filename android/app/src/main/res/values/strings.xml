@@ -172,6 +172,7 @@
     <string name="onboarding_rule_overlap">Trùng giờ với buổi %1$s %2$s</string>
     <string name="onboarding_first_session">Buổi đầu tiên: %1$s</string>
     <string name="onboarding_finish_setup">Hoàn tất</string>
+    <string name="onboarding_course_fee_pending">Học phí trọn khóa được lưu khi bạn bấm Hoàn tất. Bỏ qua bước này thì lớp chưa có học phí.</string>
     <string-array name="weekday_short">
         <item>T2</item>
         <item>T3</item>

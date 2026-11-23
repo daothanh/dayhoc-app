@@ -62,6 +62,46 @@ class OnboardingViewModelTest {
         assertEquals(listOf(b2.id to FeePatch(FeeTypes.PER_SESSION, 150_000)), api.feeCalls.map { it.first to it.second })
         assertEquals(listOf("create_class" to "done"), api.stepCalls)
         assertEquals(OnboardingStep.AddStudents, vm.state.value.step)
+        // PATCH /onboarding/steps bắt buộc Idempotency-Key.
+        assertTrue(api.stepKeys.single().isNotBlank())
+    }
+
+    @Test
+    fun `mat phan hoi sau khi server da tao lop, giao vien sua ten roi bam lai thi khong tao lop thu hai`() = runTest {
+        val vm = vm()
+        advanceUntilIdle()
+        vm.updateClassForm { it.copy(name = "Toán 9A", subject = "Toán", grade = 9, amount = "150000") }
+        api.failCreate = 1
+        api.createdButLost = true
+
+        vm.createClass()
+        advanceUntilIdle()
+        vm.updateClassForm { it.copy(name = "Toán 9B") }
+        vm.createClass()
+        advanceUntilIdle()
+
+        assertEquals(1, api.classes.size)
+        assertEquals(api.createCalls[0].second.id, api.createCalls[1].second.id)
+        assertEquals(listOf(api.classes.single().id), api.feeCalls.map { it.first })
+        assertEquals(OnboardingStep.AddStudents, vm.state.value.step)
+    }
+
+    @Test
+    fun `ghi danh bi tu choi het han muc thi bao ly do va cho them em khac`() = runTest {
+        api.onboarding = onboarding("add_students")
+        api.classes += ClassDto("c1", "Toán 9A", "2026-11-23")
+        api.enrollError = ApiError.Http(ApiError.PLAN_LIMIT_EXCEEDED, 402)
+        val vm = vm()
+        advanceUntilIdle()
+
+        vm.updateStudent(name = "Nguyễn Văn Nam")
+        vm.addStudent("Phụ huynh của Nguyễn Văn Nam")
+        advanceUntilIdle()
+
+        assertEquals(R.string.students_error_limit, vm.state.value.snack?.res)
+        assertEquals(false, vm.state.value.students.enrollFailed)
+        assertEquals(false, vm.state.value.students.busy)
+        assertTrue(vm.state.value.students.added.isEmpty())
     }
 
     @Test
@@ -130,6 +170,9 @@ private class FakeOnboardingApi : OnboardingApi {
     var onboarding = onboarding("create_class")
     val classes = mutableListOf<ClassDto>()
     var failCreate = 0
+    /** Lỗi mạng xảy ra sau khi server đã tạo lớp (mất phản hồi). */
+    var createdButLost = false
+    var enrollError: ApiError? = null
     val createCalls = mutableListOf<Pair<String, CreateClassRequest>>()
     val feeCalls = mutableListOf<Triple<String, FeePatch, String>>()
     val stepCalls = mutableListOf<Pair<String, String>>()
@@ -139,7 +182,10 @@ private class FakeOnboardingApi : OnboardingApi {
 
     override suspend fun get() = onboarding
 
-    override suspend fun setStep(step: String, body: StepStatusRequest): OnboardingDto {
+    val stepKeys = mutableListOf<String>()
+
+    override suspend fun setStep(step: String, key: String, body: StepStatusRequest): OnboardingDto {
+        stepKeys += key
         stepCalls += step to body.status
         onboarding = onboarding(ORDER.getOrNull(ORDER.indexOf(step) + 1))
         return onboarding
@@ -149,7 +195,11 @@ private class FakeOnboardingApi : OnboardingApi {
 
     override suspend fun createClass(key: String, body: CreateClassRequest): ClassDto {
         createCalls += key to body
-        if (failCreate-- > 0) throw ApiError.Network
+        if (classes.any { it.id == body.id }) throw ApiError.Http(ApiError.CONFLICT_STALE, 409)
+        if (failCreate-- > 0) {
+            if (createdButLost) classes += ClassDto(body.id, body.name, body.startDate)
+            throw ApiError.Network
+        }
         return ClassDto(body.id, body.name, body.startDate).also { classes += it }
     }
 
@@ -170,6 +220,7 @@ private class FakeOnboardingApi : OnboardingApi {
     }
 
     override suspend fun enroll(classId: String, key: String, body: EnrollRequest) {
+        enrollError?.let { throw it }
         enrollCalls += classId to body.studentId
     }
 }

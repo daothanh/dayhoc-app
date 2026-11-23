@@ -37,6 +37,9 @@ class MembershipStore(
      */
     private var workspaceKey: String? = null
 
+    /** Như [workspaceKey] cho `POST /me/roles`, theo vai trò. */
+    private val roleKeys = mutableMapOf<String, String>()
+
     /** Vai trò mở lại: lần chọn trên máy này, rồi lần dùng gần nhất trên server, rồi vai trò duy nhất. */
     suspend fun load(): State {
         val res = apiCall { api.memberships() }
@@ -61,17 +64,36 @@ class MembershipStore(
                 val key = workspaceKey ?: UUID.randomUUID().toString().also { workspaceKey = it }
                 apiCall { api.createWorkspace(key) }
             } else {
-                apiCall { api.addRole(UUID.randomUUID().toString(), AddRoleRequest(role)) }
+                val key = roleKeys.getOrPut(role) { UUID.randomUUID().toString() }
+                apiCall { api.addRole(key, AddRoleRequest(role)) }
             }
             posted = true
             // Chưa thấy vai trò mới thì coi như chưa xong và giữ khóa: bấm lại được server phát lại kết quả cũ.
             val created = load().items.firstOrNull { it.role == role } ?: throw ApiError.InvalidResponse
             select(created)
             workspaceKey = null
+            roleKeys.remove(role)
             return created
         } catch (e: ApiError) {
+            // 409: vai trò có thể đã được tạo ở lần trước (mất phản hồi). Tải lại, có thì mở luôn.
+            if (!posted && e is ApiError.Http && e.httpStatus == 409) {
+                val existing = try {
+                    load().items.firstOrNull { it.role == role }
+                } catch (reload: ApiError) {
+                    null
+                }
+                if (existing != null) {
+                    workspaceKey = null
+                    roleKeys.remove(role)
+                    select(existing)
+                    return existing
+                }
+            }
             // Server từ chối hẳn (409, 422…): lần sau là lệnh mới.
-            if (!posted && !e.retryable) workspaceKey = null
+            if (!posted && !e.retryable) {
+                workspaceKey = null
+                roleKeys.remove(role)
+            }
             throw e
         }
     }
@@ -79,11 +101,13 @@ class MembershipStore(
     /** Người dùng đổi ý (chọn vai trò khác): lần thêm Giáo viên sau là lệnh mới. */
     fun resetPendingAdd() {
         workspaceKey = null
+        roleKeys.clear()
     }
 
     /** Đăng xuất hoặc hết phiên: quên vai trò của phiên này. */
     suspend fun clear() {
         workspaceKey = null
+        roleKeys.clear()
         _state.value = State()
         orNull { prefs.edit { it.remove(ACTIVE_ID) } }
     }

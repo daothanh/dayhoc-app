@@ -71,6 +71,8 @@ data class OnboardingUiState(
     val classForm: ClassForm = ClassForm(),
     val students: StudentsForm = StudentsForm(),
     val rows: List<ScheduleRow> = emptyList(),
+    /** Bước 3: học phí Trọn khóa đang chờ lịch của lớp này (nhắc giáo viên: bỏ qua thì chưa ghi học phí). */
+    val pendingCourseFee: Long? = null,
 )
 
 /**
@@ -120,12 +122,14 @@ class OnboardingViewModel(
 
     fun skip() {
         val step = _state.value.step ?: return
-        if (!step.skippable || _state.value.saving) return
+        // Đang thêm học viên dở: chờ xong, kẻo kết quả về sau ghi vào bước kế.
+        if (!step.skippable || _state.value.saving || _state.value.students.busy || pendingStudentId != null) return
         mark(step, "skipped")
     }
 
     /** "Thử lại" khi dữ liệu đã lưu mà ghi bước lỗi. */
     fun retryRecord() {
+        if (_state.value.saving) return
         _state.value.step?.let { mark(it, "done") }
     }
 
@@ -147,6 +151,7 @@ class OnboardingViewModel(
         viewModelScope.launch {
             try {
                 val id = createdClassId ?: run {
+                    val retry = draftClassId != null
                     val draftId = draftClassId ?: UUID.randomUUID().toString().also { draftClassId = it }
                     val body = CreateClassRequest(
                         id = draftId,
@@ -157,12 +162,21 @@ class OnboardingViewModel(
                         startDate = today().toString(),
                         endDate = if (course) f.endDate.toString() else null,
                     )
-                    keys.run("class", body) { apiCall { api.createClass(it, body) } }
+                    try {
+                        keys.run("class", body) { apiCall { api.createClass(it, body) } }
+                    } catch (e: ApiError) {
+                        // Lần trước lỗi mạng nhưng server đã tạo lớp với id này; giáo viên sửa form nên body khác
+                        // và server trả CONFLICT_STALE: coi như đã tạo, không sinh lớp thứ hai.
+                        if (!(retry && e is ApiError.Http && e.code == ApiError.CONFLICT_STALE)) throw e
+                    }
                     draftId.also { createdClassId = it }
                 }
                 if (course) {
                     // Trọn khóa cần lịch để server tính tổng buổi: ghi ở bước 3.
-                    pendingFee.set(id, amount)
+                    if (!pendingFee.set(id, amount)) {
+                        _state.update { it.copy(saving = false, snack = Snack(R.string.onboarding_error_generic)) }
+                        return@launch
+                    }
                 } else {
                     val fee = FeePatch(f.feeType, amount)
                     keys.run("fee", id to fee) { apiCall { api.setFee(id, it, fee) } }
@@ -199,13 +213,15 @@ class OnboardingViewModel(
     fun addStudent(guardian: String, confirmNew: Boolean = false) {
         val s = _state.value
         val form = s.students
-        if (form.busy || s.classItem == null) return
+        // Còn học viên đã tạo mà chưa ghi danh: xử lý xong (Thử lại) rồi mới thêm em khác.
+        if (form.busy || s.classItem == null || pendingStudentId != null) return
         val phone = form.phone.takeIf { it.isNotBlank() }?.let(::normalizePhone)
         if (form.name.isBlank() || (form.phone.isNotBlank() && phone?.let(::isValidPhone) != true)) {
             setStudents { it.copy(showErrors = true) }
             return
         }
         guardianName = guardian
+        val retry = draftStudentId != null
         val id = draftStudentId ?: UUID.randomUUID().toString().also { draftStudentId = it }
         val body = CreateStudentRequest(
             id = id,
@@ -218,14 +234,20 @@ class OnboardingViewModel(
             val created = try {
                 keys.run("student", body) { apiCall { api.createStudent(it, body) } }
             } catch (e: ApiError) {
-                if (e is ApiError.Http && e.code == ApiError.STUDENT_POSSIBLE_DUPLICATE) {
-                    setStudents { it.copy(busy = false, duplicates = candidates(e)) }
-                } else {
-                    if (!e.retryable) draftStudentId = null
-                    setStudents { it.copy(busy = false) }
-                    _state.update { it.copy(snack = studentError(e)) }
+                when {
+                    // Lần trước lỗi mạng nhưng server đã tạo học viên với id này: ghi danh tiếp, không tạo thêm.
+                    retry && e is ApiError.Http && e.code == ApiError.CONFLICT_STALE -> StudentDto(id, body.fullName)
+                    e is ApiError.Http && e.code == ApiError.STUDENT_POSSIBLE_DUPLICATE -> {
+                        setStudents { it.copy(busy = false, duplicates = candidates(e)) }
+                        return@launch
+                    }
+                    else -> {
+                        if (!e.retryable) draftStudentId = null
+                        setStudents { it.copy(busy = false) }
+                        _state.update { it.copy(snack = studentError(e)) }
+                        return@launch
+                    }
                 }
-                return@launch
             }
             draftStudentId = null
             pendingStudentId = created.id
@@ -236,7 +258,7 @@ class OnboardingViewModel(
 
     /** "Đúng, là em này": ghi danh hồ sơ có sẵn, không tạo mới. */
     fun pickExisting(candidate: StudentCandidate) {
-        if (_state.value.students.busy) return
+        if (_state.value.students.busy || pendingStudentId != null) return
         draftStudentId = null
         pendingStudentId = candidate.id
         pendingStudent = AddedStudent(candidate.fullName, _state.value.students.normalizedPhone)
@@ -255,13 +277,25 @@ class OnboardingViewModel(
     }
 
     private suspend fun enroll() {
-        val classId = _state.value.classItem?.id ?: return
-        val studentId = pendingStudentId ?: return
+        val classId = _state.value.classItem?.id
+        val studentId = pendingStudentId
+        if (classId == null || studentId == null) {
+            setStudents { it.copy(busy = false) }
+            return
+        }
         val body = EnrollRequest(studentId)
         try {
             keys.run("enroll", classId to body) { apiCall { api.enroll(classId, it, body) } }
         } catch (e: ApiError) {
-            setStudents { it.copy(busy = false, enrollFailed = true) }
+            if (e.retryable) {
+                setStudents { it.copy(busy = false, enrollFailed = true) }
+            } else {
+                // Server từ chối hẳn (hết hạn mức gói, lớp đã lưu trữ…): báo lý do, thôi giữ em này để thêm em khác.
+                pendingStudentId = null
+                pendingStudent = null
+                setStudents { it.copy(busy = false, enrollFailed = false) }
+                _state.update { it.copy(snack = studentError(e)) }
+            }
             return
         }
         val added = pendingStudent
@@ -328,7 +362,7 @@ class OnboardingViewModel(
         _state.update { it.copy(saving = true, recordFailed = false) }
         viewModelScope.launch {
             try {
-                show(apiCall { api.setStep(step.wire, StepStatusRequest(status)) })
+                show(setStep(step, status))
             } catch (e: ApiError) {
                 // Bỏ qua lỗi: snackbar. Ghi `done` lỗi (dữ liệu đã lưu): thông báo kèm Thử lại.
                 _state.update {
@@ -341,10 +375,16 @@ class OnboardingViewModel(
     private suspend fun markNow(step: OnboardingStep) {
         _state.update { it.copy(saving = true, recordFailed = false) }
         try {
-            show(apiCall { api.setStep(step.wire, StepStatusRequest("done")) })
+            show(setStep(step, "done"))
         } catch (e: ApiError) {
             _state.update { it.copy(saving = false, recordFailed = true) }
         }
+    }
+
+    /** `PATCH /onboarding/steps` bắt buộc `Idempotency-Key`; thử lại cùng bước, cùng trạng thái dùng lại khóa. */
+    private suspend fun setStep(step: OnboardingStep, status: String): OnboardingDto {
+        val body = StepStatusRequest(status)
+        return keys.run("step", step to body) { apiCall { api.setStep(step.wire, it, body) } }
     }
 
     private fun show(onboarding: OnboardingDto) {
@@ -395,7 +435,7 @@ class OnboardingViewModel(
                 val rows = cls.scheduleRules.ifEmpty { listOf(RuleDto(1, "17:30", 90)) }
                     .map { r -> ScheduleRow(nextRowKey++, r.weekday, r.startTime, r.durationMin) }
                 it.copy(stepLoading = false, classItem = cls, rows = rows)
-            }
+            }.also { viewModelScope.launch { _state.update { it.copy(pendingCourseFee = pendingFee.get(cls.id)) } } }
             OnboardingStep.AddStudents -> {
                 _state.update { it.copy(stepLoading = true, classItem = cls) }
                 viewModelScope.launch {

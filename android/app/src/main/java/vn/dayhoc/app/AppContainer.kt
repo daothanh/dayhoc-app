@@ -63,10 +63,12 @@ class AppContainer(context: Context) {
         forgetSession()
     }
 
-    /** Quên vai trò và tiến độ của phiên vừa hết (đăng xuất hoặc refresh bị từ chối). */
+    /**
+     * Quên vai trò của phiên vừa hết (đăng xuất hoặc refresh bị từ chối). Học phí Trọn khóa đang chờ
+     * thì giữ: chỉ có id lớp và số tiền, đăng nhập lại vẫn ghi được ở bước 3.
+     */
     suspend fun forgetSession() {
         membershipStore.clear()
-        pendingFeeStore.clear()
         onboardingDismissed = false
     }
 }
