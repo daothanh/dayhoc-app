@@ -41,7 +41,7 @@
     <string name="update_title">Cần cập nhật DayHoc</string>
     <string name="update_body">Phiên bản bạn đang dùng không còn được hỗ trợ. Vui lòng cập nhật để tiếp tục.</string>
     <string name="update_action">Cập nhật</string>
-    <string name="loading">Đang tải...</string>
+    <string name="loading">Đang tải…</string>
     <string name="back">Quay lại</string>
     <string name="ok">Chọn</string>
     <string name="cancel">Hủy</string>

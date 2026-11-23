@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
@@ -80,7 +81,7 @@ fun DhBottomNav(
                 )
                 Box(
                     Modifier
-                        .offset(x = indicatorX)
+                        .offset { IntOffset(indicatorX.roundToPx(), 0) }
                         .width(itemWidth)
                         .height(56.dp)
                         .clip(CircleShape)

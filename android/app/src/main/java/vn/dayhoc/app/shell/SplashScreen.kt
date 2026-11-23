@@ -2,7 +2,6 @@ package vn.dayhoc.app.shell
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -144,10 +144,10 @@ fun UpdateRequiredScreen() {
                 onClick = {
                     val id = context.packageName
                     try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$id")))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, "market://details?id=$id".toUri()))
                     } catch (e: ActivityNotFoundException) {
                         context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$id")),
+                            Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=$id".toUri()),
                         )
                     }
                 },

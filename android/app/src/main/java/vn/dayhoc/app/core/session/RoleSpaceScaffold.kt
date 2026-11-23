@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import vn.dayhoc.app.R
@@ -36,6 +37,7 @@ fun RoleSpaceScaffold(
     var sheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     Scaffold(topBar = { TopAppBar(title = { RoleChip(state) { sheet = true } }) }) { padding ->
         Box(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()), content = content)
@@ -49,8 +51,8 @@ fun RoleSpaceScaffold(
                 sheet = false
                 scope.launch {
                     store.select(m)
-                    val name = context.getString(roleNameRes(m.role))
-                    Toast.makeText(context, context.getString(R.string.role_switched_to, name), Toast.LENGTH_SHORT).show()
+                    val name = resources.getString(roleNameRes(m.role))
+                    Toast.makeText(context, resources.getString(R.string.role_switched_to, name), Toast.LENGTH_SHORT).show()
                     onSwitched(m)
                 }
             },
