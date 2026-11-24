@@ -100,6 +100,105 @@
         }
       }
     },
+    "hero.avatar.family": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PH"
+          }
+        }
+      }
+    },
+    "hero.avatar.student": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NA"
+          }
+        }
+      }
+    },
+    "hero.avatar.teacher": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MH"
+          }
+        }
+      }
+    },
+    "hero.role.family": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gia đình"
+          }
+        }
+      }
+    },
+    "hero.role.student": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học trò"
+          }
+        }
+      }
+    },
+    "hero.role.teacher": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thầy cô"
+          }
+        }
+      }
+    },
+    "hero.tag.absent": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã báo vắng"
+          }
+        }
+      }
+    },
+    "hero.tag.checked": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã điểm danh"
+          }
+        }
+      }
+    },
+    "hero.tag.invoice": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hóa đơn đã gửi"
+          }
+        }
+      }
+    },
     "loading": {
       "extractionState": "manual",
       "localizations": {
@@ -107,6 +206,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đang tải…"
+          }
+        }
+      }
+    },
+    "login.changeEmail": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi email"
+          }
+        }
+      }
+    },
+    "login.continueApple": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục với Apple"
+          }
+        }
+      }
+    },
+    "login.continueGoogle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục với Google"
           }
         }
       }
@@ -166,6 +298,17 @@
         }
       }
     },
+    "login.orEmail": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hoặc dùng email"
+          }
+        }
+      }
+    },
     "login.rateLimited": {
       "extractionState": "manual",
       "localizations": {
@@ -221,6 +364,17 @@
         }
       }
     },
+    "login.ssoSoon": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập Google và Apple chưa mở. Bạn dùng email để tiếp tục nhé."
+          }
+        }
+      }
+    },
     "login.tagline": {
       "extractionState": "manual",
       "localizations": {
@@ -239,6 +393,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tiếp tục nghĩa là bạn đồng ý với Điều khoản sử dụng và Chính sách dữ liệu của DayHoc."
+          }
+        }
+      }
+    },
+    "login.termsLinkPrivacy": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chính sách dữ liệu"
+          }
+        }
+      }
+    },
+    "login.termsLinkTerms": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều khoản sử dụng"
           }
         }
       }
@@ -975,7 +1151,18 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mã chưa đúng."
+            "value": "Mã không đúng."
+          }
+        }
+      }
+    },
+    "otp.invalidAttempts %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã không đúng. Còn %lld lần thử."
           }
         }
       }

@@ -9,8 +9,11 @@ struct Stub: Sendable {
 
     static let noContent = Stub(status: 204)
 
-    static func error(_ status: Int, _ code: String, retryAfterSec: Int? = nil) -> Stub {
-        let details = retryAfterSec.map { #","details":{"retryAfterSec":\#($0)}"# } ?? ""
+    static func error(_ status: Int, _ code: String, retryAfterSec: Int? = nil, attemptsLeft: Int? = nil) -> Stub {
+        var fields: [String] = []
+        if let retryAfterSec { fields.append(#""retryAfterSec":\#(retryAfterSec)"#) }
+        if let attemptsLeft { fields.append(#""attemptsLeft":\#(attemptsLeft)"#) }
+        let details = fields.isEmpty ? "" : #","details":{\#(fields.joined(separator: ","))}"#
         return Stub(status: status, json: #"{"code":"\#(code)","message":"","requestId":"t"\#(details)}"#)
     }
 }

@@ -20,6 +20,8 @@ struct APIError: Error, Equatable {
     var code: String?
     /// Thời gian chờ của 429: `details.retryAfterSec`, không có thì header `Retry-After`.
     var retryAfterSec: Int?
+    /// Số lần còn được nhập lại của `OTP_INVALID`: `details.attemptsLeft`.
+    var attemptsLeft: Int?
     /// Lỗi theo trường của 422: `{ "endDate": ["…"] }`.
     var fieldErrors: [String: [String]] = [:]
     /// Body lỗi gốc, để feature đọc `details` riêng (vd `candidates` của học viên trùng).
@@ -53,6 +55,7 @@ struct APIError: Error, Equatable {
             code: parsed?.code,
             retryAfterSec: parsed?.details?.retryAfterSec ?? retryAfterHeader.flatMap { Int($0) }
         )
+        attemptsLeft = parsed?.details?.attemptsLeft
         fieldErrors = parsed?.errors ?? [:]
         self.body = body
     }
@@ -66,6 +69,8 @@ struct APIError: Error, Equatable {
 private struct ErrorBody: Decodable {
     struct Details: Decodable {
         let retryAfterSec: Int?
+        /// `OTP_INVALID` trả số lần còn được nhập; server cũ không có thì bỏ qua.
+        let attemptsLeft: Int?
     }
 
     let code: String

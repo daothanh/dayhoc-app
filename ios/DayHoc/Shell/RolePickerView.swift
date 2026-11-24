@@ -86,7 +86,7 @@ struct RolePickerView: View {
             .toolbar {
                 if let onBack {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("back", systemImage: "chevron.backward", action: onBack)
+                        DhBackButton(action: onBack)
                     }
                 }
             }

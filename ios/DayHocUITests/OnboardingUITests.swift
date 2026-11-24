@@ -65,6 +65,25 @@ final class OnboardingUITests: XCTestCase {
         )
     }
 
+    func testOtpWrongCodeClearsInputForRetry() {
+        let app = openOtp(mode: "otp-invalid")
+
+        let code = app.textFields["otp.code"]
+        code.tap()
+        code.typeText("123456")
+
+        XCTAssertTrue(
+            app.staticTexts["otp.code.error"].waitForExistence(timeout: 15),
+            "OTP sai phải hiện chú thích lỗi"
+        )
+        // Sau lỗi phải xoá mã sai; nếu giữ lại thì lần gõ sau bị cắt ở 6 ký tự nên không nhập lại được.
+        XCTAssertNotEqual(
+            code.value as? String ?? "",
+            "123456",
+            "Ô mã phải rỗng sau khi nhập sai để người dùng gõ lại"
+        )
+    }
+
     func testOtpTooManyWrongAttemptsShowsLockBanner() {
         let app = openOtp(mode: "otp-locked")
 
