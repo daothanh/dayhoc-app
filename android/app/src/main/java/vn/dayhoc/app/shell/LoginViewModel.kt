@@ -145,8 +145,8 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
     }
 
     companion object {
-        /** Gửi lại OTP: 60 giây/lần (Technical Spec 5.2a). */
-        const val RESEND_AFTER_SEC = 60
+        /** Đếm ngược "Gửi lại mã sau 4:59" (Figma B02): chờ mã hết hạn 5 phút mới cho gửi lại. */
+        const val RESEND_AFTER_SEC = 5 * 60
         const val LOCK_DEFAULT_SEC = 15 * 60
         const val CODE_LENGTH = 6
     }

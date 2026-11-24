@@ -113,10 +113,10 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `nut gui lai bi khoa trong 60 giay`() = runTest {
+    fun `nut gui lai bi khoa trong 5 phut`() = runTest {
         sendCodeTo("co.lan@example.com")
 
-        advanceTimeBy(59_000)
+        advanceTimeBy(299_000)
         assertTrue(vm.state.value.resendIn > 0)
         vm.sendCode()
         runCurrent()
