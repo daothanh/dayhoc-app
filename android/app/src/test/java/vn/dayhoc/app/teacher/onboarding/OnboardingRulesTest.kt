@@ -65,4 +65,40 @@ class OnboardingRulesTest {
         assertFalse(isVersionBelow("1.2.0", "1.2.0"))
         assertFalse(isVersionBelow("1.2.0-beta+12", "1.1.9"))
     }
+
+    @Test
+    fun `doi chieu gio phut hai chieu`() {
+        assertEquals(1050, minutesOf("17:30"))
+        assertEquals("17:30", hhmm(1050))
+        assertEquals("00:00", hhmm(0))
+        // 23:30 = 1410 phút, không qua nửa đêm.
+        assertEquals(1410, minutesOf("23:30"))
+    }
+
+    @Test
+    fun `buoi dau tien la null khi khong co quy tac lich`() {
+        val today = LocalDate.of(2026, 11, 23)
+        assertNull(firstSession(emptyList(), today, today))
+    }
+
+    @Test
+    fun `doc so tien o bien 12 chu so va loai 13 chu so`() {
+        assertEquals(999_999_999_999L, parseVnd("999.999.999.999"))
+        assertNull(parseVnd("1000000000000"))
+    }
+
+    @Test
+    fun `chuan hoa so dien thoai nhan null va giu so khong phai dau so viet nam`() {
+        assertNull(normalizePhone(null))
+        // 9 chữ số, không dấu + và không mở đầu 00: giữ nguyên, không ghép thành số Việt Nam.
+        assertEquals("849123456", normalizePhone("849123456"))
+    }
+
+    @Test
+    fun `so dien thoai hop le o bien do dai 8 va 15 chu so`() {
+        assertTrue(isValidPhone("12345678"))
+        assertTrue(isValidPhone("123456789012345"))
+        assertFalse(isValidPhone("1234567"))
+        assertFalse(isValidPhone("1234567890123456"))
+    }
 }

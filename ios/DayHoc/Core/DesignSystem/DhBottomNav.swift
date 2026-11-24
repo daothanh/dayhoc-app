@@ -44,6 +44,7 @@ struct DhBottomNav: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(active ? [.isSelected] : [])
+                .accessibilityIdentifier("nav.\(item.id)")
             }
         }
         .padding(4)
@@ -60,6 +61,8 @@ struct DhBottomNav: View {
 struct DhSecondaryButton: View {
     let title: LocalizedStringKey
     var fullWidth = true
+    /// Định danh cho UI test; `nil` thì không gắn.
+    var identifier: String?
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
@@ -79,5 +82,6 @@ struct DhSecondaryButton: View {
                 .contentShape(RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.buttonRadius))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier ?? "")
     }
 }

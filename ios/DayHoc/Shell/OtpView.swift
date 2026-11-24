@@ -24,7 +24,7 @@ struct OtpView: View {
                 .font(.title2.bold())
             Text("otp.sentTo \(model.sentTo ?? "")")
                 .foregroundStyle(colors.onSurfaceVariant)
-            DhTextField(label: "otp.codeLabel", text: codeBinding, error: model.failure?.message)
+            DhTextField(label: "otp.codeLabel", text: codeBinding, error: model.failure?.message, identifier: "otp.code")
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
                 .disabled(locked || model.isVerifying)
@@ -35,6 +35,7 @@ struct OtpView: View {
                 title: locked ? "otp.locked" : "otp.confirm",
                 loadingTitle: "otp.verifying",
                 isLoading: model.isVerifying,
+                identifier: "otp.confirm",
                 action: verify
             )
             .disabled(locked || model.code.count < 6)
@@ -79,6 +80,7 @@ struct OtpView: View {
             Text("otp.lockedTitle")
                 .font(.subheadline.bold())
                 .foregroundStyle(colors.onErrorContainer)
+                .accessibilityIdentifier("otp.lockedTitle")
             Text("otp.lockedBody")
                 .font(.footnote)
                 .foregroundStyle(colors.onSurfaceVariant)

@@ -6,6 +6,8 @@ struct DhPrimaryButton: View {
     let title: LocalizedStringKey
     var loadingTitle: LocalizedStringKey?
     var isLoading = false
+    /// Định danh cho UI test; `nil` thì không gắn.
+    var identifier: String?
     let action: () -> Void
 
     /// Vùng chạm tối thiểu theo HIG; DS chưa có token chiều cao nút.
@@ -34,5 +36,6 @@ struct DhPrimaryButton: View {
         }
         .buttonStyle(.plain)
         .disabled(isLoading)
+        .accessibilityIdentifier(identifier ?? "")
     }
 }
