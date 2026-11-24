@@ -36,19 +36,3 @@ data class UserDto(
     val displayName: String?,
     val permissions: List<String>,
 )
-
-@Serializable
-data class MembershipDto(
-    val id: String,
-    /** `tenant_owner` | `parent` | `student` */
-    val role: String,
-    val label: String,
-    val tenantId: String?,
-    val studentId: String?,
-)
-
-@Serializable
-data class MembershipsResponse(
-    val items: List<MembershipDto>,
-    val lastMembershipId: String?,
-)

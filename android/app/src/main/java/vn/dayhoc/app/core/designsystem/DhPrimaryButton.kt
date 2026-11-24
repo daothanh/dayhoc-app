@@ -1,5 +1,6 @@
 package vn.dayhoc.app.core.designsystem
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -11,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -58,5 +60,26 @@ fun DhPrimaryButton(
         } else {
             Text(text, style = MaterialTheme.typography.labelLarge)
         }
+    }
+}
+
+/** Nút phụ trung tính (DS v2 `outlinePrimary`): viền outline, chữ onSurface, cao 48. */
+@Composable
+fun DhSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val colors = MaterialTheme.colorScheme
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.defaultMinSize(minHeight = 48.dp),
+        shape = RoundedCornerShape(Dimens.buttonRadius),
+        border = BorderStroke(1.5.dp, if (enabled) colors.outline else colors.outlineVariant),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurface),
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }

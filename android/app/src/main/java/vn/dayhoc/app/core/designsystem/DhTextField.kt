@@ -24,6 +24,9 @@ fun DhTextField(
     enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    readOnly: Boolean = false,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    suffix: String? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     OutlinedTextField(
@@ -35,6 +38,9 @@ fun DhTextField(
         supportingText = supportingText?.let { { Text(it) } },
         isError = isError,
         enabled = enabled,
+        readOnly = readOnly,
+        trailingIcon = trailingIcon,
+        suffix = suffix?.let { { Text(it) } },
         singleLine = true,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,

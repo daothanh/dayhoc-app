@@ -25,7 +25,6 @@ import vn.dayhoc.app.core.auth.AuthRepository
 import vn.dayhoc.app.core.auth.InMemoryTokenStore
 import vn.dayhoc.app.core.auth.LoginRequest
 import vn.dayhoc.app.core.auth.LoginResponse
-import vn.dayhoc.app.core.auth.MembershipsResponse
 import vn.dayhoc.app.core.auth.RefreshRequest
 import vn.dayhoc.app.core.auth.SendOtpRequest
 import vn.dayhoc.app.core.auth.TokenResponse
@@ -193,6 +192,4 @@ private class FakeAuthApi : AuthApi {
     override suspend fun me(): UserDto = error("không dùng trong test này")
 
     override suspend fun logout() = Unit
-
-    override suspend fun memberships(): MembershipsResponse = error("không dùng trong test này")
 }

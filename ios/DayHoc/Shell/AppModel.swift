@@ -1,22 +1,36 @@
 import Foundation
 import Observation
 
-/// Điều hướng gốc của app: khởi động, đăng nhập, màn sau đăng nhập, hết phiên.
+/// Điều hướng gốc của app: khởi động, đăng nhập, chọn vai trò, không gian vai trò, onboarding, hết phiên.
 @Observable @MainActor
 final class AppModel {
     enum Route {
         case launching
         case login(LoginModel)
-        /// Chưa có vai trò → T01c (NA-04).
-        case chooseRole(UserDTO)
-        /// Có vai trò → không gian của vai trò (NA-04).
-        case home(UserDTO, MembershipDTO)
-        /// Không tải được phiên; `offline` để chọn câu báo.
+        /// [T01c] Chưa có vai trò đang mở.
+        case rolePicker(RolePickerModel)
+        case teacher
+        /// [T02] Giáo viên còn bước onboarding dở.
+        case onboarding(OnboardingModel)
+        case parent
+        case student
+        /// Không tải được vai trò; `offline` để chọn câu báo.
         case failed(offline: Bool)
     }
 
     private(set) var route: Route = .launching
+    /// Bản cài thấp hơn `minSupportedVersion` (Technical Spec 5.1): chặn mọi màn.
+    private(set) var updateRequired = false
+    /// "Thêm vai trò" mở từ T00: T01c hiện dạng sheet trên không gian đang mở.
+    var addingRole: RolePickerModel?
+    /// Toast ngắn ("Đang ở vai trò …").
+    var toast: String?
+
+    let memberships: MembershipStore
     private let env: AppEnvironment
+    var api: APIClient { env.api }
+    /// Giáo viên đã rời onboarding trong lần mở app này: không tự mở lại tới lần mở app sau (US-0.2 AC3).
+    @ObservationIgnored private var onboardingDismissed = false
 
     /// Vòng nghe hết phiên do model giữ: nếu để `.task` của view giữ, view dựng lại sẽ hủy task
     /// và `AsyncStream` kết thúc, từ đó không còn nhận sự kiện nào.
@@ -24,39 +38,91 @@ final class AppModel {
 
     init(env: AppEnvironment) {
         self.env = env
+        memberships = MembershipStore(api: env.api)
         expiryListener = Task { [weak self, stream = env.api.sessionExpired] in
             for await _ in stream { self?.showLogin() }
         }
     }
 
-    /// Có token thì hỏi `/auth/me` rồi vào màn sau đăng nhập, không thì vào Đăng nhập.
+    /// Có token thì tải vai trò rồi mở đúng nơi, không thì vào Đăng nhập.
     func start() async {
-        guard env.auth.hasSession else { return showLogin() }
-        route = .launching
-        do {
-            try await enter(env.auth.me())
-        } catch {
-            fail(error)
-        }
+        // Không chờ, lỗi thì bỏ qua: app phải mở được khi mất mạng (NFR-17); lần mở sau kiểm lại.
+        Task { await checkVersion() }
+        await enter()
     }
+
+    func retry() async { await enter() }
 
     func logout() async {
         await env.auth.logout()
         showLogin()
     }
 
-    private func signedIn(_ user: UserDTO) async {
-        do {
-            try await enter(user)
-        } catch {
-            fail(error)
+    /// [T00] Đổi vai trò: không đăng nhập lại, chỉ đổi không gian.
+    func switchTo(_ membership: MembershipDTO) async {
+        memberships.select(membership)
+        toast = String(localized: "role.switchedTo \(String(localized: Roles.name(membership.role)))")
+        await open(membership.role)
+    }
+
+    func addRole() {
+        addingRole = RolePickerModel(store: memberships) { [weak self] m in
+            self?.addingRole = nil
+            await self?.open(m.role)
         }
     }
 
-    // shortcut: lấy vai trò đầu tiên; NA-04 chọn theo `lastMembershipId` và chuyển vai trò.
-    private func enter(_ user: UserDTO) async throws {
-        let memberships = try await env.auth.memberships()
-        route = memberships.items.first.map { .home(user, $0) } ?? .chooseRole(user)
+    func exitOnboarding() {
+        guard case .onboarding = route else { return }
+        onboardingDismissed = true
+        route = .teacher
+    }
+
+    func finishOnboarding() {
+        // Phiên có thể vừa hết (route đã về Đăng nhập): callback đến muộn không được mở lại không gian.
+        guard case .onboarding = route else { return }
+        route = .teacher
+    }
+
+    private func enter() async {
+        guard env.auth.hasSession else { return showLogin() }
+        route = .launching
+        do {
+            try await memberships.load()
+        } catch {
+            // shortcut: chưa cache vai trò nên mất mạng lúc mở app thì báo lỗi; làm cache ở NA-07 (ngoại tuyến).
+            return fail(error)
+        }
+        if let active = memberships.active {
+            await open(active.role)
+        } else {
+            route = .rolePicker(RolePickerModel(store: memberships) { [weak self] m in await self?.open(m.role) })
+        }
+    }
+
+    private func open(_ role: String) async {
+        switch role {
+        case Roles.teacher:
+            route = .teacher
+            await openOnboardingIfPending()
+        case Roles.parent: route = .parent
+        default: route = .student
+        }
+    }
+
+    /// Giáo viên mới hoặc thoát giữa chừng ở lần mở app trước: vào onboarding, tiếp đúng bước dở (US-0.2 AC1, AC3).
+    private func openOnboardingIfPending() async {
+        guard !onboardingDismissed else { return }
+        let api = OnboardingAPI(api: env.api)
+        // Lỗi mạng: vào màn chính, lần mở sau kiểm lại.
+        guard (try? await api.get())?.current != nil, case .teacher = route else { return }
+        route = .onboarding(OnboardingModel(api: api))
+    }
+
+    private func checkVersion() async {
+        guard let config: AppConfigDTO = try? await env.api.request("GET", "app-config", authorized: false) else { return }
+        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        updateRequired = isVersionBelow(current, config.minSupportedVersion.ios)
     }
 
     private func fail(_ error: any Error) {
@@ -66,10 +132,16 @@ final class AppModel {
         route = .failed(offline: kind == .offline || kind == .timeout)
     }
 
+    /// Về Đăng nhập và quên mọi trạng thái của phiên trên máy.
     private func showLogin() {
+        // Học phí Trọn khóa đang chờ thì giữ: chỉ có id lớp và số tiền, đăng nhập lại vẫn ghi được ở bước 3.
+        memberships.clear()
+        onboardingDismissed = false
+        addingRole = nil
         if case .login = route { return }
-        route = .login(LoginModel(auth: env.auth) { [weak self] user in
-            await self?.signedIn(user)
+        route = .login(LoginModel(auth: env.auth) { [weak self] _ in
+            // Đăng nhập xong: tải vai trò rồi mở đúng nơi.
+            await self?.enter()
         })
     }
 }

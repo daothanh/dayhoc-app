@@ -21,7 +21,4 @@ interface AuthApi {
 
     @POST("auth/logout")
     suspend fun logout()
-
-    @GET("me/memberships")
-    suspend fun memberships(): MembershipsResponse
 }
