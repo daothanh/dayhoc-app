@@ -211,6 +211,98 @@ struct OnboardingModelTests {
         await model.finishStudents()
         #expect(model.step == .setSchedule)
     }
+
+    @Test func possibleDuplicateLetsPickExistingProfile() async throws {
+        let server = FakeBackend(current: "add_students", classes: Self.oneClass).server { request in
+            guard request.url?.path == "/v1/students", request.httpMethod == "POST" else { return nil }
+            return Stub(
+                status: 422,
+                json: #"{"code":"STUDENT_POSSIBLE_DUPLICATE","message":"","requestId":"t","details":{"candidates":[{"id":"s9","fullName":"Nguyễn Văn Nam"}]}}"#
+            )
+        }
+        let model = makeModel(server)
+        await model.load()
+
+        model.studentName = "Nguyễn Văn Nam"
+        await model.addStudent(guardian: "Phụ huynh của Nguyễn Văn Nam")
+
+        let candidate = StudentCandidate(id: "s9", fullName: "Nguyễn Văn Nam", dob: nil, school: nil)
+        #expect(model.duplicates == [candidate])
+        #expect(!model.studentBusy)
+
+        await model.pickExisting(candidate)
+
+        let enroll = try #require(server.requests(to: "classes/c1/enrollments").first)
+        #expect(enroll.jsonObject["studentId"] as? String == "s9")
+        #expect(model.added == [AddedStudent(name: "Nguyễn Văn Nam", phone: nil)])
+        #expect(model.duplicates == nil)
+    }
+
+    @Test func stepFailureKeepsDataAndAllowsRetry() async throws {
+        let attempts = OSAllocatedUnfairLock(initialState: 0)
+        let server = FakeBackend(current: "create_class").server { request in
+            guard request.url?.path == "/v1/onboarding/steps/create_class", request.httpMethod == "PATCH" else { return nil }
+            return attempts.withLock { n in
+                n += 1
+                return n == 1 ? .error(503, "SERVICE_UNAVAILABLE") : nil
+            }
+        }
+        let model = makeModel(server)
+        await model.load()
+        model.classForm = ClassForm(name: "Toán 9A", subject: "Toán", grade: 9, feeType: FeeTypes.perSession, amount: "150000")
+
+        await model.createClass()
+
+        let creates = server.requests(to: "classes").filter { $0.httpMethod == "POST" }
+        #expect(creates.count == 1)
+        #expect(model.recordFailed)
+        #expect(!model.saving)
+        #expect(model.step == .createClass)
+
+        await model.retryRecord()
+
+        #expect(!model.recordFailed)
+        #expect(model.step == .addStudents)
+    }
+
+    @Test func skippingStudentStepRecordsSkipped() async throws {
+        let server = FakeBackend(current: "add_students", classes: Self.oneClass).server()
+        let model = makeModel(server)
+        await model.load()
+
+        #expect(model.step == .addStudents)
+        await model.skip()
+
+        let skipped = server.requests(to: "onboarding/steps/add_students").filter { $0.httpMethod == "PATCH" }
+        #expect(skipped.count == 1)
+        #expect(skipped.first?.jsonObject["status"] as? String == "skipped")
+        #expect(model.step == .setSchedule)
+    }
+
+    @Test func reopeningWithMultipleClassesAsksWhichClass() async throws {
+        let classes = [Self.oneClass[0], #"{"id":"c2","name":"Toán 9B","startDate":"2026-11-23"}"#]
+        let server = FakeBackend(current: "set_schedule", classes: classes).server()
+        let model = makeModel(server)
+        await model.load()
+
+        #expect(model.classChoices.map(\.id) == ["c1", "c2"])
+        #expect(!model.stepLoading)
+        #expect(model.classItem == nil)
+
+        await model.chooseClass(ClassDTO(id: "c2", name: "Toán 9B", startDate: "2026-11-23"))
+
+        #expect(model.classItem?.id == "c2")
+        #expect(model.classChoices.isEmpty)
+    }
+
+    @Test func noClassShowsMessageWhenNoneExists() async throws {
+        let server = FakeBackend(current: "add_students").server()
+        let model = makeModel(server)
+        await model.load()
+
+        #expect(model.noClass)
+        #expect(model.classItem == nil)
+    }
 }
 
 /// Backend giả cho onboarding: tiến độ 3 bước, danh sách lớp, các lệnh ghi trả thành công.
