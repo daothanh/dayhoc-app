@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash cố định nền lime + ký hiệu ink ở mọi chế độ, kể cả Android 12+. -->
+    <style name="Theme.DayHoc.Launch" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_logo</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_logo</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_brand_splash</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/brand_logo</item>
+    </style>
+</resources>

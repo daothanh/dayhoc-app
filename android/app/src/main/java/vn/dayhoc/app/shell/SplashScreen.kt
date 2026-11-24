@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.auth.TokenStore
+import vn.dayhoc.app.core.designsystem.DhBrandMark
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 import vn.dayhoc.app.core.network.ApiError
@@ -75,7 +76,7 @@ class SplashViewModel(private val tokens: TokenStore, private val memberships: M
     }
 }
 
-/** [T00s] Splash (Figma B00a): nền lime, tên app, khẩu hiệu; lỗi tải vai trò thì có nút thử lại. */
+/** [T00s] Splash (Figma B00a/B00b): nền lime, ký hiệu logo, tên app, khẩu hiệu; lỗi tải vai trò thì có nút thử lại. */
 @Composable
 fun SplashScreen(viewModel: SplashViewModel, onDone: (SplashDest) -> Unit) {
     val failed by viewModel.failed.collectAsStateWithLifecycle()
@@ -90,6 +91,7 @@ fun SplashScreen(viewModel: SplashViewModel, onDone: (SplashDest) -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingControl),
             ) {
+                DhBrandMark(size = 160.dp)
                 Text(stringResource(R.string.app_name), style = type.headlineLarge)
                 Text(
                     stringResource(R.string.login_slogan) + "\n" + stringResource(R.string.login_tagline),

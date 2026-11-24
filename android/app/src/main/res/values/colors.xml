@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Màu thương hiệu dùng cho launch screen (trước khi Compose vẽ nên chưa đọc được token).
+     Trùng token: lime500 = #BDFF3E (`brand/logo`), ink = #1F1F1F (`brand/logo-fg`). -->
+<resources>
+    <color name="brand_logo">#BDFF3E</color>
+    <color name="brand_logo_fg">#1F1F1F</color>
+</resources>

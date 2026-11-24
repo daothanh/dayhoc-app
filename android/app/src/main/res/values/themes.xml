@@ -2,4 +2,10 @@
 <resources>
     <!-- Theme cửa sổ trước khi Compose vẽ; màu giao diện nằm ở TeachHubTheme. -->
     <style name="Theme.DayHoc" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Theme lúc mở app: nền lime + ký hiệu D như splash B00b, tránh nháy trắng.
+         MainActivity đổi sang Theme.DayHoc ngay khi cửa sổ hiện. -->
+    <style name="Theme.DayHoc.Launch" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
 </resources>

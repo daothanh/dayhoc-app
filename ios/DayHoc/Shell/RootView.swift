@@ -42,7 +42,8 @@ struct RootView: View {
     }
 }
 
-/// [T00s] Splash (Figma B00a): nền lime, tên app, khẩu hiệu; lỗi tải vai trò thì có nút thử lại.
+/// [T00s] Splash (Figma B00a/B00b): nền lime, ký hiệu logo, tên app, khẩu hiệu;
+/// lỗi tải vai trò thì có nút thử lại.
 private struct SplashView: View {
     let failed: LocalizedStringKey?
     let retry: () -> Void
@@ -51,6 +52,7 @@ private struct SplashView: View {
 
     var body: some View {
         VStack(spacing: TeachHubTokens.Dimens.spacingControl) {
+            DhBrandMark(size: 160)
             Text("app.name").font(.largeTitle.bold())
             Text("login.slogan")
             Text("login.tagline").multilineTextAlignment(.center)

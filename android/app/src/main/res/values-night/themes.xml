@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.DayHoc" parent="android:Theme.Material.NoActionBar" />
+
+    <!-- Splash cố định nền lime + ký hiệu ink ở mọi chế độ (brand/logo). -->
+    <style name="Theme.DayHoc.Launch" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
 </resources>
