@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SplashScreen API (Android 12+): nền lime + ký hiệu D, giống B00b. -->
+    <style name="Theme.DayHoc.Launch" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/brand_logo</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_logo</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_brand_splash</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/brand_logo</item>
+    </style>
+</resources>

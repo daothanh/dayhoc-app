@@ -10,6 +10,9 @@ import vn.dayhoc.app.shell.AppRoot
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Cửa sổ mở với Theme.DayHoc.Launch (nền lime + ký hiệu D). Đổi ngay về Theme.DayHoc
+        // để Compose vẽ nền theo token thay vì giữ launch background.
+        setTheme(R.style.Theme_DayHoc)
         enableEdgeToEdge()
         val container = (application as DayHocApp).container
         setContent {

@@ -12,8 +12,12 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -154,6 +158,106 @@ class OnboardingViewModelTest {
         advanceUntilIdle()
         assertEquals(OnboardingStep.SetSchedule, vm.state.value.step)
     }
+
+    @Test
+    fun `hoc vien co the trung thi cho chon ho so co san`() = runTest {
+        api.onboarding = onboarding("add_students")
+        api.classes += ClassDto("c1", "Toán 9A", "2026-11-23")
+        api.createStudentError = ApiError.Http(
+            ApiError.STUDENT_POSSIBLE_DUPLICATE,
+            422,
+            details = buildJsonObject {
+                put(
+                    "candidates",
+                    buildJsonArray {
+                        add(buildJsonObject { put("id", "s9"); put("fullName", "Nguyễn Văn Nam") })
+                    },
+                )
+            },
+        )
+        val vm = vm()
+        advanceUntilIdle()
+
+        vm.updateStudent(name = "Nguyễn Văn Nam")
+        vm.addStudent("Phụ huynh của Nguyễn Văn Nam")
+        advanceUntilIdle()
+
+        assertEquals(listOf(StudentCandidate("s9", "Nguyễn Văn Nam")), vm.state.value.students.duplicates)
+        assertFalse(vm.state.value.students.busy)
+
+        vm.pickExisting(StudentCandidate("s9", "Nguyễn Văn Nam"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("c1" to "s9"), api.enrollCalls)
+        assertEquals(listOf(AddedStudent("Nguyễn Văn Nam", null)), vm.state.value.students.added)
+    }
+
+    @Test
+    fun `ghi buoc loi thi giu du lieu va cho thu lai`() = runTest {
+        val vm = vm()
+        advanceUntilIdle()
+        vm.updateClassForm { it.copy(name = "Toán 9A", subject = "Toán", grade = 9, amount = "150000") }
+        api.stepError = ApiError.Network
+
+        vm.createClass()
+        advanceUntilIdle()
+
+        assertEquals(1, api.classes.size)
+        assertTrue(vm.state.value.recordFailed)
+        assertFalse(vm.state.value.saving)
+        assertEquals(OnboardingStep.CreateClass, vm.state.value.step)
+
+        api.stepError = null
+        vm.retryRecord()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.recordFailed)
+        assertEquals(OnboardingStep.AddStudents, vm.state.value.step)
+    }
+
+    @Test
+    fun `bo qua buoc ghi danh khi chua them hoc vien`() = runTest {
+        api.onboarding = onboarding("add_students")
+        api.classes += ClassDto("c1", "Toán 9A", "2026-11-23")
+        val vm = vm()
+        advanceUntilIdle()
+
+        assertEquals(OnboardingStep.AddStudents, vm.state.value.step)
+        vm.skip()
+        advanceUntilIdle()
+
+        assertEquals(listOf("add_students" to "skipped"), api.stepCalls)
+        assertEquals(OnboardingStep.SetSchedule, vm.state.value.step)
+    }
+
+    @Test
+    fun `mo lai app voi nhieu lop thi cho chon lop`() = runTest {
+        api.onboarding = onboarding("set_schedule")
+        api.classes += ClassDto("c1", "Toán 9A", "2026-11-23")
+        api.classes += ClassDto("c2", "Toán 9B", "2026-11-23")
+        val vm = vm()
+        advanceUntilIdle()
+
+        assertEquals(listOf("c1", "c2"), vm.state.value.classChoices.map { it.id })
+        assertFalse(vm.state.value.stepLoading)
+        assertNull(vm.state.value.classItem)
+
+        vm.chooseClass(ClassDto("c2", "Toán 9B", "2026-11-23"))
+        advanceUntilIdle()
+
+        assertEquals("c2", vm.state.value.classItem?.id)
+        assertTrue(vm.state.value.classChoices.isEmpty())
+    }
+
+    @Test
+    fun `chua co lop thi bao chua co lop`() = runTest {
+        api.onboarding = onboarding("add_students")
+        val vm = vm()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.noClass)
+        assertNull(vm.state.value.classItem)
+    }
 }
 
 private val ORDER = listOf("create_class", "add_students", "set_schedule")
@@ -173,6 +277,8 @@ private class FakeOnboardingApi : OnboardingApi {
     /** Lỗi mạng xảy ra sau khi server đã tạo lớp (mất phản hồi). */
     var createdButLost = false
     var enrollError: ApiError? = null
+    var stepError: ApiError? = null
+    var createStudentError: ApiError? = null
     val createCalls = mutableListOf<Pair<String, CreateClassRequest>>()
     val feeCalls = mutableListOf<Triple<String, FeePatch, String>>()
     val stepCalls = mutableListOf<Pair<String, String>>()
@@ -186,6 +292,7 @@ private class FakeOnboardingApi : OnboardingApi {
 
     override suspend fun setStep(step: String, key: String, body: StepStatusRequest): OnboardingDto {
         stepKeys += key
+        stepError?.let { throw it }
         stepCalls += step to body.status
         onboarding = onboarding(ORDER.getOrNull(ORDER.indexOf(step) + 1))
         return onboarding
@@ -216,6 +323,7 @@ private class FakeOnboardingApi : OnboardingApi {
 
     override suspend fun createStudent(key: String, body: CreateStudentRequest): StudentDto {
         studentCalls += body
+        createStudentError?.let { throw it }
         return StudentDto(body.id, body.fullName)
     }
 
