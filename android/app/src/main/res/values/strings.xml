@@ -20,21 +20,37 @@
     <string name="login_rate_limited">Bạn thao tác quá nhanh, vui lòng thử lại sau.</string>
     <string name="login_failed">Đăng nhập không thành công. Vui lòng thử lại.</string>
     <string name="login_unavailable">Hệ thống đang bận, vui lòng thử lại sau ít phút.</string>
+    <string name="login_continue_apple">Tiếp tục với Apple</string>
+    <string name="login_continue_google">Tiếp tục với Google</string>
+    <string name="login_or_email">hoặc dùng email</string>
+    <string name="login_terms">Tiếp tục nghĩa là bạn đồng ý với Điều khoản sử dụng và Chính sách dữ liệu của DayHoc.</string>
+    <string name="login_terms_link_terms">Điều khoản sử dụng</string>
+    <string name="login_terms_link_privacy">Chính sách dữ liệu</string>
+    <string name="login_sso_soon">Đăng nhập Google và Apple chưa mở. Bạn dùng email để tiếp tục nhé.</string>
+
+    <!-- [T01] Hình minh họa "Thầy – Trò – Gia đình" (Figma B01) -->
+    <string name="hero_role_teacher">Thầy cô</string>
+    <string name="hero_role_student">Học trò</string>
+    <string name="hero_role_family">Gia đình</string>
+    <string name="hero_avatar_teacher">MH</string>
+    <string name="hero_avatar_student">NA</string>
+    <string name="hero_avatar_family">PH</string>
+    <string name="hero_tag_checked">Đã điểm danh</string>
+    <string name="hero_tag_invoice">Hóa đơn đã gửi</string>
+    <string name="hero_tag_absent">Đã báo vắng</string>
 
     <!-- [T01a] Nhập mã OTP -->
     <string name="otp_title">Xác thực email</string>
     <string name="otp_heading">Nhập mã xác thực</string>
     <string name="otp_sent_to">Mã 6 số đã gửi tới %1$s</string>
-    <string name="otp_code_label">Mã xác thực 6 số</string>
     <string name="otp_confirm">Xác nhận</string>
     <string name="otp_verifying">Đang xác thực…</string>
     <string name="otp_resend_in">Gửi lại mã sau %1$s</string>
-    <string name="otp_invalid">Mã chưa đúng.</string>
-    <string name="otp_invalid_attempts">Mã chưa đúng. Còn %1$d lần thử.</string>
+    <string name="otp_invalid">Mã không đúng.</string>
+    <string name="otp_invalid_attempts">Mã không đúng. Còn %1$d lần thử.</string>
     <string name="otp_locked_title">Nhập sai 5 lần</string>
     <string name="otp_locked_body">Xác thực tạm khóa 15 phút để bảo vệ tài khoản.</string>
     <string name="otp_retry_in">Thử lại sau %1$s</string>
-    <string name="otp_locked">Tạm khóa</string>
 
     <!-- [T00s] Splash · phiên bản tối thiểu -->
     <string name="splash_load_failed">Không tải được vai trò của bạn.</string>

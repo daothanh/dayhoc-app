@@ -4,9 +4,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dark
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Light
@@ -72,11 +77,41 @@ private val TeachHubShapes = Shapes(
     extraLarge = RoundedCornerShape(Dimens.sheetRadius),
 )
 
-/** Theme DayHoc dựng hoàn toàn từ [TeachHubTokens]; font hệ thống (Be Vietnam Pro làm sau). */
+// Be Vietnam Pro là font của Figma; DS chỉ dùng 4 độ đậm 400/500/600/700.
+private val BeVietnamPro = FontFamily(
+    Font(R.font.be_vietnam_pro_regular, FontWeight.Normal),
+    Font(R.font.be_vietnam_pro_medium, FontWeight.Medium),
+    Font(R.font.be_vietnam_pro_semibold, FontWeight.SemiBold),
+    Font(R.font.be_vietnam_pro_bold, FontWeight.Bold),
+)
+
+/** Typography M3 giữ nguyên cỡ chữ, chỉ đổi font sang [BeVietnamPro] cho khớp Figma. */
+private val TeachHubTypography: Typography = Typography().let { base ->
+    base.copy(
+        displayLarge = base.displayLarge.copy(fontFamily = BeVietnamPro),
+        displayMedium = base.displayMedium.copy(fontFamily = BeVietnamPro),
+        displaySmall = base.displaySmall.copy(fontFamily = BeVietnamPro),
+        headlineLarge = base.headlineLarge.copy(fontFamily = BeVietnamPro),
+        headlineMedium = base.headlineMedium.copy(fontFamily = BeVietnamPro),
+        headlineSmall = base.headlineSmall.copy(fontFamily = BeVietnamPro),
+        titleLarge = base.titleLarge.copy(fontFamily = BeVietnamPro),
+        titleMedium = base.titleMedium.copy(fontFamily = BeVietnamPro),
+        titleSmall = base.titleSmall.copy(fontFamily = BeVietnamPro),
+        bodyLarge = base.bodyLarge.copy(fontFamily = BeVietnamPro),
+        bodyMedium = base.bodyMedium.copy(fontFamily = BeVietnamPro),
+        bodySmall = base.bodySmall.copy(fontFamily = BeVietnamPro),
+        labelLarge = base.labelLarge.copy(fontFamily = BeVietnamPro),
+        labelMedium = base.labelMedium.copy(fontFamily = BeVietnamPro),
+        labelSmall = base.labelSmall.copy(fontFamily = BeVietnamPro),
+    )
+}
+
+/** Theme DayHoc dựng hoàn toàn từ [TeachHubTokens]. */
 @Composable
 fun TeachHubTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
+        typography = TeachHubTypography,
         shapes = TeachHubShapes,
         content = content,
     )
