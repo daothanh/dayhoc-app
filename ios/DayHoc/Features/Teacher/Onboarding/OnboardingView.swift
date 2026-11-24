@@ -125,19 +125,21 @@ private struct CreateClassStep: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Heading(title: "onboarding.stepCreateClass", caption: "onboarding.classCaption")
-                DhTextField(label: "onboarding.className", text: $model.classForm.name, prompt: "onboarding.classNameHint")
+                DhTextField(label: "onboarding.className", text: $model.classForm.name, prompt: "onboarding.classNameHint", identifier: "onboarding.className")
                 HStack(alignment: .top, spacing: 12) {
                     MenuField(
                         label: "onboarding.subject",
                         value: f.subject.isEmpty ? nil : f.subject,
                         placeholder: "onboarding.subjectHint",
-                        options: subjects
+                        options: subjects,
+                        identifier: "onboarding.subject"
                     ) { model.classForm.subject = subjects[$0] }
                     MenuField(
                         label: "onboarding.grade",
                         value: f.grade.map(String.init),
                         placeholder: "onboarding.gradeHint",
-                        options: (1...12).map(String.init)
+                        options: (1...12).map(String.init),
+                        identifier: "onboarding.grade"
                     ) { model.classForm.grade = $0 + 1 }
                 }
                 Text("onboarding.feeSection").font(.subheadline.bold()).padding(.top, 4)
@@ -169,7 +171,7 @@ private struct CreateClassStep: View {
                         displayedComponents: .date
                     )
                 }
-                DhTextField(label: amountLabel(f.feeType), text: amountBinding, prompt: "0", helper: "onboarding.feeCaption")
+                DhTextField(label: amountLabel(f.feeType), text: amountBinding, prompt: "0", helper: "onboarding.feeCaption", identifier: "onboarding.amount")
                     .keyboardType(.numberPad)
                     .overlay(alignment: .trailing) {
                         Text(verbatim: "đ").foregroundStyle(colors.onSurfaceVariant).padding(.trailing, 12)
@@ -178,7 +180,7 @@ private struct CreateClassStep: View {
             .padding(TeachHubTokens.Dimens.spacingPage)
         }
         .safeAreaInset(edge: .bottom) {
-            ActionBar(title: model.saving ? "onboarding.saving" : "onboarding.continue", enabled: f.valid && !model.saving) {
+            ActionBar(title: model.saving ? "onboarding.saving" : "onboarding.continue", enabled: f.valid && !model.saving, identifier: "onboarding.continue") {
                 await model.createClass()
             }
         }
@@ -214,7 +216,8 @@ private struct AddStudentsStep: View {
                     label: "onboarding.studentName",
                     text: $model.studentName,
                     prompt: "onboarding.studentNameHint",
-                    error: model.nameError ? "students.fullNameRequired" : nil
+                    error: model.nameError ? "students.fullNameRequired" : nil,
+                    identifier: "onboarding.studentName"
                 )
                 .disabled(model.studentBusy)
                 HStack(alignment: .bottom, spacing: 8) {
@@ -240,7 +243,7 @@ private struct AddStudentsStep: View {
                     .padding(.bottom, model.phoneError ? 22 : 0)
                 }
                 .disabled(model.studentBusy)
-                DhSecondaryButton(title: model.studentBusy ? "onboarding.saving" : "onboarding.addStudent") {
+                DhSecondaryButton(title: model.studentBusy ? "onboarding.saving" : "onboarding.addStudent", identifier: "onboarding.addStudent") {
                     let name = model.studentName.trimmingCharacters(in: .whitespaces)
                     let guardian = String(localized: "onboarding.guardianDefaultName \(name)")
                     Task { await model.addStudent(guardian: guardian) }
@@ -262,7 +265,8 @@ private struct AddStudentsStep: View {
                 ActionBar(
                     title: "onboarding.studentsContinue \(model.added.count)",
                     enabled: !model.added.isEmpty && !model.studentBusy && !model.enrollFailed
-                        && !model.saving && !model.recordFailed
+                        && !model.saving && !model.recordFailed,
+                    identifier: "onboarding.studentsContinue"
                 ) { await model.finishStudents() }
             }
         }
@@ -391,7 +395,8 @@ private struct ScheduleStep: View {
                 RecordNotice(model: model)
                 ActionBar(
                     title: model.saving ? "onboarding.saving" : "onboarding.finishSetup",
-                    enabled: valid && !model.saving && !model.recordFailed
+                    enabled: valid && !model.saving && !model.recordFailed,
+                    identifier: "onboarding.finishSetup"
                 ) { await model.saveSchedule() }
             }
         }
@@ -466,11 +471,12 @@ private struct Heading: View {
 private struct ActionBar: View {
     let title: LocalizedStringKey
     let enabled: Bool
+    let identifier: String
     let action: () async -> Void
     @Environment(\.dhColors) private var colors
 
     var body: some View {
-        DhPrimaryButton(title: title) { Task { await action() } }
+        DhPrimaryButton(title: title, identifier: identifier) { Task { await action() } }
             .disabled(!enabled)
             .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
             .padding(.top, 8)
@@ -523,6 +529,8 @@ private struct MenuField: View {
     let value: String?
     let placeholder: LocalizedStringKey
     let options: [String]
+    /// Định danh cho UI test; `nil` thì không gắn.
+    var identifier: String?
     let onPick: (Int) -> Void
     @Environment(\.dhColors) private var colors
 
@@ -546,6 +554,7 @@ private struct MenuField: View {
                 .background(colors.surface, in: shape)
                 .overlay(shape.stroke(colors.outline))
             }
+            .accessibilityIdentifier(identifier ?? "")
         }
     }
 }

@@ -64,17 +64,18 @@ struct RolePickerView: View {
                             title: Roles.name(role),
                             caption: Roles.description(role),
                             selected: selected,
-                            tag: selected ? "role.selected" : model.owned.contains(role) ? "role.owned" : nil
+                            tag: selected ? "role.selected" : model.owned.contains(role) ? "role.owned" : nil,
+                            identifier: "role.\(role)"
                         ) { model.select(role) }
                     }
-                    RoleCard(title: "role.centerOwner", caption: "role.centerOwnerDesc", comingSoon: true) {
+                    RoleCard(title: "role.centerOwner", caption: "role.centerOwnerDesc", comingSoon: true, identifier: "role.centerOwner") {
                         waitlist = true
                     }
                 }
                 .padding(TeachHubTokens.Dimens.spacingPage)
             }
             .safeAreaInset(edge: .bottom) {
-                DhPrimaryButton(title: "role.continue", loadingTitle: "loading", isLoading: model.busy) {
+                DhPrimaryButton(title: "role.continue", loadingTitle: "loading", isLoading: model.busy, identifier: "role.continue") {
                     Task { await model.proceed() }
                 }
                 .disabled(model.selected == nil)
@@ -106,6 +107,8 @@ private struct RoleCard: View {
     var selected = false
     var tag: LocalizedStringKey?
     var comingSoon = false
+    /// Định danh cho UI test; `nil` thì không gắn.
+    var identifier: String?
     let action: () -> Void
 
     @Environment(\.dhColors) private var colors
@@ -147,6 +150,7 @@ private struct RoleCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityIdentifier(identifier ?? "")
     }
 }
 

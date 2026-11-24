@@ -22,7 +22,8 @@ struct LoginView: View {
                         text: $model.email,
                         prompt: "login.emailHint",
                         helper: "login.emailHelper",
-                        error: model.failure == .invalidEmail ? model.failure?.message : nil
+                        error: model.failure == .invalidEmail ? model.failure?.message : nil,
+                        identifier: "login.email"
                     )
                     .keyboardType(.emailAddress)
                     .textContentType(.emailAddress)
@@ -35,6 +36,7 @@ struct LoginView: View {
                         title: "login.sendOtp",
                         loadingTitle: "login.sending",
                         isLoading: model.isSending,
+                        identifier: "login.sendOtp",
                         action: send
                     )
                     .disabled(!model.isEmailValid)
