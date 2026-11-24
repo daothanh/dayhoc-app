@@ -38,21 +38,60 @@ struct LoginModelTests {
         model.enterCode("12a3456")
         await model.verify()
 
-        #expect(model.failure == .otpInvalid)
+        #expect(model.failure == .otpInvalid(attemptsLeft: nil))
         #expect(model.sentTo != nil)
+        // Sai mã thì xoá ô nhập để người dùng gõ lại được ngay.
+        #expect(model.code.isEmpty)
         #expect(server.requests(to: "auth/login").first?.jsonBody
             == ["method": "email_otp", "email": "co.lan@example.com", "code": "123456"])
         // Endpoint công khai: 401 không kích hoạt làm mới token.
         #expect(server.requests(to: "auth/refresh").isEmpty)
     }
 
-    @Test func resendBlockedFor60Seconds() async {
+    @Test func invalidCodeKeepsAttemptsLeft() async {
+        let server = MockServer { request in
+            request.url?.path == "/v1/auth/login"
+                ? .error(401, "OTP_INVALID", attemptsLeft: 3)
+                : .noContent
+        }
+        let model = makeModel(server)
+        await model.sendCode()
+
+        model.enterCode("123456")
+        await model.verify()
+
+        #expect(model.failure == .otpInvalid(attemptsLeft: 3))
+        #expect(model.invalidAttemptsLeft == 3)
+
+        // Gõ lại thì xoá báo lỗi cũ để ô mã không còn ở trạng thái lỗi.
+        model.enterCode("12345")
+        #expect(model.failure == nil)
+        #expect(model.invalidAttemptsLeft == nil)
+    }
+
+    @Test func enterNewCodeAfterInvalidSucceeds() async {
+        let server = MockServer { request in
+            request.url?.path == "/v1/auth/login" ? .error(401, "OTP_INVALID") : .noContent
+        }
+        let model = makeModel(server)
+        await model.sendCode()
+
+        model.enterCode("123456")
+        await model.verify()
+        #expect(model.code.isEmpty)
+
+        // Gõ lại mã mới phải nhận đủ 6 số, không bị giữ mã sai cũ.
+        model.enterCode("654321")
+        #expect(model.code == "654321")
+    }
+
+    @Test func resendBlockedUntilIntervalElapses() async {
         let server = MockServer { _ in .noContent }
         var clock = Date(timeIntervalSince1970: 1_000)
         let model = makeModel(server, now: { clock })
         await model.sendCode()
 
-        clock += 59
+        clock += 299
         #expect(model.secondsUntilResend(at: clock) == 1)
         await model.resend()
         #expect(server.requests(to: "auth/otp/send").count == 1)

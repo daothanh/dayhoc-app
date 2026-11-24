@@ -5,7 +5,7 @@ struct AuthRepository: Sendable {
 
     var hasSession: Bool { tokenStore.load() != nil }
 
-    /// Gửi mã 6 số tới email. Server giới hạn 60 giây/lần, 5 lần/giờ (429 `RATE_LIMITED`).
+    /// Gửi mã 6 số tới email. Server giới hạn 5 phút/lần, 5 lần/giờ (429 `RATE_LIMITED`).
     func sendOtp(email: String) async throws {
         try await api.send("POST", "auth/otp/send", body: SendOtpRequest(email: email), authorized: false)
     }

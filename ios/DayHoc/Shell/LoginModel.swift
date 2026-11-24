@@ -6,15 +6,16 @@ import Observation
 final class LoginModel {
     enum Failure: Equatable {
         case invalidEmail
-        case otpInvalid
+        /// Sai mã; `attemptsLeft` là số lần còn được nhập nếu server trả (`details.attemptsLeft`).
+        case otpInvalid(attemptsLeft: Int?)
         case rateLimited
         case offline
         case unavailable
         case generic
     }
 
-    /// Gửi lại OTP: 60 giây/lần (spec Mục 5.2a).
-    static let resendInterval: TimeInterval = 60
+    /// Gửi lại OTP: 5 phút/lần (spec Mục 5.2a).
+    static let resendInterval: TimeInterval = 5 * 60
     /// Khóa khi server không trả `retryAfterSec`: 15 phút (spec Mục 5.2a).
     private static let defaultLock: TimeInterval = 15 * 60
 
@@ -70,7 +71,7 @@ final class LoginModel {
         }
     }
 
-    /// Gửi lại mã; bỏ qua khi chưa hết 60 giây.
+    /// Gửi lại mã; bỏ qua khi chưa hết 5 phút.
     func resend() async {
         guard sentTo != nil, secondsUntilResend(at: now()) == 0 else { return }
         await sendCode()
@@ -79,7 +80,13 @@ final class LoginModel {
     /// Chỉ giữ chữ số, tối đa 6.
     func enterCode(_ value: String) {
         code = String(value.filter { $0.isASCII && $0.isNumber }.prefix(6))
-        if failure == .otpInvalid { failure = nil }
+        if case .otpInvalid = failure { failure = nil }
+    }
+
+    /// Số lần còn được nhập khi sai mã; `nil` nếu lỗi khác hoặc server không trả.
+    var invalidAttemptsLeft: Int? {
+        if case .otpInvalid(let attemptsLeft) = failure { return attemptsLeft }
+        return nil
     }
 
     func verify() async {
@@ -95,6 +102,8 @@ final class LoginModel {
             code = ""
         } catch {
             failure = Self.failure(for: error)
+            // Xoá mã sai để ô nhập trở về rỗng; giữ mã cũ thì lần gõ sau bị cắt ở 6 ký tự nên không nhập lại được.
+            if case .otpInvalid = failure { code = "" }
         }
     }
 
@@ -120,7 +129,7 @@ final class LoginModel {
         guard let error = error as? APIError else { return .generic }
         switch (error.kind, error.code) {
         case (.offline, _), (.timeout, _): return .offline
-        case (_, "OTP_INVALID"): return .otpInvalid
+        case (_, "OTP_INVALID"): return .otpInvalid(attemptsLeft: error.attemptsLeft)
         case (_, "RATE_LIMITED"), (_, "OTP_LOCKED"): return .rateLimited
         case (_, "VALIDATION_FAILED"): return .invalidEmail
         default: return (error.status ?? 0) >= 500 ? .unavailable : .generic
