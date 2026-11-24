@@ -12,6 +12,23 @@ App mobile của TeachHub (thương hiệu DayHoc) viết native từ 23/11/2026
 
 App Flutter cũ nằm ở repo `teachhub-app`, đóng băng tại `755626e` và sẽ bị xóa ở NA-13.
 
+## Chuẩn bị môi trường
+
+Cần có trước khi build lần đầu:
+
+- JDK 21, với `JAVA_HOME` trỏ vào đúng thư mục đó.
+- Android SDK, platform android-37 và build-tools, đặt `ANDROID_HOME`.
+- Xcode cùng ít nhất một iOS Simulator, nếu làm iOS.
+- Python 3.8 trở lên để chạy `tool/gen_tokens.py`.
+
+Kiểm lại bằng:
+
+```bash
+python3 tool/doctor.py
+```
+
+Script soi từng mục, chỉ ra thứ còn thiếu kèm cách sửa, và thoát khác 0 khi có mục bắt buộc chưa đủ. Chạy trước khi build để lỗi toolchain hiện ra ngay, thay vì để Gradle hay xcodebuild báo khó hiểu.
+
 ## Chạy
 
 Backend local chạy ở cổng 3000 (xem `teachhub-backend`).
@@ -39,7 +56,7 @@ cd android && ./gradlew lint testDevelopmentDebugUnitTest assembleDevelopmentDeb
 ```
 
 ```bash
-cd ios && xcodebuild test -project DayHoc.xcodeproj -scheme DayHoc -destination 'platform=iOS Simulator,name=iPhone 17'
+cd ios && xcodebuild test -project DayHoc.xcodeproj -scheme DayHoc -destination "platform=iOS Simulator,name=$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [^(]+' | sed 's/ *$//')"
 ```
 
 CI chạy cả ba ở `.github/workflows/ci.yml`.
