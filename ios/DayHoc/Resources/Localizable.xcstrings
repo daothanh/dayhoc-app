@@ -210,6 +210,17 @@
         }
       }
     },
+    "login.appleSoon": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa hỗ trợ đăng nhập bằng Apple. Bạn có thể dùng Google hoặc email."
+          }
+        }
+      }
+    },
     "login.changeEmail": {
       "extractionState": "manual",
       "localizations": {
@@ -298,6 +309,39 @@
         }
       }
     },
+    "login.googleFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đăng nhập được bằng Google. Hãy thử lại hoặc dùng email."
+          }
+        }
+      }
+    },
+    "login.googleRequiresOtp": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email này cần đăng nhập bằng mã OTP. Hãy bấm Gửi mã đăng nhập."
+          }
+        }
+      }
+    },
+    "login.googleSigningIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang đăng nhập bằng Google…"
+          }
+        }
+      }
+    },
     "login.orEmail": {
       "extractionState": "manual",
       "localizations": {
@@ -360,17 +404,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kết nối thầy, trò và gia đình."
-          }
-        }
-      }
-    },
-    "login.ssoSoon": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đăng nhập Google và Apple chưa mở. Bạn dùng email để tiếp tục nhé."
           }
         }
       }

@@ -4,13 +4,17 @@ import Foundation
 struct AppEnvironment: Sendable {
     let api: APIClient
     let auth: AuthRepository
+    /// Luồng Google Sign-In; `nil` ở test và UI test vì không dựng SDK/UI.
+    let google: (any GoogleIdTokenProvider)?
 
-    init(api: APIClient, tokenStore: any TokenStore) {
+    init(api: APIClient, tokenStore: any TokenStore, google: (any GoogleIdTokenProvider)? = nil) {
         self.api = api
         auth = AuthRepository(api: api, tokenStore: tokenStore)
+        self.google = google
     }
 
     /// Bản chạy thật: `API_URL` lấy từ Info.plist (giá trị đặt trong `Config/*.xcconfig`).
+    @MainActor
     static func live() -> AppEnvironment {
         let info = Bundle.main.infoDictionary ?? [:]
         guard let raw = info["API_URL"] as? String, let baseURL = URL(string: raw) else {
@@ -26,6 +30,6 @@ struct AppEnvironment: Sendable {
             tokenStore: tokenStore,
             clientInfo: "teachhub-app/\(version) (ios)"
         )
-        return AppEnvironment(api: api, tokenStore: tokenStore)
+        return AppEnvironment(api: api, tokenStore: tokenStore, google: GoogleSignInProvider())
     }
 }

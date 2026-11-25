@@ -8,11 +8,12 @@ struct LoginModelTests {
 
     private func makeModel(
         _ server: MockServer,
+        google: (any GoogleIdTokenProvider)? = nil,
         now: @escaping () -> Date = { .now },
         onSignedIn: @escaping @MainActor (UserDTO) async -> Void = { _ in }
     ) -> LoginModel {
         let auth = AuthRepository(api: server.makeClient(tokenStore: store), tokenStore: store)
-        let model = LoginModel(auth: auth, now: now, onSignedIn: onSignedIn)
+        let model = LoginModel(auth: auth, google: google, now: now, onSignedIn: onSignedIn)
         model.email = " Co.Lan@Example.com "
         return model
     }
@@ -132,5 +133,133 @@ struct LoginModelTests {
 
         #expect(signedIn?.displayName == "Cô Lan")
         #expect(store.load() == Tokens(accessToken: "a1", refreshToken: "r1"))
+    }
+
+    @Test func googleSignInSavesSessionAndBlocksOtp() async {
+        let server = MockServer { request in
+            request.url?.path == "/v1/auth/sso/google"
+                ? Stub(status: 200, json: #"{"access_token":"a1","refresh_token":"r1","expires_in":900,"user":\#(userJSON)}"#)
+                : .noContent
+        }
+        var signedIn: UserDTO?
+        let model = makeModel(server, google: FakeGoogleProvider(), onSignedIn: { signedIn = $0 })
+
+        #expect(model.startGoogleSignIn())
+        // Đang chờ Google Sign-In thì không mở lại và không gửi mã qua email.
+        #expect(!model.startGoogleSignIn())
+        await model.sendCode()
+        await model.signInWithGoogle(idToken: "test-id-token", email: "co.lan@example.com")
+
+        #expect(server.requests(to: "auth/sso/google").first?.jsonBody == ["id_token": "test-id-token"])
+        #expect(server.requests(to: "auth/otp/send").isEmpty)
+        #expect(signedIn?.displayName == "Cô Lan")
+        #expect(store.load() == Tokens(accessToken: "a1", refreshToken: "r1"))
+        #expect(!model.isGoogleSigningIn)
+    }
+
+    @Test func googleRequiresOtpFillsEmailWithoutSendingCode() async {
+        let server = MockServer { request in
+            request.url?.path == "/v1/auth/sso/google"
+                ? .error(401, "UNAUTHENTICATED", reason: "EMAIL_REQUIRES_OTP")
+                : .noContent
+        }
+        let model = makeModel(server, google: FakeGoogleProvider())
+        model.email = "sai"
+
+        #expect(model.startGoogleSignIn())
+        await model.signInWithGoogle(idToken: "test-id-token", email: "co.lan@example.com")
+
+        #expect(model.failure == .emailRequiresOtp)
+        #expect(model.email == "co.lan@example.com")
+        #expect(model.sentTo == nil)
+        #expect(server.requests(to: "auth/otp/send").isEmpty)
+        #expect(store.load() == nil)
+        #expect(!model.isGoogleSigningIn)
+    }
+
+    @Test func googleServiceUnavailableShowsUnavailable() async {
+        let server = MockServer { request in
+            request.url?.path == "/v1/auth/sso/google" ? .error(503, "SERVICE_UNAVAILABLE") : .noContent
+        }
+        let model = makeModel(server, google: FakeGoogleProvider())
+
+        #expect(model.startGoogleSignIn())
+        await model.signInWithGoogle(idToken: "test-id-token", email: nil)
+
+        #expect(model.failure == .unavailable)
+        #expect(!model.isGoogleSigningIn)
+        #expect(store.load() == nil)
+    }
+
+    @Test func googleCancelKeepsNoErrorAndAllowsReopen() async {
+        let server = MockServer { _ in .noContent }
+        let model = makeModel(server, google: FakeGoogleProvider())
+
+        #expect(model.startGoogleSignIn())
+        model.finishGooglePicker(failed: false)
+
+        #expect(model.failure == nil)
+        #expect(model.startGoogleSignIn())
+        #expect(server.requests(to: "auth/sso/google").isEmpty)
+    }
+
+    @Test func googleBlockedWithoutProvider() async {
+        let server = MockServer { _ in .noContent }
+        let model = makeModel(server)
+
+        #expect(!model.startGoogleSignIn())
+    }
+
+    @Test func continueWithGoogleSignsInThroughProvider() async {
+        let server = MockServer { request in
+            request.url?.path == "/v1/auth/sso/google"
+                ? Stub(status: 200, json: #"{"access_token":"a1","refresh_token":"r1","expires_in":900,"user":\#(userJSON)}"#)
+                : .noContent
+        }
+        let provider = FakeGoogleProvider()
+        let model = makeModel(server, google: provider)
+
+        await model.continueWithGoogle()
+
+        #expect(provider.calls == 1)
+        #expect(server.requests(to: "auth/sso/google").first?.jsonBody == ["id_token": "test-id-token"])
+        #expect(!model.isGoogleSigningIn)
+    }
+
+    @Test func continueWithGoogleCanceledIsSilent() async {
+        let server = MockServer { _ in .noContent }
+        let provider = FakeGoogleProvider()
+        provider.result = .failure(GoogleSignInError.canceled)
+        let model = makeModel(server, google: provider)
+
+        await model.continueWithGoogle()
+
+        #expect(model.failure == nil)
+        #expect(!model.isGoogleSigningIn)
+    }
+
+    @Test func continueWithGoogleFailureShowsGoogleError() async {
+        let server = MockServer { _ in .noContent }
+        let provider = FakeGoogleProvider()
+        provider.result = .failure(GoogleSignInError.unavailable)
+        let model = makeModel(server, google: provider)
+
+        await model.continueWithGoogle()
+
+        #expect(model.failure == .googleFailed)
+        #expect(!model.isGoogleSigningIn)
+    }
+}
+
+/// Thay SDK GoogleSign-In trong test: trả sẵn credential hoặc lỗi.
+@MainActor
+private final class FakeGoogleProvider: GoogleIdTokenProvider {
+    var result: Result<GoogleCredential, any Error> =
+        .success(GoogleCredential(idToken: "test-id-token", email: "co.lan@example.com"))
+    private(set) var calls = 0
+
+    func credential() async throws -> GoogleCredential {
+        calls += 1
+        return try result.get()
     }
 }

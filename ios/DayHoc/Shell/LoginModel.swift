@@ -12,6 +12,10 @@ final class LoginModel {
         case offline
         case unavailable
         case generic
+        /// SSO Google trả 401 `EMAIL_REQUIRES_OTP`: email này phải đăng nhập bằng mã.
+        case emailRequiresOtp
+        /// Không đăng nhập được bằng Google (picker lỗi, SDK không trả token…).
+        case googleFailed
     }
 
     /// Gửi lại OTP: 5 phút/lần (spec Mục 5.2a).
@@ -25,17 +29,27 @@ final class LoginModel {
     private(set) var sentTo: String?
     private(set) var isSending = false
     private(set) var isVerifying = false
+    /// Đang chờ Google Sign-In trả token (hoặc đang đổi token lấy phiên).
+    private(set) var isGoogleSigningIn = false
     var failure: Failure?
     private(set) var resendAvailableAt: Date?
     private(set) var lockedUntil: Date?
 
     private let auth: AuthRepository
+    private let google: (any GoogleIdTokenProvider)?
     private let now: () -> Date
     private let onSignedIn: @MainActor (UserDTO) async -> Void
 
     /// - Parameter now: đồng hồ, tiêm vào để test đếm ngược không phải chờ thật.
-    init(auth: AuthRepository, now: @escaping () -> Date = { .now }, onSignedIn: @escaping @MainActor (UserDTO) async -> Void) {
+    /// - Parameter google: luồng Google Sign-In; `nil` thì nút Google không mở được.
+    init(
+        auth: AuthRepository,
+        google: (any GoogleIdTokenProvider)? = nil,
+        now: @escaping () -> Date = { .now },
+        onSignedIn: @escaping @MainActor (UserDTO) async -> Void
+    ) {
         self.auth = auth
+        self.google = google
         self.now = now
         self.onSignedIn = onSignedIn
     }
@@ -49,11 +63,12 @@ final class LoginModel {
     }
 
     func sendCode() async {
+        // Đang đăng nhập Google thì không gửi mã, kể cả email chưa hợp lệ.
+        guard !isGoogleSigningIn, !isSending else { return }
         guard isEmailValid else {
             failure = .invalidEmail
             return
         }
-        guard !isSending else { return }
         let target = normalizedEmail
         isSending = true
         failure = nil
@@ -113,6 +128,52 @@ final class LoginModel {
         code = ""
         failure = nil
         lockedUntil = nil
+    }
+
+    /// Bấm nút Google: khoá nút và trả `true`; `false` khi đang có thao tác khác hoặc chưa có SDK.
+    func startGoogleSignIn() -> Bool {
+        guard google != nil, !isGoogleSigningIn, !isSending, !isVerifying, sentTo == nil else { return false }
+        isGoogleSigningIn = true
+        failure = nil
+        return true
+    }
+
+    /// Trình chọn tài khoản đóng lại. Hủy thì im lặng, lỗi thì báo.
+    func finishGooglePicker(failed: Bool) {
+        isGoogleSigningIn = false
+        failure = failed ? .googleFailed : nil
+    }
+
+    /// Đổi ID token lấy phiên. Email cần OTP thì điền sẵn email nhưng không tự gửi mã.
+    func signInWithGoogle(idToken: String, email: String?) async {
+        defer { isGoogleSigningIn = false }
+        do {
+            let user = try await auth.loginWithGoogle(idToken: idToken)
+            await onSignedIn(user)
+        } catch let error as APIError
+            where error.status == 401 && error.code == "UNAUTHENTICATED" && error.reason == "EMAIL_REQUIRES_OTP" {
+            if let email, !email.isEmpty { self.email = email }
+            failure = .emailRequiresOtp
+        } catch {
+            switch Self.failure(for: error) {
+            // Lỗi của ô nhập hoặc lỗi lưu token không thuộc ngữ cảnh Google đều quy về lỗi Google.
+            case .generic, .invalidEmail, .otpInvalid: failure = .googleFailed
+            case let other: failure = other
+            }
+        }
+    }
+
+    /// Nút Google ở màn đăng nhập: mở trình chọn tài khoản rồi đổi ID token lấy phiên.
+    func continueWithGoogle() async {
+        guard startGoogleSignIn(), let google else { return }
+        do {
+            let credential = try await google.credential()
+            await signInWithGoogle(idToken: credential.idToken, email: credential.email)
+        } catch GoogleSignInError.canceled {
+            finishGooglePicker(failed: false)
+        } catch {
+            finishGooglePicker(failed: true)
+        }
     }
 
     func secondsUntilResend(at date: Date) -> Int { Self.seconds(until: resendAvailableAt, from: date) }

@@ -129,7 +129,7 @@ final class AppModel {
         memberships.clear()
         addingRole = nil
         if case .login = route { return }
-        route = .login(LoginModel(auth: env.auth) { [weak self] _ in
+        route = .login(LoginModel(auth: env.auth, google: env.google) { [weak self] _ in
             // Đăng nhập xong: tải vai trò rồi mở đúng nơi.
             await self?.enter()
         })

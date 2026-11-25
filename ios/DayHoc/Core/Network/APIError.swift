@@ -22,6 +22,8 @@ struct APIError: Error, Equatable {
     var retryAfterSec: Int?
     /// Số lần còn được nhập lại của `OTP_INVALID`: `details.attemptsLeft`.
     var attemptsLeft: Int?
+    /// Lý do chi tiết: `details.reason`, vd `EMAIL_REQUIRES_OTP` của SSO Google.
+    var reason: String?
     /// Lỗi theo trường của 422: `{ "endDate": ["…"] }`.
     var fieldErrors: [String: [String]] = [:]
     /// Body lỗi gốc, để feature đọc `details` riêng (vd `candidates` của học viên trùng).
@@ -56,6 +58,7 @@ struct APIError: Error, Equatable {
             retryAfterSec: parsed?.details?.retryAfterSec ?? retryAfterHeader.flatMap { Int($0) }
         )
         attemptsLeft = parsed?.details?.attemptsLeft
+        reason = parsed?.details?.reason
         fieldErrors = parsed?.errors ?? [:]
         self.body = body
     }
@@ -71,6 +74,8 @@ private struct ErrorBody: Decodable {
         let retryAfterSec: Int?
         /// `OTP_INVALID` trả số lần còn được nhập; server cũ không có thì bỏ qua.
         let attemptsLeft: Int?
+        /// Lý do chi tiết, vd `EMAIL_REQUIRES_OTP` khi SSO Google gặp email phải dùng OTP.
+        let reason: String?
     }
 
     let code: String

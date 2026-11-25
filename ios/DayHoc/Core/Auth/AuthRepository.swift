@@ -1,4 +1,4 @@
-/// Đăng nhập email OTP và phiên (spec Mục 5.2a).
+/// Đăng nhập email OTP, Google và phiên (spec Mục 5.2a).
 struct AuthRepository: Sendable {
     let api: APIClient
     let tokenStore: any TokenStore
@@ -15,6 +15,18 @@ struct AuthRepository: Sendable {
         let response: LoginResponse = try await api.request(
             "POST", "auth/login",
             body: LoginRequest(email: email, code: code),
+            authorized: false
+        )
+        try tokenStore.save(Tokens(accessToken: response.accessToken, refreshToken: response.refreshToken))
+        return response.user
+    }
+
+    /// Đổi ID token Google lấy phiên. Email cần OTP thì server trả 401 `UNAUTHENTICATED`
+    /// kèm `details.reason = EMAIL_REQUIRES_OTP`.
+    func loginWithGoogle(idToken: String) async throws -> UserDTO {
+        let response: LoginResponse = try await api.request(
+            "POST", "auth/sso/google",
+            body: GoogleSsoRequest(idToken: idToken),
             authorized: false
         )
         try tokenStore.save(Tokens(accessToken: response.accessToken, refreshToken: response.refreshToken))

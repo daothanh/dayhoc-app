@@ -10,8 +10,8 @@ private let privacyUrl = "https://dayhoc.app/privacy-policy"
 /// [T01] Chào & Đăng nhập (Figma B01): logo, khẩu hiệu, hình minh họa, hai nút SSO, chia cách
 /// "hoặc dùng email", ô email, nút gửi mã và dòng điều khoản.
 ///
-/// Nút Google/Apple đã dựng theo thiết kế nhưng chưa nối SDK: bấm vào chỉ báo dùng email.
-/// Luồng SSO thật làm ở task riêng.
+/// Nút Google đã nối SDK Sign-In; nút Apple dựng theo thiết kế nhưng chưa nối, bấm vào chỉ báo dùng
+/// Google hoặc email.
 struct LoginView: View {
     @Bindable var model: LoginModel
 
@@ -50,8 +50,12 @@ struct LoginView: View {
             }
             DhHeroClasses()
             Color.clear.frame(height: heroActionGap)
-            DhAppleButton(title: "login.continueApple", action: showSsoSoon)
-            DhGoogleButton(title: "login.continueGoogle", action: showSsoSoon)
+            DhAppleButton(title: "login.continueApple", enabled: !model.isGoogleSigningIn, action: showAppleSoon)
+            DhGoogleButton(
+                title: model.isGoogleSigningIn ? "login.googleSigningIn" : "login.continueGoogle",
+                enabled: !model.isGoogleSigningIn && !model.isSending,
+                action: signInWithGoogle
+            )
             DhDivider(label: "login.orEmail")
             DhTextField(
                 label: "login.email",
@@ -67,7 +71,7 @@ struct LoginView: View {
             .autocorrectionDisabled()
             .submitLabel(.send)
             .onSubmit(send)
-            .disabled(model.isSending)
+            .disabled(model.isSending || model.isGoogleSigningIn)
             DhPrimaryButton(
                 title: "login.sendOtp",
                 loadingTitle: "login.sending",
@@ -75,7 +79,7 @@ struct LoginView: View {
                 identifier: "login.sendOtp",
                 action: send
             )
-            .disabled(!model.isEmailValid)
+            .disabled(!model.isEmailValid || model.isGoogleSigningIn)
             termsNotice
         }
         .padding(TeachHubTokens.Dimens.spacingPage)
@@ -102,8 +106,12 @@ struct LoginView: View {
         text[range].foregroundColor = colors.secondary
     }
 
-    private func showSsoSoon() {
-        toast = String(localized: "login.ssoSoon")
+    private func showAppleSoon() {
+        toast = String(localized: "login.appleSoon")
+    }
+
+    private func signInWithGoogle() {
+        Task { await model.continueWithGoogle() }
     }
 
     /// Bước OTP hiện khi đã gửi mã; bấm "Đổi email" hoặc quay lại là về bước nhập email.
@@ -134,6 +142,8 @@ extension LoginModel.Failure {
         case .offline: "error.offline"
         case .unavailable: "login.unavailable"
         case .generic: "login.failed"
+        case .emailRequiresOtp: "login.googleRequiresOtp"
+        case .googleFailed: "login.googleFailed"
         }
     }
 
@@ -145,6 +155,8 @@ extension LoginModel.Failure {
         case .offline: String(localized: "error.offline")
         case .unavailable: String(localized: "login.unavailable")
         case .generic: String(localized: "login.failed")
+        case .emailRequiresOtp: String(localized: "login.googleRequiresOtp")
+        case .googleFailed: String(localized: "login.googleFailed")
         }
     }
 }

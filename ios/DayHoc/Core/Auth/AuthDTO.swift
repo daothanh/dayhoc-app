@@ -12,7 +12,16 @@ struct LoginRequest: Encodable, Sendable {
     let code: String
 }
 
-/// 200 của `POST /v1/auth/login`.
+/// Body `POST /v1/auth/sso/google`.
+struct GoogleSsoRequest: Encodable, Sendable {
+    let idToken: String
+
+    enum CodingKeys: String, CodingKey {
+        case idToken = "id_token"
+    }
+}
+
+/// 200 của `POST /v1/auth/login` và `POST /v1/auth/sso/google`.
 struct LoginResponse: Decodable, Sendable {
     let accessToken: String
     let refreshToken: String

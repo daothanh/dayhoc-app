@@ -2,3 +2,7 @@
 PRODUCT_BUNDLE_IDENTIFIER = vn.dayhoc.app.stg
 API_URL = https:/$()/api-staging.dayhoc.app/v1
 INFOPLIST_FILE = Config/Info.plist
+// Google Sign-In: xem chú thích ở Debug.xcconfig.
+GID_CLIENT_ID = 753323722874-o79dktgt6nnak8npj90nm114p1jv6aca.apps.googleusercontent.com
+GID_SERVER_CLIENT_ID = 753323722874-khh3u3aobf813cib4l2m6bvotebld0q7.apps.googleusercontent.com
+GID_URL_SCHEME = com.googleusercontent.apps.753323722874-o79dktgt6nnak8npj90nm114p1jv6aca
