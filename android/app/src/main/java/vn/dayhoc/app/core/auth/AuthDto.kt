@@ -12,6 +12,9 @@ data class SendOtpRequest(val email: String)
 data class LoginRequest(val method: String, val email: String, val code: String)
 
 @Serializable
+data class GoogleSsoRequest(@SerialName("id_token") val idToken: String)
+
+@Serializable
 data class RefreshRequest(@SerialName("refresh_token") val refreshToken: String)
 
 @Serializable

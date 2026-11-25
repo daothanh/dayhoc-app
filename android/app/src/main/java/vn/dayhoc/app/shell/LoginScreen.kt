@@ -1,6 +1,7 @@
 package vn.dayhoc.app.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -67,8 +68,17 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import kotlinx.coroutines.launch
+import vn.dayhoc.app.BuildConfig
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.DhAppleButton
 import vn.dayhoc.app.core.designsystem.DhBrandLogo
@@ -88,19 +98,50 @@ private val HeroActionGap = 18.dp
 private const val TermsUrl = "https://dayhoc.app/terms"
 private const val PrivacyUrl = "https://dayhoc.app/privacy-policy"
 
-/**
- * [T01] Chào & Đăng nhập · [T01a] Nhập mã OTP (Figma B01, B01a).
- *
- * Nút Google/Apple đã dựng theo thiết kế nhưng chưa nối SDK: bấm vào sẽ báo dùng email.
- * Luồng SSO thật làm ở task riêng.
- */
+/** [T01] Chào & Đăng nhập · [T01a] Nhập mã OTP (Figma B01, B01a). */
 @Composable
 fun LoginScreen(viewModel: LoginViewModel, onLoggedIn: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val ssoSoon = stringResource(R.string.login_sso_soon)
-    val onSocialSignIn: () -> Unit = { scope.launch { snackbar.showSnackbar(ssoSoon) } }
+    val activity = LocalActivity.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val appleSoon = stringResource(R.string.login_apple_soon)
+    val onAppleSignIn: () -> Unit = { scope.launch { snackbar.showSnackbar(appleSoon) } }
+    val onGoogleSignIn: () -> Unit = {
+        scope.launch {
+            if (!viewModel.startGoogleSignIn()) return@launch
+            keyboard?.hide()
+            var handedOff = false
+            var failed = false
+            try {
+                val host = activity
+                val google = if (host == null) null else {
+                    val request = GetCredentialRequest.Builder()
+                        .addCredentialOption(GetSignInWithGoogleOption.Builder(BuildConfig.GOOGLE_WEB_CLIENT_ID).build())
+                        .build()
+                    val credential = CredentialManager.create(host).getCredential(host, request).credential
+                    if (credential is CustomCredential &&
+                        credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                    ) GoogleIdTokenCredential.createFrom(credential.data) else null
+                }
+                if (google == null) {
+                    failed = true
+                } else {
+                    viewModel.signInWithGoogle(google.idToken, google.email)
+                    handedOff = true
+                }
+            } catch (_: GetCredentialCancellationException) {
+                // Người dùng đóng trình chọn tài khoản.
+            } catch (_: GetCredentialException) {
+                failed = true
+            } catch (_: GoogleIdTokenParsingException) {
+                failed = true
+            } finally {
+                if (!handedOff) viewModel.finishGooglePicker(failed)
+            }
+        }
+    }
 
     LaunchedEffect(state.loggedIn) { if (state.loggedIn) onLoggedIn() }
 
@@ -126,7 +167,7 @@ fun LoginScreen(viewModel: LoginViewModel, onLoggedIn: () -> Unit) {
                     .padding(Dimens.spacingPage),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
             ) {
-                EmailStep(state, viewModel, onSocialSignIn)
+                EmailStep(state, viewModel, onAppleSignIn, onGoogleSignIn)
             }
         }
     } else {
@@ -142,8 +183,10 @@ fun LoginScreen(viewModel: LoginViewModel, onLoggedIn: () -> Unit) {
 private fun EmailStep(
     state: LoginUiState,
     viewModel: LoginViewModel,
-    onSocialSignIn: () -> Unit,
+    onAppleSignIn: () -> Unit,
+    onGoogleSignIn: () -> Unit,
 ) {
+    val emailStepBusy = state.sending || state.googleSigningIn || state.loggedIn
     val type = MaterialTheme.typography
     val colors = MaterialTheme.colorScheme
     Column(
@@ -175,11 +218,15 @@ private fun EmailStep(
 
         DhAppleButton(
             text = stringResource(R.string.login_continue_apple),
-            onClick = onSocialSignIn,
+            onClick = onAppleSignIn,
+            enabled = !emailStepBusy,
         )
         DhGoogleButton(
-            text = stringResource(R.string.login_continue_google),
-            onClick = onSocialSignIn,
+            text = stringResource(
+                if (state.googleSigningIn) R.string.login_google_signing_in else R.string.login_continue_google,
+            ),
+            onClick = onGoogleSignIn,
+            enabled = !emailStepBusy,
         )
         DhDivider(stringResource(R.string.login_or_email))
         DhTextField(
@@ -191,7 +238,7 @@ private fun EmailStep(
                 if (state.showEmailError) R.string.login_email_invalid else R.string.login_email_helper,
             ),
             isError = state.showEmailError,
-            enabled = !state.sending,
+            enabled = !emailStepBusy,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { viewModel.sendCode() }),
             modifier = Modifier.fillMaxWidth(),
@@ -200,7 +247,7 @@ private fun EmailStep(
             text = stringResource(R.string.login_send_otp),
             loadingText = stringResource(R.string.login_sending),
             loading = state.sending,
-            enabled = state.emailValid,
+            enabled = state.emailValid && !state.googleSigningIn && !state.loggedIn,
             onClick = viewModel::sendCode,
         )
         TermsNotice()
@@ -517,6 +564,8 @@ private fun failureText(failure: LoginFailure): String = when (failure) {
     LoginFailure.Unavailable -> stringResource(R.string.login_unavailable)
     LoginFailure.Network -> stringResource(R.string.error_network)
     LoginFailure.Generic -> stringResource(R.string.login_failed)
+    LoginFailure.EmailRequiresOtp -> stringResource(R.string.login_google_requires_otp)
+    LoginFailure.GoogleFailed -> stringResource(R.string.login_google_failed)
 }
 
 private fun mmss(seconds: Int) = "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"

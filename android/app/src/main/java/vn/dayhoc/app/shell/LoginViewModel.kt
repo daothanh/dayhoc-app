@@ -20,6 +20,8 @@ sealed interface LoginFailure {
     data object Unavailable : LoginFailure
     data object Network : LoginFailure
     data object Generic : LoginFailure
+    data object EmailRequiresOtp : LoginFailure
+    data object GoogleFailed : LoginFailure
 }
 
 data class LoginUiState(
@@ -30,6 +32,7 @@ data class LoginUiState(
     val code: String = "",
     val sending: Boolean = false,
     val verifying: Boolean = false,
+    val googleSigningIn: Boolean = false,
     val resendIn: Int = 0,
     val lockedFor: Int = 0,
     val failure: LoginFailure? = null,
@@ -55,7 +58,7 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
     /** Gửi mã lần đầu và gửi lại; bị chặn khi còn đếm ngược. */
     fun sendCode() {
         val s = _state.value
-        if (s.sending || s.resendIn > 0) return
+        if (s.sending || s.googleSigningIn || s.loggedIn || s.resendIn > 0) return
         if (!s.emailValid) {
             _state.update { it.copy(showEmailError = true) }
             return
@@ -103,6 +106,43 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
                 _state.update { it.copy(failure = LoginFailure.Generic) }
             } finally {
                 _state.update { it.copy(verifying = false) }
+            }
+        }
+    }
+
+    fun startGoogleSignIn(): Boolean {
+        val s = _state.value
+        if (s.googleSigningIn || s.sending || s.verifying || s.sentTo != null || s.loggedIn) return false
+        _state.update { it.copy(googleSigningIn = true, failure = null) }
+        return true
+    }
+
+    fun finishGooglePicker(failed: Boolean) {
+        _state.update { it.copy(googleSigningIn = false, failure = if (failed) LoginFailure.GoogleFailed else null) }
+    }
+
+    fun signInWithGoogle(idToken: String, email: String?) {
+        viewModelScope.launch {
+            try {
+                auth.loginWithGoogle(idToken)
+                _state.update { it.copy(loggedIn = true) }
+            } catch (e: ApiError) {
+                if (e is ApiError.Http && e.httpStatus == 401 && e.code == ApiError.UNAUTHENTICATED &&
+                    e.detailString("reason") == "EMAIL_REQUIRES_OTP"
+                ) {
+                    _state.update {
+                        it.copy(email = email ?: it.email, showEmailError = false, failure = LoginFailure.EmailRequiresOtp)
+                    }
+                } else {
+                    val failure = e.toFailure()
+                    _state.update { it.copy(failure = if (failure == LoginFailure.Generic) LoginFailure.GoogleFailed else failure) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(failure = LoginFailure.GoogleFailed) }
+            } finally {
+                _state.update { it.copy(googleSigningIn = false) }
             }
         }
     }

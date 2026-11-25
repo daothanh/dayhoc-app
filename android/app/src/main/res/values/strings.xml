@@ -26,7 +26,10 @@
     <string name="login_terms">Tiếp tục nghĩa là bạn đồng ý với Điều khoản sử dụng và Chính sách dữ liệu của DayHoc.</string>
     <string name="login_terms_link_terms">Điều khoản sử dụng</string>
     <string name="login_terms_link_privacy">Chính sách dữ liệu</string>
-    <string name="login_sso_soon">Đăng nhập Google và Apple chưa mở. Bạn dùng email để tiếp tục nhé.</string>
+    <string name="login_apple_soon">Chưa hỗ trợ đăng nhập bằng Apple. Bạn có thể dùng Google hoặc email.</string>
+    <string name="login_google_signing_in">Đang đăng nhập bằng Google…</string>
+    <string name="login_google_failed">Không đăng nhập được bằng Google. Hãy thử lại hoặc dùng email.</string>
+    <string name="login_google_requires_otp">Email này cần đăng nhập bằng mã OTP. Hãy bấm Gửi mã đăng nhập.</string>
 
     <!-- [T01] Hình minh họa "Thầy – Trò – Gia đình" (Figma B01) -->
     <string name="hero_role_teacher">Thầy cô</string>

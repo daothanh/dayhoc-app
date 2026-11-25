@@ -22,6 +22,7 @@ import retrofit2.HttpException
 import retrofit2.Response
 import vn.dayhoc.app.core.auth.AuthApi
 import vn.dayhoc.app.core.auth.AuthRepository
+import vn.dayhoc.app.core.auth.GoogleSsoRequest
 import vn.dayhoc.app.core.auth.InMemoryTokenStore
 import vn.dayhoc.app.core.auth.LoginRequest
 import vn.dayhoc.app.core.auth.LoginResponse
@@ -160,6 +161,64 @@ class LoginViewModelTest {
         assertFalse(vm.state.value.verifying)
     }
 
+    @Test
+    fun `Google thanh cong thi luu phien va chan OTP trong luc dang nhap`() = runTest {
+        vm.onEmailChange("co.lan@example.com")
+        assertTrue(vm.startGoogleSignIn())
+        assertFalse(vm.startGoogleSignIn())
+        vm.sendCode()
+        vm.signInWithGoogle("test-id-token", "co.lan@example.com")
+        runCurrent()
+
+        assertEquals(GoogleSsoRequest("test-id-token"), api.lastSso)
+        assertTrue(api.sentTo.isEmpty())
+        assertEquals(Tokens("access", "refresh"), store.tokens)
+        assertTrue(vm.state.value.loggedIn)
+        assertFalse(vm.state.value.googleSigningIn)
+    }
+
+    @Test
+    fun `Google yeu cau OTP thi dien san email nhung khong tu gui ma`() = runTest {
+        api.ssoError = httpError(401, """{"code":"UNAUTHENTICATED","details":{"reason":"EMAIL_REQUIRES_OTP"}}""")
+        vm.onEmailChange("sai")
+        vm.sendCode()
+        assertTrue(vm.startGoogleSignIn())
+        vm.signInWithGoogle("test-id-token", "co.lan@example.com")
+        runCurrent()
+
+        val s = vm.state.value
+        assertEquals(LoginFailure.EmailRequiresOtp, s.failure)
+        assertEquals("co.lan@example.com", s.email)
+        assertFalse(s.showEmailError)
+        assertFalse(s.googleSigningIn)
+        assertFalse(s.loggedIn)
+        assertNull(s.sentTo)
+        assertNull(store.tokens)
+        assertTrue(api.sentTo.isEmpty())
+    }
+
+    @Test
+    fun `Google tra 503 thi bao he thong ban va cho thu lai`() = runTest {
+        api.ssoError = httpError(503, """{"code":"SERVICE_UNAVAILABLE"}""")
+        assertTrue(vm.startGoogleSignIn())
+        vm.signInWithGoogle("test-id-token", "co.lan@example.com")
+        runCurrent()
+
+        assertEquals(LoginFailure.Unavailable, vm.state.value.failure)
+        assertFalse(vm.state.value.googleSigningIn)
+        assertNull(store.tokens)
+    }
+
+    @Test
+    fun `huy chon tai khoan thi khong bao loi va co the mo lai`() = runTest {
+        assertTrue(vm.startGoogleSignIn())
+        vm.finishGooglePicker(failed = false)
+
+        assertNull(vm.state.value.failure)
+        assertNull(api.lastSso)
+        assertTrue(vm.startGoogleSignIn())
+    }
+
     private fun kotlinx.coroutines.test.TestScope.sendCodeTo(email: String) {
         vm.onEmailChange(email)
         vm.sendCode()
@@ -185,6 +244,15 @@ private class FakeAuthApi : AuthApi {
         lastLogin = body
         loginError?.let { throw it }
         return LoginResponse("access", "refresh", 900, UserDto("u1", body.email, "Cô Lan", emptyList()))
+    }
+
+    var lastSso: GoogleSsoRequest? = null
+    var ssoError: HttpException? = null
+
+    override suspend fun ssoGoogle(body: GoogleSsoRequest): LoginResponse {
+        lastSso = body
+        ssoError?.let { throw it }
+        return LoginResponse("access", "refresh", 900, UserDto("u1", "co.lan@example.com", "Cô Lan", emptyList()))
     }
 
     override fun refresh(body: RefreshRequest): Call<TokenResponse> = error("không dùng trong test này")
