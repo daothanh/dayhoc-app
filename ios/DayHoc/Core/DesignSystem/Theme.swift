@@ -14,6 +14,8 @@ struct DhColors: Sendable {
     let surfaceContainerHighest: Color
     let outline: Color
     let outlineVariant: Color
+    /// Viền nút phụ (token `buttonBorder`); đậm hơn `outlineVariant`.
+    let buttonBorder: Color
     let surfaceContainerLow: Color
     let secondaryContainer: Color
     let onSecondaryContainer: Color
@@ -38,6 +40,7 @@ struct DhColors: Sendable {
         surfaceContainerHighest: TeachHubTokens.Light.surfaceContainerHighest,
         outline: TeachHubTokens.Light.outline,
         outlineVariant: TeachHubTokens.Light.outlineVariant,
+        buttonBorder: TeachHubTokens.Light.buttonBorder,
         surfaceContainerLow: TeachHubTokens.Light.surfaceContainerLow,
         secondaryContainer: TeachHubTokens.Light.secondaryContainer,
         onSecondaryContainer: TeachHubTokens.Light.onSecondaryContainer,
@@ -63,6 +66,7 @@ struct DhColors: Sendable {
         surfaceContainerHighest: TeachHubTokens.Dark.surfaceContainerHighest,
         outline: TeachHubTokens.Dark.outline,
         outlineVariant: TeachHubTokens.Dark.outlineVariant,
+        buttonBorder: TeachHubTokens.Dark.buttonBorder,
         surfaceContainerLow: TeachHubTokens.Dark.surfaceContainerLow,
         secondaryContainer: TeachHubTokens.Dark.secondaryContainer,
         onSecondaryContainer: TeachHubTokens.Dark.onSecondaryContainer,
@@ -81,7 +85,34 @@ extension EnvironmentValues {
     @Entry var dhColors: DhColors = .light
 }
 
+/// Tên PostScript của Be Vietnam Pro (bundle trong `Resources/Fonts`, khai ở `UIAppFonts`).
+/// DS chỉ dùng 4 độ đậm 400/500/600/700, khớp token.
+private enum DhFontName {
+    static let regular = "BeVietnamPro-Regular"
+    static let medium = "BeVietnamPro-Medium"
+    static let semibold = "BeVietnamPro-SemiBold"
+    static let bold = "BeVietnamPro-Bold"
+}
+
+/// Quy đổi số độ đậm (Figma) sang tên font Be Vietnam Pro tương ứng.
+private extension Int {
+    var dhFontName: String {
+        switch self {
+        case ..<450: return DhFontName.regular
+        case ..<550: return DhFontName.medium
+        case ..<650: return DhFontName.semibold
+        default: return DhFontName.bold
+        }
+    }
+}
+
 extension View {
+    /// Áp text style DayHoc (font, cỡ chữ, độ đậm, giãn chữ) từ token. Màn gọi `.dhText(.h1)`.
+    func dhText(_ spec: TeachHubTokens.Typo.Spec) -> some View {
+        font(.custom(spec.fontWeight.dhFontName, size: spec.fontSize))
+            .tracking(spec.letterSpacing)
+    }
+
     /// Chọn bộ màu theo chế độ sáng/tối của hệ thống. Gắn một lần ở gốc app.
     func dhTheme() -> some View { modifier(DhThemeModifier()) }
 
@@ -95,6 +126,7 @@ private struct DhThemeModifier: ViewModifier {
     func body(content: Content) -> some View {
         let colors: DhColors = colorScheme == .dark ? .dark : .light
         content
+            .font(.custom(DhFontName.regular, size: TeachHubTokens.Typo.body.fontSize))
             .environment(\.dhColors, colors)
             .tint(colors.secondary)
     }

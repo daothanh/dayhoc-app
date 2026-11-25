@@ -29,8 +29,6 @@ final class AppModel {
     let memberships: MembershipStore
     private let env: AppEnvironment
     var api: APIClient { env.api }
-    /// Giáo viên đã rời onboarding trong lần mở app này: không tự mở lại tới lần mở app sau (US-0.2 AC3).
-    @ObservationIgnored private var onboardingDismissed = false
 
     /// Vòng nghe hết phiên do model giữ: nếu để `.task` của view giữ, view dựng lại sẽ hủy task
     /// và `AsyncStream` kết thúc, từ đó không còn nhận sự kiện nào.
@@ -72,12 +70,6 @@ final class AppModel {
         }
     }
 
-    func exitOnboarding() {
-        guard case .onboarding = route else { return }
-        onboardingDismissed = true
-        route = .teacher
-    }
-
     func finishOnboarding() {
         // Phiên có thể vừa hết (route đã về Đăng nhập): callback đến muộn không được mở lại không gian.
         guard case .onboarding = route else { return }
@@ -110,9 +102,8 @@ final class AppModel {
         }
     }
 
-    /// Giáo viên mới hoặc thoát giữa chừng ở lần mở app trước: vào onboarding, tiếp đúng bước dở (US-0.2 AC1, AC3).
+    /// Giáo viên mới hoặc còn bước onboarding dở: vào onboarding, tiếp đúng bước dở (US-0.2 AC1, AC3).
     private func openOnboardingIfPending() async {
-        guard !onboardingDismissed else { return }
         let api = OnboardingAPI(api: env.api)
         // Lỗi mạng: vào màn chính, lần mở sau kiểm lại.
         guard (try? await api.get())?.current != nil, case .teacher = route else { return }
@@ -136,7 +127,6 @@ final class AppModel {
     private func showLogin() {
         // Học phí Trọn khóa đang chờ thì giữ: chỉ có id lớp và số tiền, đăng nhập lại vẫn ghi được ở bước 3.
         memberships.clear()
-        onboardingDismissed = false
         addingRole = nil
         if case .login = route { return }
         route = .login(LoginModel(auth: env.auth) { [weak self] _ in

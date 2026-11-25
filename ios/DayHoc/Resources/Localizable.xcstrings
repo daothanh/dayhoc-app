@@ -513,7 +513,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "+ Thêm học sinh"
+            "value": "Thêm học sinh"
           }
         }
       }
@@ -635,61 +635,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bước này chưa lưu được. Kiểm tra lại."
-          }
-        }
-      }
-    },
-    "onboarding.exit": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thoát thiết lập"
-          }
-        }
-      }
-    },
-    "onboarding.exitBody": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bạn có thể tiếp tục từ bước này lần sau."
-          }
-        }
-      }
-    },
-    "onboarding.exitLeave": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thoát"
-          }
-        }
-      }
-    },
-    "onboarding.exitStay": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ở lại"
-          }
-        }
-      }
-    },
-    "onboarding.exitTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thoát thiết lập?"
           }
         }
       }
@@ -843,7 +788,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "+ Thêm"
+            "value": "Thêm"
           }
         }
       }
@@ -920,7 +865,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buổi học trong tuần *"
+            "value": "Buổi học trong tuần"
           }
         }
       }

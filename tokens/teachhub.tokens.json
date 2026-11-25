@@ -13,6 +13,7 @@
       "textSecondary": { "$value": "#52524C" },
       "placeholder": { "$value": "#6B6B64" },
       "borderControl": { "$value": "#8C8C84" },
+      "borderStrong": { "$value": "#D3D3CB" },
       "borderDefault": { "$value": "#E4E4DE" },
       "borderSubtle": { "$value": "#F0F0EB" },
       "bgSubtle": { "$value": "#F0F0EB" },
@@ -61,6 +62,21 @@
       "appBarElevation": { "$type": "number", "$value": 0 }
     }
   },
+  "typography": {
+    "$description": "Text style DayHoc lấy từ Figma, font Be Vietnam Pro. letterSpacingEm là giá trị em trong Figma (điểm = fontSize * letterSpacingEm).",
+    "fontFamily": "Be Vietnam Pro",
+    "styles": {
+      "h1": { "$value": { "fontWeight": 600, "fontSize": 20, "lineHeight": 28, "letterSpacingEm": -0.015 } },
+      "h2": { "$value": { "fontWeight": 600, "fontSize": 17, "lineHeight": 24, "letterSpacingEm": -0.01 } },
+      "body": { "$value": { "fontWeight": 400, "fontSize": 14, "lineHeight": 20, "letterSpacingEm": 0 } },
+      "bodyBold": { "$value": { "fontWeight": 600, "fontSize": 14, "lineHeight": 20, "letterSpacingEm": 0 } },
+      "label": { "$value": { "fontWeight": 500, "fontSize": 12, "lineHeight": 16, "letterSpacingEm": 0 } },
+      "caption": { "$value": { "fontWeight": 400, "fontSize": 12, "lineHeight": 16, "letterSpacingEm": 0 } },
+      "button": { "$value": { "fontWeight": 600, "fontSize": 15, "lineHeight": 20, "letterSpacingEm": 0 } },
+      "buttonSmall": { "$value": { "fontWeight": 600, "fontSize": 13, "lineHeight": 18, "letterSpacingEm": 0 } },
+      "section": { "$value": { "fontWeight": 600, "fontSize": 12, "lineHeight": 16, "letterSpacingEm": 0.05, "textCase": "UPPER" } }
+    }
+  },
   "light": {
     "colorScheme": {
       "$type": "color",
@@ -89,7 +105,8 @@
     "theme": {
       "$type": "color",
       "scaffoldBackground": { "$value": "{core.color.canvas}" },
-      "divider": { "$value": "{core.color.borderSubtle}" }
+      "divider": { "$value": "{core.color.borderSubtle}" },
+      "buttonBorder": { "$value": "{core.color.borderStrong}" }
     },
     "tasco": {
       "$type": "color",
@@ -131,7 +148,8 @@
     "theme": {
       "$type": "color",
       "scaffoldBackground": { "$value": "{core.color.nightCanvas}" },
-      "divider": { "$value": "{core.color.nightSubtle}" }
+      "divider": { "$value": "{core.color.nightSubtle}" },
+      "buttonBorder": { "$value": "{core.color.nightBorderControl}" }
     },
     "tasco": {
       "$type": "color",

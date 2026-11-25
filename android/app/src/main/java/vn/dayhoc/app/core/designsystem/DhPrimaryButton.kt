@@ -1,6 +1,7 @@
 package vn.dayhoc.app.core.designsystem
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -11,12 +12,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
@@ -55,31 +58,43 @@ fun DhPrimaryButton(
                     color = colors.onPrimary,
                 )
                 Spacer(Modifier.width(Dimens.spacingControl))
-                Text(loadingText, style = MaterialTheme.typography.labelLarge)
+                Text(loadingText, style = TeachHubText.button)
             }
         } else {
-            Text(text, style = MaterialTheme.typography.labelLarge)
+            Text(text, style = TeachHubText.button)
         }
     }
 }
 
-/** Nút phụ trung tính (DS v2 `outlinePrimary`): viền outline, chữ onSurface, cao 48. */
+/**
+ * Nút phụ trung tính (Figma Actions/Button Secondary): nền trong suốt, viền `buttonBorder` 2px,
+ * chữ onSurface. [small] = cao 40, nhãn DayHoc/Button S cho nút nằm trong nội dung; [icon] là
+ * icon dẫn trước nhãn (Figma: plus).
+ */
 @Composable
 fun DhSecondaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    icon: Painter? = null,
+    small: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
+    val borderColor = if (enabled) LocalButtonBorderColor.current else colors.outlineVariant
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.defaultMinSize(minHeight = 48.dp),
+        modifier = modifier.defaultMinSize(minHeight = if (small) 40.dp else 48.dp),
         shape = RoundedCornerShape(Dimens.buttonRadius),
-        border = BorderStroke(1.5.dp, if (enabled) colors.outline else colors.outlineVariant),
+        border = BorderStroke(2.dp, borderColor),
+        contentPadding = PaddingValues(horizontal = if (small) Dimens.spacingContent else Dimens.spacingPage),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.onSurface),
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        if (icon != null) {
+            Icon(icon, null, Modifier.size(20.dp))
+            Spacer(Modifier.width(Dimens.spacingControl))
+        }
+        Text(text, style = if (small) TeachHubText.buttonSmall else TeachHubText.button)
     }
 }

@@ -140,7 +140,6 @@ fun AppRoot(container: AppContainer) {
             TeacherSpace(
                 store = container.membershipStore,
                 onboardingApi = container.onboardingApi,
-                onboardingDismissed = container.onboardingDismissed,
                 onOpenOnboarding = { nav.navigate(OnboardingRoute) { launchSingleTop = true } },
                 onSwitched = { m -> nav.resetTo(spaceRoute(m.role)) },
                 onAddRole = { nav.navigate(RolePickerRoute(adding = true)) },
@@ -149,14 +148,7 @@ fun AppRoot(container: AppContainer) {
         }
         composable<OnboardingRoute> {
             val vm = viewModel { OnboardingViewModel(container.onboardingApi, container.pendingFeeStore) }
-            OnboardingScreen(
-                viewModel = vm,
-                onFinished = { nav.popBackStack() },
-                onExit = {
-                    container.onboardingDismissed = true
-                    nav.popBackStack()
-                },
-            )
+            OnboardingScreen(viewModel = vm, onFinished = { nav.popBackStack() })
         }
         composable<ParentRoute> {
             PlaceholderSpace(container.membershipStore, nav, logout)

@@ -26,6 +26,7 @@ enum TeachHubTokens {
         static let surfaceTint = Color(red: 255 / 255, green: 255 / 255, blue: 255 / 255)
         static let scaffoldBackground = Color(red: 247 / 255, green: 247 / 255, blue: 244 / 255)
         static let divider = Color(red: 240 / 255, green: 240 / 255, blue: 235 / 255)
+        static let buttonBorder = Color(red: 211 / 255, green: 211 / 255, blue: 203 / 255)
         static let primaryColor = Color(red: 189 / 255, green: 255 / 255, blue: 62 / 255)
         static let successColor = Color(red: 4 / 255, green: 120 / 255, blue: 87 / 255)
         static let warningColor = Color(red: 161 / 255, green: 92 / 255, blue: 7 / 255)
@@ -59,6 +60,7 @@ enum TeachHubTokens {
         static let surfaceTint = Color(red: 23 / 255, green: 23 / 255, blue: 22 / 255)
         static let scaffoldBackground = Color(red: 15 / 255, green: 15 / 255, blue: 14 / 255)
         static let divider = Color(red: 31 / 255, green: 31 / 255, blue: 29 / 255)
+        static let buttonBorder = Color(red: 107 / 255, green: 107 / 255, blue: 100 / 255)
         static let primaryColor = Color(red: 189 / 255, green: 255 / 255, blue: 62 / 255)
         static let successColor = Color(red: 110 / 255, green: 231 / 255, blue: 183 / 255)
         static let warningColor = Color(red: 252 / 255, green: 211 / 255, blue: 77 / 255)
@@ -88,5 +90,24 @@ enum TeachHubTokens {
         static let focusRingWidth: CGFloat = 2
         static let buttonElevation: CGFloat = 0
         static let appBarElevation: CGFloat = 0
+    }
+    /// Text style DayHoc (Figma). Dựng Font ở Theme.swift.
+    enum Typo {
+        struct Spec {
+            let fontSize: CGFloat
+            let lineHeight: CGFloat
+            let fontWeight: Int
+            let letterSpacing: CGFloat
+        }
+
+        static let h1 = Spec(fontSize: 20, lineHeight: 28, fontWeight: 600, letterSpacing: -0.3)
+        static let h2 = Spec(fontSize: 17, lineHeight: 24, fontWeight: 600, letterSpacing: -0.17)
+        static let body = Spec(fontSize: 14, lineHeight: 20, fontWeight: 400, letterSpacing: 0)
+        static let bodyBold = Spec(fontSize: 14, lineHeight: 20, fontWeight: 600, letterSpacing: 0)
+        static let label = Spec(fontSize: 12, lineHeight: 16, fontWeight: 500, letterSpacing: 0)
+        static let caption = Spec(fontSize: 12, lineHeight: 16, fontWeight: 400, letterSpacing: 0)
+        static let button = Spec(fontSize: 15, lineHeight: 20, fontWeight: 600, letterSpacing: 0)
+        static let buttonSmall = Spec(fontSize: 13, lineHeight: 18, fontWeight: 600, letterSpacing: 0)
+        static let section = Spec(fontSize: 12, lineHeight: 16, fontWeight: 600, letterSpacing: 0.6)
     }
 }

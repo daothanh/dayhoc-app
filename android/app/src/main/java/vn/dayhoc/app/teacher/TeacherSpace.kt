@@ -35,20 +35,18 @@ import vn.dayhoc.app.teacher.onboarding.OnboardingApi
 /**
  * Không gian giáo viên: 5 tab Hôm nay · Lịch · Lớp · Học phí · Thêm (Figma C02 `Teacher`).
  * Nội dung các tab làm ở NA-06, NA-08; tab Thêm có Đăng xuất.
- * Còn bước onboarding dở thì mở onboarding, trừ khi giáo viên vừa thoát nó trong lần mở app này.
+ * Thiết lập lớp học là bắt buộc nên còn bước dở thì tự mở lại.
  */
 @Composable
 fun TeacherSpace(
     store: MembershipStore,
     onboardingApi: OnboardingApi,
-    onboardingDismissed: Boolean,
     onOpenOnboarding: () -> Unit,
     onSwitched: (MembershipDto) -> Unit,
     onAddRole: () -> Unit,
     onLogout: suspend () -> Unit,
 ) {
     LaunchedEffect(Unit) {
-        if (onboardingDismissed) return@LaunchedEffect
         // Lỗi mạng: vào màn chính, lần mở sau kiểm lại.
         val pending = try {
             apiCall { onboardingApi.get() }.current != null

@@ -24,7 +24,7 @@ struct DhPrimaryButton: View {
                     ProgressView().tint(colors.onPrimary)
                 }
                 Text(isLoading ? loadingTitle ?? title : title)
-                    .font(.body.weight(.semibold))
+                    .dhText(TeachHubTokens.Typo.button)
             }
             .frame(maxWidth: .infinity, minHeight: Self.minHeight)
             .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)

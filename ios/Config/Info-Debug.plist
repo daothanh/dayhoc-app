@@ -9,5 +9,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>be_vietnam_pro_regular.ttf</string>
+		<string>be_vietnam_pro_medium.ttf</string>
+		<string>be_vietnam_pro_semibold.ttf</string>
+		<string>be_vietnam_pro_bold.ttf</string>
+	</array>
 </dict>
 </plist>

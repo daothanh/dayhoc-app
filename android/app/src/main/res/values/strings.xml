@@ -111,11 +111,6 @@
     <string name="onboarding_title">Thiết lập lớp học</string>
     <string name="onboarding_progress">Bước %1$d/%2$d</string>
     <string name="onboarding_skip">Bỏ qua</string>
-    <string name="onboarding_exit">Thoát thiết lập</string>
-    <string name="onboarding_exit_title">Thoát thiết lập?</string>
-    <string name="onboarding_exit_body">Bạn có thể tiếp tục từ bước này lần sau.</string>
-    <string name="onboarding_exit_stay">Ở lại</string>
-    <string name="onboarding_exit_leave">Thoát</string>
     <string name="onboarding_load_failed">Không tải được tiến độ. Thử lại.</string>
     <string name="onboarding_error_busy">Yêu cầu đang xử lý. Thử lại sau giây lát.</string>
     <string name="onboarding_error_validation">Bước này chưa lưu được. Kiểm tra lại.</string>
@@ -157,7 +152,7 @@
     <string name="onboarding_student_name">Họ tên học sinh</string>
     <string name="onboarding_student_name_hint">VD: Nguyễn Văn Nam</string>
     <string name="onboarding_guardian_phone">Số điện thoại phụ huynh</string>
-    <string name="onboarding_add_student">+ Thêm học sinh</string>
+    <string name="onboarding_add_student">Thêm học sinh</string>
     <string name="onboarding_added_count">ĐÃ THÊM (%1$d)</string>
     <string name="onboarding_added_phone">PH: %1$s</string>
     <string name="onboarding_guardian_default_name">Phụ huynh của %1$s</string>
@@ -183,7 +178,7 @@
     <string name="onboarding_rule_start">Giờ bắt đầu</string>
     <string name="onboarding_rule_duration">Thời lượng</string>
     <string name="onboarding_rule_duration_value">%1$d phút</string>
-    <string name="onboarding_rule_add">+ Thêm</string>
+    <string name="onboarding_rule_add">Thêm</string>
     <string name="onboarding_rule_remove">Xóa buổi %1$d</string>
     <string name="onboarding_rule_overlap">Trùng giờ với buổi %1$s %2$s</string>
     <string name="onboarding_first_session">Buổi đầu tiên: %1$s</string>

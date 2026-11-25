@@ -1,5 +1,6 @@
 package vn.dayhoc.app.teacher.onboarding
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -45,9 +46,9 @@ class OnboardingScreenTest {
         api = FakeOnboardingApi()
     }
 
-    private fun launch(onFinished: () -> Unit = {}, onExit: () -> Unit = {}): OnboardingViewModel {
+    private fun launch(onFinished: () -> Unit = {}): OnboardingViewModel {
         val vm = OnboardingViewModel(api, fees) { today }
-        compose.setContent { TeachHubTheme { OnboardingScreen(vm, onFinished, onExit) } }
+        compose.setContent { TeachHubTheme { OnboardingScreen(vm, onFinished) } }
         return vm
     }
 
@@ -149,7 +150,7 @@ class OnboardingScreenTest {
 
         compose.onNodeWithText("Họ tên học sinh *").performTextInput("Nguyễn Văn Nam")
         compose.onNodeWithText("Số điện thoại phụ huynh").performTextInput("0912345678")
-        compose.onNodeWithText("+ Thêm học sinh").performClick()
+        compose.onNodeWithText("Thêm học sinh").performClick()
 
         waitForText("ĐÃ THÊM (1)")
         compose.onNodeWithText("Nguyễn Văn Nam").assertIsDisplayed()
@@ -165,7 +166,7 @@ class OnboardingScreenTest {
         waitForText("Thêm học sinh")
 
         compose.onNodeWithText("Họ tên học sinh *").performTextInput("Nguyễn Văn Nam")
-        compose.onNodeWithText("+ Thêm học sinh").performClick()
+        compose.onNodeWithText("Thêm học sinh").performClick()
 
         waitForText("Có phải cùng một em?")
         compose.onNodeWithText("Đúng, là em này").assertIsDisplayed()
@@ -182,7 +183,7 @@ class OnboardingScreenTest {
         waitForText("Thêm học sinh")
 
         compose.onNodeWithText("Họ tên học sinh *").performTextInput("Nguyễn Văn Nam")
-        compose.onNodeWithText("+ Thêm học sinh").performClick()
+        compose.onNodeWithText("Thêm học sinh").performClick()
         waitForText("Có phải cùng một em?")
 
         compose.onNodeWithText("Đúng, là em này").performClick()
@@ -191,12 +192,12 @@ class OnboardingScreenTest {
     }
 
     @Test
-    fun nut_bo_qua_bi_vo_hieu_o_buoc_1_vi_bat_buoc() {
+    fun nut_bo_qua_khong_hien_o_buoc_1_vi_bat_buoc() {
         api.onboarding = onboardingDto("create_class")
         launch()
         waitForText("Tạo lớp đầu tiên")
 
-        compose.onNodeWithText("Bỏ qua").assertIsNotEnabled()
+        compose.onAllNodesWithText("Bỏ qua").assertCountEquals(0)
     }
 
     @Test

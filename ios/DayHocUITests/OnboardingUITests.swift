@@ -136,6 +136,9 @@ final class OnboardingUITests: XCTestCase {
 
         XCTAssertFalse(create.isEnabled, "Chưa có tên lớp thì nút Tiếp tục vẫn phải tắt")
 
+        // Ô học phí đang mở bàn phím số: cú chạm đầu vào ô tên lớp bị nuốt để cuộn ô lên trên
+        // bàn phím, nên phải chạm lần thứ hai mới lấy được tiêu điểm.
+        className.tap()
         className.tap()
         className.typeText("Toán 9A")
         XCTAssertTrue(waitUntilEnabled(create), "Đủ trường bắt buộc thì nút Tiếp tục phải bật")

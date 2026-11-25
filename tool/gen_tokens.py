@@ -37,7 +37,21 @@ def load():
         return out
 
     dimens = {k: v["$value"] for k, v in data["shared"]["tasco"].items() if not k.startswith("$")}
-    return flat_colors("light"), flat_colors("dark"), dimens
+
+    # Text style DayHoc: letterSpacing trong Figma là em, đổi sang điểm = fontSize * em.
+    styles = {}
+    for name, tok in data["typography"]["styles"].items():
+        if name.startswith("$"):
+            continue
+        v = tok["$value"]
+        size = v["fontSize"]
+        styles[name] = {
+            "fontSize": size,
+            "lineHeight": v["lineHeight"],
+            "fontWeight": v["fontWeight"],
+            "letterSpacing": round(size * v.get("letterSpacingEm", 0), 3),
+        }
+    return flat_colors("light"), flat_colors("dark"), dimens, styles
 
 
 def hex6(h):
@@ -46,7 +60,12 @@ def hex6(h):
     return h.upper()
 
 
-def kotlin(light, dark, dimens):
+def num(v):
+    """Số gọn cho Kotlin/Swift: 20.0 -> '20', -0.3 -> '-0.3'."""
+    return "%g" % float(v)
+
+
+def kotlin(light, dark, dimens, styles):
     lines = [HEADER, "package vn.dayhoc.app.core.designsystem", "",
              "import androidx.compose.ui.graphics.Color", "import androidx.compose.ui.unit.dp", "",
              "object TeachHubTokens {"]
@@ -56,11 +75,26 @@ def kotlin(light, dark, dimens):
         lines.append("    }")
     lines.append("    object Dimens {")
     lines += [f"        val {n} = {v}.dp" for n, v in dimens.items()]
+    lines.append("    }")
+    lines.append("    /** Text style DayHoc (Figma). Dựng TextStyle ở TeachHubTheme. */")
+    lines.append("    object Typo {")
+    lines.append("        data class Spec(")
+    lines += ["            val fontSize: Float,",
+              "            val lineHeight: Float,",
+              "            val fontWeight: Int,",
+              "            val letterSpacing: Float,",
+              "        )"]
+    lines.append("")
+    for n, s in styles.items():
+        lines.append(
+            f"        val {n} = Spec({num(s['fontSize'])}f, {num(s['lineHeight'])}f, "
+            f"{s['fontWeight']}, {num(s['letterSpacing'])}f)"
+        )
     lines += ["    }", "}", ""]
     return "\n".join(lines)
 
 
-def swift(light, dark, dimens):
+def swift(light, dark, dimens, styles):
     def color(h):
         h = hex6(h)
         r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
@@ -73,14 +107,30 @@ def swift(light, dark, dimens):
         lines.append("    }")
     lines.append("    enum Dimens {")
     lines += [f"        static let {n}: CGFloat = {v}" for n, v in dimens.items()]
+    lines.append("    }")
+    lines.append("    /// Text style DayHoc (Figma). Dựng Font ở Theme.swift.")
+    lines.append("    enum Typo {")
+    lines.append("        struct Spec {")
+    lines += ["            let fontSize: CGFloat",
+              "            let lineHeight: CGFloat",
+              "            let fontWeight: Int",
+              "            let letterSpacing: CGFloat",
+              "        }"]
+    lines.append("")
+    for n, s in styles.items():
+        lines.append(
+            f"        static let {n} = Spec(fontSize: {num(s['fontSize'])}, "
+            f"lineHeight: {num(s['lineHeight'])}, fontWeight: {s['fontWeight']}, "
+            f"letterSpacing: {num(s['letterSpacing'])})"
+        )
     lines += ["    }", "}", ""]
     return "\n".join(lines)
 
 
 def main():
-    light, dark, dimens = load()
+    light, dark, dimens, styles = load()
     assert light.keys() == dark.keys(), "Light và Dark phải có cùng bộ tên màu"
-    outputs = {KT: kotlin(light, dark, dimens), SWIFT: swift(light, dark, dimens)}
+    outputs = {KT: kotlin(light, dark, dimens, styles), SWIFT: swift(light, dark, dimens, styles)}
     if "--check" in sys.argv:
         stale = [str(p.relative_to(ROOT)) for p, text in outputs.items() if not p.exists() or p.read_text() != text]
         if stale:
