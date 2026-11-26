@@ -36,6 +36,7 @@
 		AA0000000000000000000043 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		AA0000000000000000000044 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA0000000000000000000045 /* Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Debug.plist"; sourceTree = "<group>"; };
+		AA0000000000000000000046 /* DayHoc.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DayHoc.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -111,6 +112,7 @@
 				AA0000000000000000000043 /* Release.xcconfig */,
 				AA0000000000000000000044 /* Info.plist */,
 				AA0000000000000000000045 /* Info-Debug.plist */,
+				AA0000000000000000000046 /* DayHoc.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -199,6 +201,11 @@
 				TargetAttributes = {
 					AA0000000000000000000010 = {
 						CreatedOnToolsVersion = 27.2;
+						SystemCapabilities = {
+							com.apple.SignInWithApple = {
+								enabled = 1;
+							};
+						};
 					};
 					AA0000000000000000000020 = {
 						CreatedOnToolsVersion = 27.2;

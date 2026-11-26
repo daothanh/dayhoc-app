@@ -1,5 +1,6 @@
 // Staging: build tối ưu như Release, trỏ API staging.
 PRODUCT_BUNDLE_IDENTIFIER = vn.dayhoc.app.stg
+CODE_SIGN_ENTITLEMENTS = Config/DayHoc.entitlements
 API_URL = https:/$()/api-staging.dayhoc.app/v1
 INFOPLIST_FILE = Config/Info.plist
 // Google Sign-In: xem chú thích ở Debug.xcconfig.

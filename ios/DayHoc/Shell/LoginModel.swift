@@ -1,5 +1,8 @@
+import AuthenticationServices
+import CryptoKit
 import Foundation
 import Observation
+import Security
 
 /// State của [T01] Đăng nhập và [T01a] Nhập mã OTP.
 @Observable @MainActor
@@ -12,10 +15,20 @@ final class LoginModel {
         case offline
         case unavailable
         case generic
-        /// SSO Google trả 401 `EMAIL_REQUIRES_OTP`: email này phải đăng nhập bằng mã.
+        /// Backend yêu cầu đăng nhập bằng mã thay vì qua Apple hoặc Google.
         case emailRequiresOtp
         /// Không đăng nhập được bằng Google (picker lỗi, SDK không trả token…).
         case googleFailed
+    }
+
+    struct AppleCredential {
+        let idToken: String
+        let email: String?
+        let fullName: String?
+    }
+
+    private enum AppleSignInError: Error {
+        case nonceGenerationFailed
     }
 
     /// Gửi lại OTP: 5 phút/lần (spec Mục 5.2a).
@@ -31,9 +44,13 @@ final class LoginModel {
     private(set) var isVerifying = false
     /// Đang chờ Google Sign-In trả token (hoặc đang đổi token lấy phiên).
     private(set) var isGoogleSigningIn = false
+    private(set) var isAppleSigningIn = false
     var failure: Failure?
     private(set) var resendAvailableAt: Date?
     private(set) var lockedUntil: Date?
+
+    var isSubmitting: Bool { isSending || isVerifying || isGoogleSigningIn || isAppleSigningIn }
+    var canStartSso: Bool { !isSubmitting && sentTo == nil }
 
     private let auth: AuthRepository
     private let google: (any GoogleIdTokenProvider)?
@@ -63,8 +80,7 @@ final class LoginModel {
     }
 
     func sendCode() async {
-        // Đang đăng nhập Google thì không gửi mã, kể cả email chưa hợp lệ.
-        guard !isGoogleSigningIn, !isSending else { return }
+        guard !isSubmitting else { return }
         guard isEmailValid else {
             failure = .invalidEmail
             return
@@ -105,7 +121,7 @@ final class LoginModel {
     }
 
     func verify() async {
-        guard let sentTo, code.count == 6, !isVerifying, !isLocked(at: now()) else { return }
+        guard let sentTo, code.count == 6, !isSubmitting, !isLocked(at: now()) else { return }
         isVerifying = true
         failure = nil
         defer { isVerifying = false }
@@ -132,7 +148,7 @@ final class LoginModel {
 
     /// Bấm nút Google: khoá nút và trả `true`; `false` khi đang có thao tác khác hoặc chưa có SDK.
     func startGoogleSignIn() -> Bool {
-        guard google != nil, !isGoogleSigningIn, !isSending, !isVerifying, sentTo == nil else { return false }
+        guard google != nil, canStartSso else { return false }
         isGoogleSigningIn = true
         failure = nil
         return true
@@ -146,20 +162,13 @@ final class LoginModel {
 
     /// Đổi ID token lấy phiên. Email cần OTP thì điền sẵn email nhưng không tự gửi mã.
     func signInWithGoogle(idToken: String, email: String?) async {
+        guard isGoogleSigningIn else { return }
         defer { isGoogleSigningIn = false }
         do {
             let user = try await auth.loginWithGoogle(idToken: idToken)
             await onSignedIn(user)
-        } catch let error as APIError
-            where error.status == 401 && error.code == "UNAUTHENTICATED" && error.reason == "EMAIL_REQUIRES_OTP" {
-            if let email, !email.isEmpty { self.email = email }
-            failure = .emailRequiresOtp
         } catch {
-            switch Self.failure(for: error) {
-            // Lỗi của ô nhập hoặc lỗi lưu token không thuộc ngữ cảnh Google đều quy về lỗi Google.
-            case .generic, .invalidEmail, .otpInvalid: failure = .googleFailed
-            case let other: failure = other
-            }
+            handleSsoFailure(error, email: email, fallback: .googleFailed)
         }
     }
 
@@ -173,6 +182,79 @@ final class LoginModel {
             finishGooglePicker(failed: false)
         } catch {
             finishGooglePicker(failed: true)
+        }
+    }
+
+    func continueWithApple(
+        authorize: @MainActor (String) async throws -> AppleCredential
+    ) async {
+        guard canStartSso else { return }
+        isAppleSigningIn = true
+        failure = nil
+        defer { isAppleSigningIn = false }
+
+        let nonce: String
+        let credential: AppleCredential
+        do {
+            nonce = try Self.makeAppleNonce()
+            let hashedNonce = Self.hex(SHA256.hash(data: Data(nonce.utf8)))
+            credential = try await authorize(hashedNonce)
+        } catch let error as ASAuthorizationError where error.code == .canceled {
+            return
+        } catch {
+            failure = .generic
+            return
+        }
+
+        do {
+            let user = try await auth.loginWithApple(
+                idToken: credential.idToken,
+                nonce: nonce,
+                fullName: Self.appleFullName(credential.fullName)
+            )
+            await onSignedIn(user)
+        } catch {
+            handleSsoFailure(error, email: credential.email, fallback: .generic)
+        }
+    }
+
+    private static func makeAppleNonce() throws -> String {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        guard status == errSecSuccess else { throw AppleSignInError.nonceGenerationFailed }
+        return hex(bytes)
+    }
+
+    private static func hex(_ bytes: some Sequence<UInt8>) -> String {
+        bytes.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func appleFullName(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        var name = ""
+        var remaining = 120
+        // Backend đo độ dài theo UTF-16; không cắt giữa một ký tự.
+        for character in trimmed {
+            let length = String(character).utf16.count
+            guard length <= remaining else { break }
+            name.append(character)
+            remaining -= length
+        }
+        name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? nil : name
+    }
+
+    private func handleSsoFailure(_ error: any Error, email: String?, fallback: Failure) {
+        if let apiError = error as? APIError,
+           apiError.status == 401, apiError.code == "UNAUTHENTICATED", apiError.reason == "EMAIL_REQUIRES_OTP" {
+            if let email, !email.isEmpty { self.email = email }
+            failure = .emailRequiresOtp
+            return
+        }
+        switch Self.failure(for: error) {
+        case .generic, .invalidEmail, .otpInvalid: failure = fallback
+        case let other: failure = other
         }
     }
 

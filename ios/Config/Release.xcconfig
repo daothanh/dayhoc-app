@@ -1,5 +1,6 @@
 // Release (production).
 PRODUCT_BUNDLE_IDENTIFIER = vn.dayhoc.app
+CODE_SIGN_ENTITLEMENTS = Config/DayHoc.entitlements
 API_URL = https:/$()/api.dayhoc.app/v1
 INFOPLIST_FILE = Config/Info.plist
 // Google Sign-In: xem chú thích ở Debug.xcconfig.

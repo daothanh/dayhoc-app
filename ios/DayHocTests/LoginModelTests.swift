@@ -1,3 +1,5 @@
+import AuthenticationServices
+import CryptoKit
 import Foundation
 import Testing
 @testable import DayHoc
@@ -248,6 +250,102 @@ struct LoginModelTests {
 
         #expect(model.failure == .googleFailed)
         #expect(!model.isGoogleSigningIn)
+    }
+
+    @Test func appleSignInSendsRawNonceAndSavesSession() async throws {
+        let server = MockServer { _ in
+            Stub(status: 200, json: #"{"access_token":"a1","refresh_token":"r1","expires_in":900,"user":\#(userJSON)}"#)
+        }
+        var signedIn: UserDTO?
+        let model = makeModel(server, onSignedIn: { signedIn = $0 })
+        var hashSentToApple: String?
+        let name = String(repeating: "𠮷", count: 60)
+
+        await model.continueWithApple { hash in
+            hashSentToApple = hash
+            return .init(idToken: "test-apple-token", email: nil, fullName: " \(name) Lan ")
+        }
+
+        let request = try #require(server.requests(to: "auth/sso/apple").first)
+        let nonce = try #require(request.jsonBody["nonce"])
+        #expect(nonce.wholeMatch(of: #/[0-9a-f]{64}/#) != nil)
+        let expectedHash = SHA256.hash(data: Data(nonce.utf8)).map { String(format: "%02x", $0) }.joined()
+        #expect(hashSentToApple == expectedHash)
+        #expect(hashSentToApple != nonce)
+        #expect(request.httpMethod == "POST")
+        #expect(request.jsonBody == ["id_token": "test-apple-token", "nonce": nonce, "fullName": name])
+        #expect(signedIn?.displayName == "Cô Lan")
+        #expect(store.load() == Tokens(accessToken: "a1", refreshToken: "r1"))
+        #expect(!model.isAppleSigningIn)
+    }
+
+    @Test func appleCancellationIsSilentAndBlocksOtherSubmissionsUntilDismissed() async {
+        let server = MockServer { _ in .noContent }
+        let provider = FakeGoogleProvider()
+        let model = makeModel(server, google: provider)
+        var hashes: [String] = []
+
+        await model.continueWithApple { hash in
+            hashes.append(hash)
+            #expect(model.isAppleSigningIn)
+            await model.continueWithGoogle()
+            await model.sendCode()
+            await model.continueWithApple { _ in
+                Issue.record("Không được mở thêm một phiên xác thực Apple.")
+                throw ASAuthorizationError(.canceled)
+            }
+            throw ASAuthorizationError(.canceled)
+        }
+
+        #expect(model.failure == nil)
+        #expect(!model.isAppleSigningIn)
+        #expect(provider.calls == 0)
+        #expect(server.requests(to: "auth/otp/send").isEmpty)
+        #expect(server.requests(to: "auth/sso/apple").isEmpty)
+
+        await model.continueWithApple { hash in
+            hashes.append(hash)
+            throw ASAuthorizationError(.canceled)
+        }
+        #expect(Set(hashes).count == 2)
+    }
+
+    @Test func appleRequiresOtpFillsEmailWithoutSendingCodeAndOmitsMissingName() async {
+        let server = MockServer { request in
+            request.url?.path == "/v1/auth/sso/apple"
+                ? .error(401, "UNAUTHENTICATED", reason: "EMAIL_REQUIRES_OTP")
+                : .noContent
+        }
+        let model = makeModel(server)
+        model.email = ""
+
+        await model.continueWithApple { _ in
+            .init(idToken: "test-apple-token", email: "co.lan@example.com", fullName: nil)
+        }
+
+        let requests = server.requests(to: "auth/sso/apple")
+        #expect(requests.count == 1)
+        #expect(requests.first?.jsonBody["fullName"] == nil)
+        #expect(model.failure == .emailRequiresOtp)
+        #expect(model.email == "co.lan@example.com")
+        #expect(model.sentTo == nil)
+        #expect(server.requests(to: "auth/otp/send").isEmpty)
+        #expect(server.requests(to: "auth/refresh").isEmpty)
+        #expect(store.load() == nil)
+        #expect(!model.isAppleSigningIn)
+    }
+
+    @Test func appleServiceUnavailableUsesExistingErrorState() async {
+        let server = MockServer { _ in .error(503, "SERVICE_UNAVAILABLE") }
+        let model = makeModel(server)
+
+        await model.continueWithApple { _ in
+            .init(idToken: "test-apple-token", email: nil, fullName: nil)
+        }
+
+        #expect(model.failure == .unavailable)
+        #expect(model.canStartSso)
+        #expect(store.load() == nil)
     }
 }
 

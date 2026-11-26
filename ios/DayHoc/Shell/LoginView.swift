@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 // Figma B01: khoảng 18 giữa hình minh họa và khối đăng nhập (chưa có token tương ứng).
@@ -9,14 +10,12 @@ private let privacyUrl = "https://dayhoc.app/privacy-policy"
 
 /// [T01] Chào & Đăng nhập (Figma B01): logo, khẩu hiệu, hình minh họa, hai nút SSO, chia cách
 /// "hoặc dùng email", ô email, nút gửi mã và dòng điều khoản.
-///
-/// Nút Google đã nối SDK Sign-In; nút Apple dựng theo thiết kế nhưng chưa nối, bấm vào chỉ báo dùng
-/// Google hoặc email.
 struct LoginView: View {
     @Bindable var model: LoginModel
 
     @State private var toast: String?
     @Environment(\.dhColors) private var colors
+    @Environment(\.authorizationController) private var authorizationController
 
     var body: some View {
         NavigationStack {
@@ -50,10 +49,14 @@ struct LoginView: View {
             }
             DhHeroClasses()
             Color.clear.frame(height: heroActionGap)
-            DhAppleButton(title: "login.continueApple", enabled: !model.isGoogleSigningIn, action: showAppleSoon)
+            DhAppleButton(
+                title: model.isAppleSigningIn ? "loading" : "login.continueApple",
+                enabled: model.canStartSso,
+                action: signInWithApple
+            )
             DhGoogleButton(
                 title: model.isGoogleSigningIn ? "login.googleSigningIn" : "login.continueGoogle",
-                enabled: !model.isGoogleSigningIn && !model.isSending,
+                enabled: model.canStartSso,
                 action: signInWithGoogle
             )
             DhDivider(label: "login.orEmail")
@@ -71,7 +74,7 @@ struct LoginView: View {
             .autocorrectionDisabled()
             .submitLabel(.send)
             .onSubmit(send)
-            .disabled(model.isSending || model.isGoogleSigningIn)
+            .disabled(model.isSubmitting)
             DhPrimaryButton(
                 title: "login.sendOtp",
                 loadingTitle: "login.sending",
@@ -79,7 +82,7 @@ struct LoginView: View {
                 identifier: "login.sendOtp",
                 action: send
             )
-            .disabled(!model.isEmailValid || model.isGoogleSigningIn)
+            .disabled(!model.isEmailValid || model.isSubmitting)
             termsNotice
         }
         .padding(TeachHubTokens.Dimens.spacingPage)
@@ -106,9 +109,28 @@ struct LoginView: View {
         text[range].foregroundColor = colors.secondary
     }
 
-    private func showAppleSoon() {
-        toast = String(localized: "login.appleSoon")
+    private func signInWithApple() {
+        Task {
+            await model.continueWithApple { hashedNonce in
+                let request = ASAuthorizationAppleIDProvider().createRequest()
+                request.requestedScopes = [.email, .fullName]
+                request.nonce = hashedNonce
+                let result = try await authorizationController.performRequests([request])
+                guard case .appleID(let credential) = result,
+                      let data = credential.identityToken,
+                      let idToken = String(data: data, encoding: .utf8), !idToken.isEmpty else {
+                    throw MissingAppleIdentityToken()
+                }
+                return LoginModel.AppleCredential(
+                    idToken: idToken,
+                    email: credential.email,
+                    fullName: credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) }
+                )
+            }
+        }
     }
+
+    private struct MissingAppleIdentityToken: Error {}
 
     private func signInWithGoogle() {
         Task { await model.continueWithGoogle() }
