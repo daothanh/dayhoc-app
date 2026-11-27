@@ -14,6 +14,15 @@ data class LoginRequest(val method: String, val email: String, val code: String)
 @Serializable
 data class GoogleSsoRequest(@SerialName("id_token") val idToken: String)
 
+/** Body `POST /v1/auth/sso/apple`; [nonce] là giá trị thô, không phải bản băm đã gửi cho Apple. */
+@Serializable
+data class AppleSsoRequest(
+    @SerialName("id_token") val idToken: String,
+    val nonce: String,
+    // Giữ default: Json của app không mã hóa giá trị mặc định nên `null` không lọt vào body.
+    val fullName: String? = null,
+)
+
 @Serializable
 data class RefreshRequest(@SerialName("refresh_token") val refreshToken: String)
 

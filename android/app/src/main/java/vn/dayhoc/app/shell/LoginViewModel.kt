@@ -2,6 +2,9 @@ package vn.dayhoc.app.shell
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.text.BreakIterator
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,6 +36,7 @@ data class LoginUiState(
     val sending: Boolean = false,
     val verifying: Boolean = false,
     val googleSigningIn: Boolean = false,
+    val appleSigningIn: Boolean = false,
     val resendIn: Int = 0,
     val lockedFor: Int = 0,
     val failure: LoginFailure? = null,
@@ -58,7 +62,7 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
     /** Gửi mã lần đầu và gửi lại; bị chặn khi còn đếm ngược. */
     fun sendCode() {
         val s = _state.value
-        if (s.sending || s.googleSigningIn || s.loggedIn || s.resendIn > 0) return
+        if (s.sending || s.googleSigningIn || s.appleSigningIn || s.loggedIn || s.resendIn > 0) return
         if (!s.emailValid) {
             _state.update { it.copy(showEmailError = true) }
             return
@@ -112,7 +116,7 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
 
     fun startGoogleSignIn(): Boolean {
         val s = _state.value
-        if (s.googleSigningIn || s.sending || s.verifying || s.sentTo != null || s.loggedIn) return false
+        if (s.googleSigningIn || s.appleSigningIn || s.sending || s.verifying || s.sentTo != null || s.loggedIn) return false
         _state.update { it.copy(googleSigningIn = true, failure = null) }
         return true
     }
@@ -143,6 +147,52 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
                 _state.update { it.copy(failure = LoginFailure.GoogleFailed) }
             } finally {
                 _state.update { it.copy(googleSigningIn = false) }
+            }
+        }
+    }
+
+    /**
+     * Trả nonce thô cho lần đăng nhập này, hoặc `null` nếu đang có luồng đăng nhập khác.
+     * Gửi [appleNonceHash] của nó cho Apple, còn nonce thô đưa lại vào [signInWithApple].
+     */
+    fun startAppleSignIn(): String? {
+        val s = _state.value
+        if (s.appleSigningIn || s.googleSigningIn || s.sending || s.verifying || s.sentTo != null || s.loggedIn) return null
+        _state.update { it.copy(appleSigningIn = true, failure = null) }
+        return newAppleNonce()
+    }
+
+    /** Xác thực với Apple kết thúc mà không có token: người dùng hủy thì không báo lỗi. */
+    fun finishAppleSignIn(failed: Boolean) {
+        _state.update { it.copy(appleSigningIn = false, failure = if (failed) LoginFailure.Generic else null) }
+    }
+
+    /** Mỗi token Apple chỉ dùng được một lần: lỗi mạng thì xin token mới, không gửi lại token cũ. */
+    fun signInWithApple(idToken: String, nonce: String, email: String?, fullName: String?) {
+        viewModelScope.launch {
+            try {
+                auth.loginWithApple(idToken, nonce, appleFullName(fullName))
+                _state.update { it.copy(loggedIn = true) }
+            } catch (e: ApiError) {
+                if (e is ApiError.Http && e.httpStatus == 401 && e.code == ApiError.UNAUTHENTICATED &&
+                    e.detailString("reason") == "EMAIL_REQUIRES_OTP"
+                ) {
+                    _state.update {
+                        it.copy(
+                            email = email?.takeIf(String::isNotEmpty) ?: it.email,
+                            showEmailError = false,
+                            failure = LoginFailure.EmailRequiresOtp,
+                        )
+                    }
+                } else {
+                    _state.update { it.copy(failure = e.toFailure()) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(failure = LoginFailure.Generic) }
+            } finally {
+                _state.update { it.copy(appleSigningIn = false) }
             }
         }
     }
@@ -190,6 +240,27 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
         const val LOCK_DEFAULT_SEC = 15 * 60
         const val CODE_LENGTH = 6
     }
+}
+
+private const val APPLE_FULL_NAME_MAX = 120
+
+private fun newAppleNonce(): String = ByteArray(32).also(SecureRandom()::nextBytes).toHexString()
+
+/** Giá trị `nonce` gửi cho Apple: SHA-256 của nonce thô, hex chữ thường. */
+internal fun appleNonceHash(nonce: String): String =
+    MessageDigest.getInstance("SHA-256").digest(nonce.toByteArray()).toHexString()
+
+/** Backend nhận `fullName` tối đa 120 đơn vị UTF-16; cắt theo ranh giới ký tự để không vỡ dấu hay emoji. */
+internal fun appleFullName(value: String?): String? {
+    val trimmed = value?.trim() ?: return null
+    val boundaries = BreakIterator.getCharacterInstance().apply { setText(trimmed) }
+    var end = 0
+    while (true) {
+        val next = boundaries.next()
+        if (next == BreakIterator.DONE || next > APPLE_FULL_NAME_MAX) break
+        end = next
+    }
+    return trimmed.substring(0, end).trim().ifEmpty { null }
 }
 
 private fun ApiError.toFailure(): LoginFailure = when (this) {
