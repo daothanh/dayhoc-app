@@ -319,11 +319,7 @@ private struct AddedRow: View {
 
     var body: some View {
         HStack(spacing: TeachHubTokens.Dimens.spacingContent) {
-            Text(initials)
-                .dhText(TeachHubTokens.Typo.bodyBold)
-                .foregroundStyle(colors.onSurface)
-                .frame(width: 36, height: 36)
-                .background(colors.surfaceContainerHighest, in: Circle())
+            DhAvatar(name: student.name)
             VStack(alignment: .leading) {
                 Text(student.name).dhText(TeachHubTokens.Typo.bodyBold)
                 if let phone = student.phone {
@@ -334,13 +330,6 @@ private struct AddedRow: View {
             }
         }
         .padding(.vertical, 8)
-    }
-
-    private var initials: String {
-        let parts = student.name.split(whereSeparator: \.isWhitespace)
-        guard let first = parts.first?.first else { return "?" }
-        let last = parts.count > 1 ? parts.last?.first.map(String.init) ?? "" : ""
-        return (String(first) + last).uppercased()
     }
 }
 
