@@ -78,6 +78,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Schema Room đã xuất, cho MigrationTestHelper (test migration chạy ở instrumentation).
+    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -124,6 +127,7 @@ dependencies {
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.room.testing)
 }
 
 ksp {

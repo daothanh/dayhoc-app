@@ -20,7 +20,7 @@ class InMemoryOutbox(initial: List<OutboxBatch> = emptyList()) : OutboxStore {
         update(idempotencyKey) { it.copy(state = OutboxState.Failed, errorCode = code) }
     override suspend fun retryFailed(sessionId: String) {
         state.value = state.value.map {
-            if (it.sessionId == sessionId && it.state == OutboxState.Failed) it.copy(state = OutboxState.Pending, errorCode = null, attempts = 0) else it
+            if (it.sessionId == sessionId && it.state == OutboxState.Failed && it.errorCode != "CORRUPT") it.copy(state = OutboxState.Pending, errorCode = null, attempts = 0) else it
         }
     }
 

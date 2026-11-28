@@ -60,6 +60,26 @@ class AttendanceSyncEngineTest {
     }
 
     @Test
+    fun `enqueue va enqueueAndFlush nem OwnerMismatch khi chu khac chu cua lo, khong ghi outbox`() = runTest {
+        val outbox = InMemoryOutbox()
+        owner = OutboxOwner("u2", "t1")
+        val e = engine(outbox)
+        try { e.enqueueAndFlush(batch("k1")); error("phải ném") } catch (_: OwnerMismatchException) {}
+        try { e.enqueue(batch("k2")); error("phải ném") } catch (_: OwnerMismatchException) {}
+        owner = null
+        try { e.enqueue(batch("k3")); error("phải ném") } catch (_: OwnerMismatchException) {}
+        assertTrue(outbox.all().isEmpty())
+        assertTrue(api.syncCalls.isEmpty())
+    }
+
+    @Test
+    fun `retryFailed khong dua lo CORRUPT ve pending`() = runTest {
+        val outbox = InMemoryOutbox(listOf(batch("k1", state = OutboxState.Failed, errorCode = "CORRUPT"), batch("k2", state = OutboxState.Failed, errorCode = "FORBIDDEN")))
+        outbox.retryFailed("sess-1")
+        assertEquals(listOf(OutboxState.Failed, OutboxState.Pending), outbox.all().map { it.state })
+    }
+
+    @Test
     fun `chu doi hoac mat truoc khi gui thi khong gui`() = runTest {
         val outbox = InMemoryOutbox(listOf(batch("k1")))
         owner = null

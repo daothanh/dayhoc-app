@@ -17,6 +17,9 @@ sealed interface SyncEvent {
     data class Dropped(val sessionId: String, val code: String) : SyncEvent
 }
 
+/** Chủ hiện tại không phải chủ của lô định ghi: T04 báo lỗi chủ dữ liệu. */
+class OwnerMismatchException : IllegalStateException("Chủ dữ liệu đã đổi")
+
 enum class FlushResult {
     /** Không còn lô chờ gửi (lô lỗi vĩnh viễn không tính). */
     Done,
@@ -63,12 +66,21 @@ class AttendanceSyncEngine(
 
     /** Ghi outbox rồi gửi trong cùng một lần giữ khóa: không lần flush nào (hay đăng xuất) chen vào giữa. */
     suspend fun enqueueAndFlush(batch: OutboxBatch): FlushReport = mutex.withLock {
+        checkOwner(batch)
         outbox.enqueue(batch)
         flushLocked(batch.idempotencyKey)
     }
 
     /** Chỉ ghi outbox (ngoại tuyến), vẫn trong khóa của engine. */
-    suspend fun enqueue(batch: OutboxBatch) = mutex.withLock { outbox.enqueue(batch) }
+    suspend fun enqueue(batch: OutboxBatch) = mutex.withLock {
+        checkOwner(batch)
+        outbox.enqueue(batch)
+    }
+
+    /** Chủ đã đổi hoặc mất (đăng xuất, hết phiên, đổi tài khoản) từ lúc lập lô: không ghi lô của chủ khác vào outbox. */
+    private fun checkOwner(batch: OutboxBatch) {
+        if (owner() != batch.owner) throw OwnerMismatchException()
+    }
 
     /** Chạy [block] khi không có flush nào đang chạy và chặn flush mới trong lúc đó (đăng xuất xóa CSDL). */
     suspend fun <T> exclusive(block: suspend () -> T): T = mutex.withLock { block() }
@@ -94,7 +106,8 @@ class AttendanceSyncEngine(
                             roster.removeRoster(b.sessionId)
                             outbox.remove(b.idempotencyKey)
                             outcomes[b.idempotencyKey] = BatchOutcome.Synced(result)
-                            _events.emit(SyncEvent.Synced(b.sessionId, rejectedStudentIds(result.results).size))
+                            // Lô của chính T04: T04 tự báo tên học sinh bị từ chối, không báo thêm lần nữa ở T03.
+                            _events.emit(SyncEvent.Synced(b.sessionId, if (b.idempotencyKey == own) 0 else rejectedStudentIds(result.results).size))
                         }
                         is BatchVerdict.Rejected -> terminal(b, v.code, result, own, outcomes, blocked)
                     }

@@ -61,7 +61,7 @@ interface LocalDao {
     @Query("UPDATE outbox_batches SET state = 'failed', errorCode = :code WHERE idempotencyKey = :key")
     suspend fun markFailed(key: String, code: String)
 
-    @Query("UPDATE outbox_batches SET state = 'pending', errorCode = NULL, attempts = 0 WHERE sessionId = :sessionId AND state = 'failed'")
+    @Query("UPDATE outbox_batches SET state = 'pending', errorCode = NULL, attempts = 0 WHERE sessionId = :sessionId AND state = 'failed' AND (errorCode IS NULL OR errorCode != 'CORRUPT')")
     suspend fun retryFailed(sessionId: String)
 
     @Query("SELECT json FROM roster_cache WHERE sessionId = :sessionId AND ownerUserId = :userId AND tenantId = :tenantId")

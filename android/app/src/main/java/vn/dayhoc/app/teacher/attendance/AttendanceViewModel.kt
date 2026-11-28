@@ -180,7 +180,7 @@ class AttendanceViewModel(
                 val owner = ownerProvider() ?: return@launch fail(SaveError(OWNER_MISSING, retry = true))
                 val existing = enqueued
                 if (s.failedCode != null && existing != null) {
-                    outbox.retryFailed(sessionId)
+                    engine.exclusive { outbox.retryFailed(sessionId) }
                     _state.update { it.copy(failedCode = null) }
                     return@launch submit(existing, fresh = false)
                 }
@@ -198,6 +198,8 @@ class AttendanceViewModel(
                 }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: OwnerMismatchException) {
+                fail(SaveError(OWNER_MISSING, retry = true))
             } catch (e: Exception) {
                 fail(SaveError(null, retry = true))
             }
@@ -211,8 +213,11 @@ class AttendanceViewModel(
         viewModelScope.launch {
             try {
                 val owner = ownerProvider() ?: return@launch fail(SaveError(OWNER_MISSING, retry = true))
-                engine.exclusive { outbox.retryFailed(sessionId) }
-                val batch = outbox.all().lastOrNull { it.owner == owner && it.sessionId == sessionId && it.state == OutboxState.Pending }
+                // Đổi trạng thái và đọc lại trong cùng một lần giữ khóa: không flush nào chen vào giữa.
+                val batch = engine.exclusive {
+                    outbox.retryFailed(sessionId)
+                    outbox.all().lastOrNull { it.owner == owner && it.sessionId == sessionId && it.state == OutboxState.Pending }
+                }
                 _state.update { it.copy(failedCode = null) }
                 if (batch == null) {
                     _state.update { it.copy(saving = false) }
@@ -222,6 +227,8 @@ class AttendanceViewModel(
                 submit(batch, fresh = false)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: OwnerMismatchException) {
+                fail(SaveError(OWNER_MISSING, retry = true))
             } catch (e: Exception) {
                 fail(SaveError(null, retry = true))
             }

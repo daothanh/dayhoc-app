@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -45,9 +46,6 @@ class LocalStore(context: Context) : OutboxStore, RosterCache, DeviceIdProvider 
     private val lock = Mutex()
     private var db: LocalDatabase? = null
     private val json = Json { ignoreUnknownKeys = true }
-
-    /** Tăng sau mỗi [wipe] để các Flow đang theo dõi mở lại trên CSDL mới thay vì chết cùng CSDL cũ. */
-    private val epoch = MutableStateFlow(0)
 
     private val _owner = MutableStateFlow(readOwner())
     val owner: StateFlow<OutboxOwner?> = _owner.asStateFlow()
@@ -88,9 +86,14 @@ class LocalStore(context: Context) : OutboxStore, RosterCache, DeviceIdProvider 
         return fresh
     }
 
+    /**
+     * Chưa có chủ (chưa đăng nhập, hết phiên, vừa đăng xuất) thì phát danh sách rỗng và KHÔNG mở CSDL: không tạo CSDL
+     * và khóa mới sau [wipe]. Có chủ (kể cả đăng nhập lại) thì theo dõi CSDL từ đầu.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val batches: Flow<List<OutboxBatch>> = epoch.flatMapLatest {
-        flow { emitAll(dao().observeBatches().map { list -> list.map { it.toDomain() } }) }.flowOn(Dispatchers.IO)
+    override val batches: Flow<List<OutboxBatch>> = _owner.flatMapLatest { owner ->
+        if (owner == null) flowOf(emptyList())
+        else flow { emitAll(dao().observeBatches().map { list -> list.map { it.toDomain() } }) }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun enqueue(batch: OutboxBatch) = dao().insertBatch(batch.toEntity())
@@ -144,6 +147,8 @@ class LocalStore(context: Context) : OutboxStore, RosterCache, DeviceIdProvider 
 
     /** Đăng xuất: xóa CSDL, khóa và chủ. Gọi sau khi đã hủy việc đồng bộ nền. Hết phiên thì không gọi (giữ lô). */
     suspend fun wipe() {
+        // Bỏ chủ trước: luồng `batches` thôi theo dõi CSDL rồi mới đóng nó.
+        _owner.value = null
         lock.withLock {
             withContext(Dispatchers.IO) {
                 db?.close()
@@ -157,8 +162,6 @@ class LocalStore(context: Context) : OutboxStore, RosterCache, DeviceIdProvider 
                 }
             }
         }
-        _owner.value = null
-        epoch.value++
     }
 
     private fun readOwner(): OutboxOwner? =

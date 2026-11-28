@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -350,16 +351,34 @@ class AttendanceViewModelTest {
     }
 
     @Test
-    fun `luu xong ma engine khong tra ket qua cho lo - lo mat thi coi la da dong bo`() = runTest {
-        val vm = vm()
-        // Chủ trong engine khác chủ của T04: engine không gửi gì, lô vẫn nằm trong outbox -> lưu trên máy.
+    fun `chu cua engine khac chu cua lo thi bao OWNER_MISSING va khong ghi outbox`() = runTest {
         val other = AttendanceSyncEngine(api, outbox, roster) { OutboxOwner("u2", "t1") }
         val vm2 = AttendanceViewModel("sess-1", api, outbox, roster, FixedDevice(), other, net, { OWNER }, { notices += it }, { enqueued++ }, clock, { "x-${++seq}" })
+        api.attendance = { attendanceDto(students) }
         advanceUntilIdle()
         vm2.save()
         advanceUntilIdle()
-        assertEquals(listOf<AttendanceNotice>(AttendanceNotice.SavedLocal), notices)
-        assertEquals(1, outbox.all().size)
+        assertEquals(SaveError(AttendanceViewModel.OWNER_MISSING, retry = true), vm2.state.value.error)
+        assertTrue(outbox.all().isEmpty())
+        assertTrue(notices.isEmpty())
+    }
+
+    @Test
+    fun `thong bao hoc sinh bi tu choi chi hien mot lan - su kien Synced cua chinh lo T04 mang rejected = 0`() = runTest {
+        val events = mutableListOf<SyncEvent>()
+        val job = launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            engine.events.collect { events += it }
+        }
+        val vm = vm()
+        api.syncHandler = { _, req ->
+            FakeAttendanceApi.okResult(req, results = req.mutations.map {
+                if (it.studentId == "s3") MutationResultDto(it.clientMutationId, it.studentId, "rejected", "NOT_FOUND") else MutationResultDto(it.clientMutationId, it.studentId, "applied")
+            })
+        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(listOf<SyncEvent>(SyncEvent.Synced("sess-1", 0)), events)
+        job.cancel()
     }
 
     @Test
