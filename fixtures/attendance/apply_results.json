@@ -1,0 +1,121 @@
+{
+  "_doc": "Áp kết quả POST /attendance/sync vào danh sách. applied/duplicate: status gửi đi thành original. stale: lấy current của server vào status, original, note. results cùng thứ tự với mutations.",
+  "cases": [
+    {
+      "name": "tất cả applied",
+      "rows": [
+        {
+          "studentId": "s1",
+          "name": "An",
+          "status": "unexcused",
+          "original": "present",
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s2",
+          "name": "Chi",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "mutations": [
+        {
+          "studentId": "s1",
+          "status": "unexcused"
+        },
+        {
+          "studentId": "s2",
+          "status": "present"
+        }
+      ],
+      "results": [
+        {
+          "result": "applied"
+        },
+        {
+          "result": "duplicate"
+        }
+      ],
+      "expected": {
+        "staleCount": 0,
+        "rows": [
+          {
+            "studentId": "s1",
+            "status": "unexcused",
+            "original": "unexcused",
+            "note": null
+          },
+          {
+            "studentId": "s2",
+            "status": "present",
+            "original": "present",
+            "note": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "một học sinh stale thì lấy bản server",
+      "rows": [
+        {
+          "studentId": "s1",
+          "name": "An",
+          "status": "unexcused",
+          "original": "present",
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s2",
+          "name": "Chi",
+          "status": "excused",
+          "original": "present",
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "mutations": [
+        {
+          "studentId": "s1",
+          "status": "unexcused"
+        },
+        {
+          "studentId": "s2",
+          "status": "excused"
+        }
+      ],
+      "results": [
+        {
+          "result": "applied"
+        },
+        {
+          "result": "stale",
+          "current": {
+            "status": "late",
+            "note": "Đến muộn 10 phút"
+          }
+        }
+      ],
+      "expected": {
+        "staleCount": 1,
+        "rows": [
+          {
+            "studentId": "s1",
+            "status": "unexcused",
+            "original": "unexcused",
+            "note": null
+          },
+          {
+            "studentId": "s2",
+            "status": "late",
+            "original": "late",
+            "note": "Đến muộn 10 phút"
+          }
+        ]
+      }
+    }
+  ]
+}

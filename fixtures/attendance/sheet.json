@@ -1,0 +1,60 @@
+{
+  "_doc": "Sheet Chi tiết buổi (T05a): hành động chính theo trạng thái buổi (Attend | Edit | None) và nhãn lặp từ thứ ISO 1..7 (null nếu không có quy tắc).",
+  "sheet_action": [
+    {
+      "status": "planned",
+      "pending": false,
+      "expected": "Attend"
+    },
+    {
+      "status": "taught",
+      "pending": false,
+      "expected": "Edit"
+    },
+    {
+      "status": "planned",
+      "pending": true,
+      "expected": "Edit"
+    },
+    {
+      "status": "cancelled",
+      "pending": false,
+      "expected": "None"
+    },
+    {
+      "status": "cancelled",
+      "pending": true,
+      "expected": "None"
+    }
+  ],
+  "repeat_label": [
+    {
+      "weekdays": [
+        1,
+        3,
+        5
+      ],
+      "expected": "T2-T4-T6"
+    },
+    {
+      "weekdays": [
+        5,
+        1,
+        3,
+        3
+      ],
+      "expected": "T2-T4-T6"
+    },
+    {
+      "weekdays": [
+        6,
+        7
+      ],
+      "expected": "T7-CN"
+    },
+    {
+      "weekdays": [],
+      "expected": null
+    }
+  ]
+}
