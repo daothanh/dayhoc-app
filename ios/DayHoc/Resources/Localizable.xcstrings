@@ -34,6 +34,17 @@
         }
       }
     },
+    "coming.soon": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tính năng đang hoàn thiện"
+          }
+        }
+      }
+    },
     "contacts.noPhone": {
       "extractionState": "manual",
       "localizations": {
@@ -1559,6 +1570,325 @@
           "stringUnit": {
             "state": "translated",
             "value": "Số điện thoại chưa đúng."
+          }
+        }
+      }
+    },
+    "today.attendance": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm danh"
+          }
+        }
+      }
+    },
+    "today.chip.cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hủy"
+          }
+        }
+      }
+    },
+    "today.chip.missed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa điểm danh"
+          }
+        }
+      }
+    },
+    "today.chip.taught": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã điểm danh"
+          }
+        }
+      }
+    },
+    "today.chip.taughtCount %lld %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã điểm danh %1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "today.chip.teaching": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang dạy"
+          }
+        }
+      }
+    },
+    "today.chip.upcoming": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sắp tới"
+          }
+        }
+      }
+    },
+    "today.empty.action": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem lịch tuần"
+          }
+        }
+      }
+    },
+    "today.empty.next %@ %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi tiếp theo: %1$@ · %2$@ · %3$@. Xem lịch để dời hoặc tạo buổi bù."
+          }
+        }
+      }
+    },
+    "today.empty.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch tuần này trống. Tạo lịch để buổi học hiện ở đây."
+          }
+        }
+      }
+    },
+    "today.empty.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay không có buổi dạy"
+          }
+        }
+      }
+    },
+    "today.loadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được dữ liệu. Kiểm tra mạng rồi thử lại."
+          }
+        }
+      }
+    },
+    "today.notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông báo"
+          }
+        }
+      }
+    },
+    "today.offline.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn vẫn điểm danh được. Dữ liệu tự đồng bộ khi có mạng."
+          }
+        }
+      }
+    },
+    "today.offline.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang ngoại tuyến"
+          }
+        }
+      }
+    },
+    "today.overdue.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hóa đơn quá hạn"
+          }
+        }
+      }
+    },
+    "today.overdue.total %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng %@"
+          }
+        }
+      }
+    },
+    "today.retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thử lại"
+          }
+        }
+      }
+    },
+    "today.section.sessions %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi dạy hôm nay (%lld)"
+          }
+        }
+      }
+    },
+    "today.section.todo": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần xử lý"
+          }
+        }
+      }
+    },
+    "today.setup.addStudents": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm học sinh"
+          }
+        }
+      }
+    },
+    "today.setup.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "today.setup.setSchedule": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đặt lịch học"
+          }
+        }
+      }
+    },
+    "today.setup.title %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn %lld việc cần thiết lập"
+          }
+        }
+      }
+    },
+    "today.students %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld học sinh"
+          }
+        }
+      }
+    },
+    "today.sync.busy": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang đồng bộ…"
+          }
+        }
+      }
+    },
+    "today.sync.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đồng bộ"
+          }
+        }
+      }
+    },
+    "today.sync.offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngoại tuyến"
+          }
+        }
+      }
+    },
+    "today.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hôm nay"
           }
         }
       }

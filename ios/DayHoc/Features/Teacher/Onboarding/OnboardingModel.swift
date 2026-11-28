@@ -67,6 +67,8 @@ final class OnboardingModel {
     private let api: OnboardingAPI
     private let pendingFee: PendingFeeStore
     private let today: () -> Date
+    /// Mở thẳng một bước đã bỏ qua (banner ở T03); chỉ áp cho lần tải đầu, sau đó theo server.
+    private let startStep: OnboardingStep?
     @ObservationIgnored private let keys = IdempotencyKeys()
     @ObservationIgnored private var createdClassId: String?
     @ObservationIgnored private var draftClassId: String?
@@ -76,8 +78,14 @@ final class OnboardingModel {
     @ObservationIgnored private var guardianName = ""
     @ObservationIgnored private var nextRowId = 0
 
-    init(api: OnboardingAPI, pendingFee: PendingFeeStore = PendingFeeStore(), today: @escaping () -> Date = { .now }) {
+    init(
+        api: OnboardingAPI,
+        pendingFee: PendingFeeStore = PendingFeeStore(),
+        startStep: OnboardingStep? = nil,
+        today: @escaping () -> Date = { .now }
+    ) {
         self.api = api
+        self.startStep = startStep
         self.pendingFee = pendingFee
         self.today = today
     }
@@ -86,7 +94,7 @@ final class OnboardingModel {
         loading = true
         loadFailed = false
         do {
-            await show(try await api.get())
+            await show(try await api.get(), override: startStep)
         } catch is CancellationError {
             // View dựng lại hủy `.task`: lần chạy mới sẽ tải, không báo lỗi.
         } catch {
@@ -342,8 +350,8 @@ final class OnboardingModel {
         }
     }
 
-    private func show(_ onboarding: OnboardingDTO) async {
-        let next = onboarding.current
+    private func show(_ onboarding: OnboardingDTO, override: OnboardingStep? = nil) async {
+        let next = override ?? onboarding.current
         let changed = next != step
         loading = false
         loadFailed = false
