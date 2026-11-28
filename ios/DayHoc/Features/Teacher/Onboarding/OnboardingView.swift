@@ -3,6 +3,8 @@ import SwiftUI
 
 private let weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
 private let durations = [60, 90, 120]
+private let ruleDayWidth: CGFloat = 80
+private let ruleDurationWidth: CGFloat = 112
 private let subjects = ["Toán", "Ngữ văn", "Tiếng Anh", "Vật lý", "Hóa học", "Sinh học", "Năng khiếu", "Khác"]
 
 /// [T02] Thiết lập lớp học 3 bước (Figma B07–B09).
@@ -369,10 +371,11 @@ private struct ScheduleStep: View {
                     Text("onboarding.courseFeePending").font(.footnote).foregroundStyle(colors.onSurfaceVariant)
                 }
                 (Text("onboarding.rulesLabel") + Text(verbatim: " *")).dhText(TeachHubTokens.Typo.label)
+                // Figma Schedule/Rule Row: Thứ 80 · Giờ bắt đầu co giãn · Thời lượng 112 · nút xóa 44 (ẩn khi chỉ 1 hàng).
                 HStack(spacing: 8) {
-                    (Text("onboarding.ruleWeekday") + Text(verbatim: " *")).frame(maxWidth: .infinity, alignment: .leading)
+                    (Text("onboarding.ruleWeekday") + Text(verbatim: " *")).frame(width: ruleDayWidth, alignment: .leading)
                     (Text("onboarding.ruleStart") + Text(verbatim: " *")).frame(maxWidth: .infinity, alignment: .leading)
-                    Text("onboarding.ruleDuration").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("onboarding.ruleDuration").frame(width: ruleDurationWidth, alignment: .leading)
                     if model.rows.count > 1 { Spacer().frame(width: 44) }
                 }
                 .dhText(TeachHubTokens.Typo.label)
@@ -384,14 +387,13 @@ private struct ScheduleStep: View {
                                 placeholder: row.weekday == nil,
                                 options: weekdays
                             ) { model.rows[index].weekday = $0 + 1 }
-                            DatePicker("onboarding.ruleStart", selection: timeBinding(index), displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .environment(\.locale, Locale(identifier: "vi_VN"))
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(width: ruleDayWidth)
+                            TimeField(value: row.start) { model.rows[index].start = $0 }
                             CompactMenu(
                                 text: String(localized: "onboarding.ruleDurationValue \(row.duration)"),
                                 options: durations.map { String(localized: "onboarding.ruleDurationValue \($0)") }
                             ) { model.rows[index].duration = durations[$0] }
+                            .frame(width: ruleDurationWidth)
                             if model.rows.count > 1 {
                                 Button { model.removeRow(row.id) } label: {
                                     Image(systemName: "xmark").frame(width: 44, height: 44)
@@ -447,19 +449,6 @@ private struct ScheduleStep: View {
         rules.sorted { ($0.weekday, minutesOf($0.startTime)) < ($1.weekday, minutesOf($1.startTime)) }
             .map { "\(weekdays[$0.weekday - 1]) \($0.startTime)" }
             .joined(separator: " · ")
-    }
-
-    private func timeBinding(_ index: Int) -> Binding<Date> {
-        Binding(
-            get: {
-                let m = minutesOf(model.rows[index].start)
-                return Calendar.current.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: .now) ?? .now
-            },
-            set: {
-                let c = Calendar.current.dateComponents([.hour, .minute], from: $0)
-                model.rows[index].start = hhmm((c.hour ?? 0) * 60 + (c.minute ?? 0))
-            }
-        )
     }
 }
 
@@ -614,7 +603,64 @@ private struct CompactMenu: View {
             }
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 44)
+            .background(colors.surface, in: shape)
             .overlay(shape.stroke(colors.outline, lineWidth: 1.5))
+        }
+    }
+}
+
+/// Ô "Giờ bắt đầu" (Figma Inputs/Select trong Schedule/Rule Row): cùng kiểu ô với Thứ/Thời lượng; chạm mở
+/// bánh xe chọn giờ trong sheet với Hủy/Chọn. `DatePicker` compact của hệ thống là viên xám, không theo DS.
+private struct TimeField: View {
+    let value: String
+    let onPick: (String) -> Void
+    @State private var open = false
+    @State private var draft = Date.now
+    @Environment(\.dhColors) private var colors
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.fieldRadius)
+        Button {
+            let m = minutesOf(value)
+            draft = Calendar.current.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: .now) ?? .now
+            open = true
+        } label: {
+            HStack(spacing: 8) {
+                Image("ic_clock").resizable().frame(width: 20, height: 20).foregroundStyle(colors.onSurfaceVariant)
+                Text(verbatim: value).dhText(TeachHubTokens.Typo.body).foregroundStyle(colors.onSurface)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.down").font(.caption).foregroundStyle(colors.onSurfaceVariant)
+            }
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(colors.surface, in: shape)
+            .overlay(shape.stroke(colors.outline, lineWidth: 1.5))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("onboarding.ruleStart"))
+        .accessibilityValue(Text(verbatim: value))
+        .sheet(isPresented: $open) {
+            VStack(spacing: 0) {
+                HStack {
+                    Button { open = false } label: { Text("cancel").dhText(TeachHubTokens.Typo.buttonSmall).foregroundStyle(colors.secondary) }
+                    Spacer()
+                    Button {
+                        let c = Calendar.current.dateComponents([.hour, .minute], from: draft)
+                        onPick(hhmm((c.hour ?? 0) * 60 + (c.minute ?? 0)))
+                        open = false
+                    } label: { Text("ok").dhText(TeachHubTokens.Typo.buttonSmall).foregroundStyle(colors.secondary) }
+                }
+                .frame(minHeight: 44)
+                .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
+                .padding(.top, 8)
+                DatePicker("onboarding.ruleStart", selection: $draft, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .environment(\.locale, Locale(identifier: "vi_VN"))
+            }
+            .presentationDetents([.height(300)])
+            .presentationBackground(colors.surface)
         }
     }
 }
