@@ -156,3 +156,8 @@ func earliestPlanned(_ sessions: [SessionDTO]) -> SessionDTO? {
         .compactMap { s in parseInstant(s.startsAt).map { (s, $0) } }
         .min { $0.1 < $1.1 }?.0
 }
+
+/// Hai biến thể trạng thái "Hôm nay không có buổi": A24 còn buổi kế tiếp, A35 chưa có lịch nào.
+enum TodayEmptyVariant: Equatable, Sendable { case nextSession, noSchedule }
+
+func todayEmptyVariant(next: NextSession?) -> TodayEmptyVariant { next == nil ? .noSchedule : .nextSession }

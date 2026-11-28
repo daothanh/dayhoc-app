@@ -155,10 +155,22 @@ struct TodayView: View {
         )
     }
 
+    @ViewBuilder
     private func empty(_ next: NextSession?) -> some View {
-        let description = next.map {
-            String(localized: "today.empty.next \($0.className) \(formatShortDay($0.day, model.timeZone)) \($0.time)")
-        } ?? String(localized: "today.empty.none")
-        return DhEmptyState(title: "today.empty.title", description: description, actionTitle: "today.empty.action", action: onOpenSchedule)
+        switch todayEmptyVariant(next: next) {
+        case .nextSession:
+            let description = next.map {
+                String(localized: "today.empty.next \($0.className) \(formatShortDay($0.day, model.timeZone)) \($0.time)")
+            }
+            DhEmptyState(title: "today.empty.title", description: description, actionTitle: "today.empty.action", action: onOpenSchedule)
+        case .noSchedule:
+            DhEmptyState(
+                title: "today.empty.title",
+                description: String(localized: "today.empty.none"),
+                actionTitle: "today.empty.create",
+                illustration: .calendarPlus,
+                action: { onContinueSetup(.setSchedule) }
+            )
+        }
     }
 }

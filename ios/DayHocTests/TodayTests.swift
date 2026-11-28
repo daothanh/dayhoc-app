@@ -17,6 +17,11 @@ struct TodayRulesTests {
         #expect(classify(status: "cancelled", start: t0, end: t1, now: t0) == .cancelled)
     }
 
+    @Test func emptyVariantFollowsNextSession() {
+        #expect(todayEmptyVariant(next: NextSession(className: "Toán 9A", day: t0, time: "17:30")) == .nextSession)
+        #expect(todayEmptyVariant(next: nil) == .noSchedule)
+    }
+
     private func session(_ id: String, _ kind: SessionKind, _ at: String) -> TodaySession {
         let start = ISO8601DateFormatter().date(from: at)!
         return TodaySession(id: id, className: id, start: start, end: start + 5400, kind: kind,
