@@ -29,8 +29,11 @@ struct OnboardingView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
                     if let step = model.step, !model.loading, step.skippable {
-                        Button("onboarding.skip") { Task { await model.skip() } }
-                            .disabled(model.saving)
+                        Button { Task { await model.skip() } } label: {
+                            // Figma: text/link 13 SemiBold; màu link đến từ tint chung (colors.secondary).
+                            Text("onboarding.skip").dhText(TeachHubTokens.Typo.buttonSmall)
+                        }
+                        .disabled(model.saving)
                     }
                 }
             }
@@ -224,8 +227,10 @@ private struct AddStudentsStep: View {
                     Button {
                         ContactPhonePicker.shared.present { model.pickedPhone($0) }
                     } label: {
-                        Image(systemName: "person.crop.circle")
-                            .font(.system(size: 20))
+                        // Solar "User Id" Linear, cùng bộ với icon điều hướng.
+                        Image("ic_address_book")
+                            .resizable()
+                            .frame(width: 24, height: 24)
                             .frame(width: 44, height: 44)
                             .overlay(
                                 RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.fieldRadius)
@@ -237,16 +242,22 @@ private struct AddStudentsStep: View {
                     .padding(.bottom, model.phoneError ? 22 : 0)
                 }
                 .disabled(model.studentBusy)
+                // Đã nhập tên: viền đậm dần và nút nảy nhẹ một lần để báo đây là bước tiếp theo.
+                let ready = !model.studentName.trimmingCharacters(in: .whitespaces).isEmpty
+                    && !model.studentBusy && !model.enrollFailed
                 DhSecondaryButton(
                     title: model.studentBusy ? "onboarding.saving" : "onboarding.addStudent",
                     icon: "plus",
-                    identifier: "onboarding.addStudent"
+                    identifier: "onboarding.addStudent",
+                    emphasized: ready
                 ) {
                     let name = model.studentName.trimmingCharacters(in: .whitespaces)
                     let guardian = String(localized: "onboarding.guardianDefaultName \(name)")
                     Task { await model.addStudent(guardian: guardian) }
                 }
                 .disabled(model.studentBusy || model.enrollFailed)
+                .scaleEffect(ready ? 1 : 0.97)
+                .animation(.spring(response: 0.35, dampingFraction: 0.55), value: ready)
                 if !model.added.isEmpty {
                     Text("onboarding.addedCount \(model.added.count)")
                         .dhText(TeachHubTokens.Typo.section)
