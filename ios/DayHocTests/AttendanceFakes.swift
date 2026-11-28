@@ -7,6 +7,8 @@ struct InjectedError: Error {}
 actor InMemoryOutbox: OutboxStore {
     private var failRemove = false
     private var failAll = false
+    private var cancelOnRemove = false
+    func setCancelOnRemove(_ on: Bool) { cancelOnRemove = on }
     func setFailRemove(_ on: Bool) { failRemove = on }
     func setFailAll(_ on: Bool) { failAll = on }
     private var list: [OutboxBatch]
@@ -21,6 +23,7 @@ actor InMemoryOutbox: OutboxStore {
     }
     func enqueue(_ b: OutboxBatch) { list.append(b); publish() }
     func remove(_ key: String) throws {
+        if cancelOnRemove { throw CancellationError() }
         if failRemove { throw InjectedError() }
         list.removeAll { $0.idempotencyKey == key }
         publish()

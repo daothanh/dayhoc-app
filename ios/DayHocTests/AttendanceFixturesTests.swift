@@ -178,7 +178,7 @@ struct AttendanceFixturesTests {
             let engine = makeEngine(service, outbox, roster, owner: owner)
             let events = engine.events()
 
-            let report = await engine.flush()
+            let report = try await engine.flush()
 
             let want = c["expected"] as! JSON
             #expect(service.syncCalls.map { $0.key } == want["sent"] as! [String], name)

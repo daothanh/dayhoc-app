@@ -423,6 +423,30 @@ struct AttendanceModelTests {
         #expect(await outbox.snapshot().isEmpty)
     }
 
+    @Test func offlineEnqueueWithoutOwnerReportsOwnerMissingNotGenericError() async {
+        net.set(false)
+        let m = AttendanceModel(
+            sessionId: "sess-1", service: service, outbox: outbox, roster: roster, device: FixedDevice(),
+            engine: makeEngine(service, outbox, roster, owner: nil), connectivity: net, ownerProvider: { testOwner },
+            notify: { _ in }, onEnqueued: {}, now: { Date(timeIntervalSince1970: 1_794_221_100) }, timeZone: vn, newId: { UUID().uuidString }
+        )
+        service.setGet { attendanceDto(students) }
+        await m.load()
+        await m.save()
+        #expect(m.error == SaveError(code: AttendanceLocalError.ownerMissing, retry: true))
+        #expect(!m.done)
+        #expect(await outbox.snapshot().isEmpty)
+    }
+
+    @Test func cancelledSaveIsNotReportedAsSavedLocally() async {
+        let m = await model()
+        service.setSync { _, _ in throw CancellationError() }
+        await m.save()
+        #expect(box.notices.isEmpty)
+        #expect(!m.done)
+        #expect(!m.saving)
+    }
+
     @Test func unreadableOutboxOnLoadBlocksSaving() async {
         await outbox.setFailAll(true)
         let m = await model()

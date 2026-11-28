@@ -211,7 +211,11 @@ final class AttendanceModel {
                 batch = buildBatch(owner)
             }
             if offline {
-                try await engine.enqueue(batch)
+                do {
+                    try await engine.enqueue(batch)
+                } catch EngineError.ownerMismatch {
+                    return fail(SaveError(code: AttendanceLocalError.ownerMissing, retry: true))
+                }
                 enqueued = batch
                 finishLocal()
             } else {
@@ -252,7 +256,7 @@ final class AttendanceModel {
         let key = batch.idempotencyKey
         let report: FlushReport
         do {
-            report = fresh ? try await engine.enqueueAndFlush(batch) : await engine.flush(own: key)
+            report = fresh ? try await engine.enqueueAndFlush(batch) : try await engine.flush(own: key)
         } catch {
             if Task.isCancelled || error is CancellationError { saving = false; return }
             return fail(SaveError(code: error as? EngineError == .ownerMismatch ? AttendanceLocalError.ownerMissing : nil, retry: true))

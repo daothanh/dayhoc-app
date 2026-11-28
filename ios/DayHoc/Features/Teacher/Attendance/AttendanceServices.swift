@@ -93,7 +93,7 @@ final class AttendanceServices: Sendable {
 
     private static func sync(_ engine: AttendanceSyncEngine, _ tokenStore: any TokenStore) async -> FlushResult {
         guard tokenStore.load() != nil else { return .done }
-        let result = await engine.flush().result
+        let result = (try? await engine.flush().result) ?? .retry
         if result == .retry { scheduleBackground() }
         return result
     }

@@ -1,9 +1,11 @@
 import Foundation
+import os
 
 /// CSDL cục bộ mã hóa toàn file bằng SQLCipher (Technical Spec 6.4 mục 7): outbox điểm danh và bản chụp danh sách
 /// học sinh. Khóa 32 byte ngẫu nhiên sinh lần đầu, giữ trong Keychain; không mở được CSDL chưa mã hóa.
 /// `wipe` xóa CSDL và khóa khi đăng xuất (mã thiết bị giữ theo lần cài đặt).
 actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
+    private static let log = Logger(subsystem: "vn.dayhoc.app", category: "localdb")
     private let directory: URL
     private let key: DatabaseKey
     nonisolated(unsafe) private let defaults: UserDefaults // UserDefaults an toàn đa luồng; SDK chưa khai Sendable
@@ -56,7 +58,9 @@ actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
             var url = URL(fileURLWithPath: path + suffix)
             var values = URLResourceValues()
             values.isExcludedFromBackup = true
-            try? url.setResourceValues(values)
+            do { try url.setResourceValues(values) } catch {
+                Self.log.error("Không đặt được isExcludedFromBackup: \(error.localizedDescription, privacy: .public)")
+            }
         }
         db = opened
         return opened

@@ -74,10 +74,11 @@ actor AttendanceSyncEngine {
     }
 
     /// `own`: khóa lô mà T04 vừa lưu và đang chờ kết quả; thông báo "bỏ lô" của lô đó do T04 tự hiện.
-    func flush(own: String? = nil) async -> FlushReport {
+    /// Tác vụ bị hủy thì ném `CancellationError` (lô vẫn pending trong outbox) để người gọi không báo "đã lưu".
+    func flush(own: String? = nil) async throws -> FlushReport {
         await acquire()
         defer { release() }
-        return await flushLocked(own)
+        return try await flushLocked(own)
     }
 
     /// Ghi outbox rồi gửi trong cùng một lần giữ khóa: không lần flush nào (hay đăng xuất) chen vào giữa.
@@ -86,7 +87,7 @@ actor AttendanceSyncEngine {
         defer { release() }
         guard owner() == batch.owner else { throw EngineError.ownerMismatch }
         try await outbox.enqueue(batch)
-        return await flushLocked(batch.idempotencyKey)
+        return try await flushLocked(batch.idempotencyKey)
     }
 
     /// Chỉ ghi outbox (ngoại tuyến), vẫn trong khóa của engine.
@@ -118,7 +119,7 @@ actor AttendanceSyncEngine {
         return await body()
     }
 
-    private func flushLocked(_ own: String?) async -> FlushReport {
+    private func flushLocked(_ own: String?) async throws -> FlushReport {
         // Chưa có chủ (chưa gắn, hết phiên, đã đăng xuất): không đụng CSDL, không gửi gì.
         guard let me = owner() else { return FlushReport(result: .done) }
         var outcomes: [String: BatchOutcome] = [:]
@@ -137,7 +138,7 @@ actor AttendanceSyncEngine {
                 do {
                     result = try await api.sync(key: key, body: b.request)
                 } catch is CancellationError {
-                    return FlushReport(result: .retry, outcomes: outcomes)
+                    throw CancellationError()
                 } catch {
                     let apiError = error as? APIError ?? APIError(kind: .invalidResponse)
                     switch decideOnError(apiError, attempts: b.attempts) {
@@ -166,7 +167,7 @@ actor AttendanceSyncEngine {
                         try await terminal(b, code, result, own, &outcomes, &blocked)
                     }
                 } catch is CancellationError {
-                    return FlushReport(result: .retry, outcomes: outcomes)
+                    throw CancellationError()
                 } catch {
                     retry = true
                     blocked.insert(b.sessionId)
@@ -174,6 +175,8 @@ actor AttendanceSyncEngine {
                 }
             }
             return FlushReport(result: retry ? .retry : .done, outcomes: outcomes)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             // Đọc/ghi outbox lỗi bất ngờ: không làm sập tiến trình, hẹn thử lại.
             return failed(error, outcomes)
