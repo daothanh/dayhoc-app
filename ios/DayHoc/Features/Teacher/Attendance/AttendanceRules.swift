@@ -8,7 +8,7 @@ enum AttStatus: String, CaseIterable, Sendable {
 }
 
 /// Một hàng học sinh ở T04. `original` là giá trị đang lưu trên server (`nil` = chưa có dòng điểm danh);
-/// `status` là giá trị đang hiển thị. `parentReported`: phụ huynh đã báo vắng trước (API chưa trả, để sẵn).
+/// `status` là giá trị đang hiển thị. `parentReported`: phụ huynh đã báo vắng trước (điền sẵn, không tính vào số báo).
 struct AttRow: Equatable, Sendable {
     let studentId: String
     let name: String
@@ -16,6 +16,8 @@ struct AttRow: Equatable, Sendable {
     var original: AttStatus?
     var note: String?
     var parentReported = false
+    /// Lý do phụ huynh báo: `sick` | `family` | `other`; chỉ có khi `parentReported`.
+    var parentReason: String?
 
     /// Khác giá trị đang lưu (chưa có dòng thì mặc định "Có mặt").
     var changed: Bool { status != (original ?? .present) }
@@ -24,7 +26,10 @@ struct AttRow: Equatable, Sendable {
 func rowsOf(_ items: [AttendanceItemDTO]) -> [AttRow] {
     items.map {
         let server = $0.status.flatMap(AttStatus.init(rawValue:))
-        return AttRow(studentId: $0.studentId, name: $0.fullName, status: server ?? .present, original: server, note: $0.note)
+        // Phụ huynh đã báo mà chưa có dòng điểm danh: điền sẵn "Vắng có phép" (US-3.1 AC5).
+        let shown = server ?? ($0.parentReport != nil ? .excused : .present)
+        return AttRow(studentId: $0.studentId, name: $0.fullName, status: shown, original: server, note: $0.note,
+                      parentReported: $0.parentReport != nil, parentReason: $0.parentReport?.reason)
     }
 }
 
@@ -179,6 +184,11 @@ func sheetAction(status: String, pending: Bool) -> SheetAction {
 func repeatLabel(_ weekdays: [Int]) -> String? {
     let days = Set(weekdays.filter { (1...7).contains($0) }).sorted()
     return days.isEmpty ? nil : days.map { $0 == 7 ? "CN" : "T\($0 + 1)" }.joined(separator: "-")
+}
+
+/// Người sửa lần cuối: tên ở dòng có `syncedAt` mới nhất (US-3.3); `nil` khi không có dòng hoặc server không trả tên.
+func lastEditorName(_ items: [AttendanceItemDTO]) -> String? {
+    items.compactMap { i in i.syncedAt.flatMap(parseInstant).map { ($0, i.recordedByName) } }.max { $0.0 < $1.0 }?.1
 }
 
 /// Hạn xem lại: "Sửa lần cuối" lấy mốc server nhận gần nhất của các dòng.

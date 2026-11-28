@@ -206,4 +206,24 @@ struct AttendanceFixturesTests {
             #expect(got == wantEvents, name)
         }
     }
+
+    @Test func buildsRowsFromRoster() throws {
+        let f = try fixture("roster.json")
+        #expect(!cases(f).isEmpty)
+        for c in cases(f) {
+            let name = c["name"] as! String
+            let data = try JSONSerialization.data(withJSONObject: c["items"]!)
+            let items = try JSONDecoder().decode([AttendanceItemDTO].self, from: data)
+            let want = c["expected"] as! JSON
+            let wantRows = (want["rows"] as! [JSON]).map {
+                AttRow(studentId: $0["studentId"] as! String, name: $0["name"] as! String,
+                       status: AttStatus(rawValue: $0["status"] as! String)!,
+                       original: ($0["original"] as? String).flatMap(AttStatus.init(rawValue:)),
+                       note: $0["note"] as? String, parentReported: $0["parentReported"] as! Bool,
+                       parentReason: $0["parentReason"] as? String)
+            }
+            #expect(rowsOf(items) == wantRows, Comment(rawValue: name))
+            #expect(lastEditorName(items) == want["lastEditedBy"] as? String, Comment(rawValue: name))
+        }
+    }
 }

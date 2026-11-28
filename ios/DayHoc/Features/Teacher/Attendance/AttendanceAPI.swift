@@ -24,6 +24,15 @@ struct AttendanceItemDTO: Codable, Equatable, Sendable {
     var note: String?
     var clientUpdatedAt: String?
     var syncedAt: String?
+    var recordedByName: String?
+    var parentReport: ParentReportDTO?
+}
+
+/// `reason`: sick | family | other (`AbsenceReason`).
+struct ParentReportDTO: Codable, Equatable, Sendable {
+    let reason: String
+    var note: String?
+    var reportedAt: String?
 }
 
 struct SyncRequestDTO: Codable, Equatable, Sendable {

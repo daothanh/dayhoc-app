@@ -2443,6 +2443,50 @@
         }
       }
     },
+    "attendance.editBanner.titleBy %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa lần cuối bởi %1$@ lúc %2$@"
+          }
+        }
+      }
+    },
+    "attendance.reason.sick": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ốm"
+          }
+        }
+      }
+    },
+    "attendance.reason.family": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Việc gia đình"
+          }
+        }
+      }
+    },
+    "attendance.reason.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lý do khác"
+          }
+        }
+      }
+    },
     "attendance.editBanner.none": {
       "extractionState": "manual",
       "localizations": {

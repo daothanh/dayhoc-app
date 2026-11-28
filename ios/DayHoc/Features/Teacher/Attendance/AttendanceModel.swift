@@ -41,6 +41,7 @@ final class AttendanceModel {
     private(set) var editMode = false
     private(set) var readOnly: ReadOnly?
     private(set) var lastEditedAt: Date?
+    private(set) var lastEditedBy: String?
     private(set) var saving = false
     private(set) var offline = false
     var confirmDiscard = false
@@ -166,6 +167,7 @@ final class AttendanceModel {
             || (fromCache && dto.items.contains { $0.status != nil })
         readOnly = dto.sessionStatus == "cancelled" ? .cancelled : (!dto.canEdit || expired ? .expired : nil)
         lastEditedAt = lastEditedTime(dto.items)
+        lastEditedBy = lastEditorName(dto.items)
         failedCode = batches.first { $0.state == .failed }?.errorCode
         loading = false
     }

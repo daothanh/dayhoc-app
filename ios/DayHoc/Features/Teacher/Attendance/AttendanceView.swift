@@ -85,7 +85,7 @@ struct AttendanceView: View {
                     }
                     if model.editMode && model.readOnly == nil {
                         DhInfoBanner(
-                            title: model.lastEditedAt.map { "attendance.editBanner.title \(stamp($0))" } ?? "attendance.editBanner.none",
+                            title: editBannerTitle,
                             description: String(localized: "attendance.editBanner.body")
                         )
                         .padding(.bottom, TeachHubTokens.Dimens.spacingControl)
@@ -131,6 +131,12 @@ struct AttendanceView: View {
         .padding(.bottom, TeachHubTokens.Dimens.spacingControl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(colors.scaffoldBackground)
+    }
+
+    private var editBannerTitle: LocalizedStringKey {
+        guard let at = model.lastEditedAt else { return "attendance.editBanner.none" }
+        if let by = model.lastEditedBy { return "attendance.editBanner.titleBy \(by) \(stamp(at))" }
+        return "attendance.editBanner.title \(stamp(at))"
     }
 
     private func stamp(_ date: Date) -> String {
@@ -215,7 +221,16 @@ private struct StudentRow: View {
     }
 
     private var subtitle: String? {
-        if row.parentReported { return String(localized: "attendance.row.parentReported") }
+        if row.parentReported {
+            let base = String(localized: "attendance.row.parentReported")
+            let reason: String? = switch row.parentReason {
+            case "sick": String(localized: "attendance.reason.sick")
+            case "family": String(localized: "attendance.reason.family")
+            case "other": String(localized: "attendance.reason.other")
+            default: nil
+            }
+            return reason.map { "\(base) · \($0)" } ?? base
+        }
         return row.changed ? String(localized: "attendance.row.changed") : nil
     }
 
