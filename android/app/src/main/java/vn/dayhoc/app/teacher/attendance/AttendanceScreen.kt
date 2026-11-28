@@ -149,7 +149,11 @@ private fun Body(s: AttendanceUiState, zone: ZoneId, vm: AttendanceViewModel) {
         }
         if (s.editMode && s.readOnly == null) item {
             DhInfoBanner(
-                title = s.lastEditedAt?.let { stringResource(R.string.attendance_edit_banner_title, STAMP.format(it.atZone(zone))) }
+                title = s.lastEditedAt?.let {
+                    val at = STAMP.format(it.atZone(zone))
+                    s.lastEditedBy?.let { by -> stringResource(R.string.attendance_edit_banner_title_by, by, at) }
+                        ?: stringResource(R.string.attendance_edit_banner_title, at)
+                }
                     ?: stringResource(R.string.attendance_edit_banner_title_none),
                 description = stringResource(R.string.attendance_edit_banner_body),
                 modifier = Modifier.padding(bottom = Dimens.spacingControl),
@@ -190,10 +194,22 @@ private fun Body(s: AttendanceUiState, zone: ZoneId, vm: AttendanceViewModel) {
 }
 
 @Composable
+private fun parentReportedText(reason: String?): String {
+    val base = stringResource(R.string.attendance_row_parent_reported)
+    val label = when (reason) {
+        "sick" -> R.string.attendance_reason_sick
+        "family" -> R.string.attendance_reason_family
+        "other" -> R.string.attendance_reason_other
+        else -> null
+    } ?: return base
+    return "$base · ${stringResource(label)}"
+}
+
+@Composable
 private fun StudentRow(row: AttRow, expanded: Boolean, enabled: Boolean, onToggle: () -> Unit, onSelect: (AttStatus) -> Unit) {
     val colors = MaterialTheme.colorScheme
     val subtitle = when {
-        row.parentReported -> stringResource(R.string.attendance_row_parent_reported)
+        row.parentReported -> parentReportedText(row.parentReason)
         row.changed -> stringResource(R.string.attendance_row_changed)
         else -> null
     }

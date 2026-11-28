@@ -29,6 +29,8 @@ data class AttRow(
     val original: AttStatus? = null,
     val note: String? = null,
     val parentReported: Boolean = false,
+    /** Lý do phụ huynh báo: `sick` | `family` | `other`; chỉ có khi [parentReported]. */
+    val parentReason: String? = null,
 ) {
     /** Khác giá trị đang lưu (chưa có dòng thì mặc định "Có mặt"). */
     val changed get() = status != (original ?: AttStatus.Present)
@@ -36,7 +38,10 @@ data class AttRow(
 
 fun rowsOf(items: List<AttendanceItemDto>): List<AttRow> = items.map {
     val server = AttStatus.fromWire(it.status)
-    AttRow(it.studentId, it.fullName, server ?: AttStatus.Present, server, it.note)
+    val report = it.parentReport
+    // Phụ huynh đã báo mà chưa có dòng điểm danh: điền sẵn "Vắng có phép" (US-3.1 AC5).
+    val shown = server ?: if (report != null) AttStatus.Excused else AttStatus.Present
+    AttRow(it.studentId, it.fullName, shown, server, it.note, report != null, report?.reason)
 }
 
 /** Bộ đếm ở đầu T04. "Có mặt" không gồm "Muộn"; "Vắng" gồm cả có phép và không phép. */
@@ -183,6 +188,10 @@ fun sheetAction(status: String, pending: Boolean): SheetAction = when {
 fun repeatLabel(weekdays: List<Int>): String? =
     weekdays.filter { it in 1..7 }.distinct().sorted().takeIf { it.isNotEmpty() }
         ?.joinToString("-") { if (it == 7) "CN" else "T${it + 1}" }
+
+/** Người sửa lần cuối: tên ở dòng có `syncedAt` mới nhất (US-3.3); `null` khi không có dòng hoặc server không trả tên. */
+fun lastEditedBy(items: List<AttendanceItemDto>): String? =
+    items.mapNotNull { i -> i.syncedAt?.let(::toInstantOrNull)?.let { it to i.recordedByName } }.maxByOrNull { it.first }?.second
 
 /** Hạn xem lại: "Sửa lần cuối" lấy mốc server nhận gần nhất của các dòng. */
 fun lastEditedAt(items: List<AttendanceItemDto>): Instant? =

@@ -11,6 +11,7 @@ Test Android đọc trực tiếp các file này (`android/app/src/test/.../Atte
 | `pending_merge.json` | `mergePending` | thẻ buổi (`id`, `kind`) + `pendingIds` → `kind`, `pending` sau khi gộp |
 | `error_decision.json` | `decideOnError`, `verdictOf`, `rejectedStudentIds`, `isDeletableError` | lỗi gọi API + số lần thử → giữ/bỏ lô; kết quả 200 → xong/bị từ chối |
 | `flush_rules.json` | `AttendanceSyncEngine.flush` | lô trong outbox + kịch bản API + chủ → lô đã gửi, lô còn lại (pending/failed), kết quả, bản chụp danh sách bị xóa |
+| `roster.json` | `rowsOf`, `lastEditedBy` | `items` của GET điểm danh (thiếu trường = phản hồi cũ) → `rows` dựng sẵn (vắng có phép khi PH đã báo), người sửa lần cuối |
 | `sheet.json` | `sheetAction`, `repeatLabel` | trạng thái buổi → hành động chính của sheet; thứ ISO → "T2-T4-T6" |
 
 ## Định dạng chung
@@ -18,7 +19,7 @@ Test Android đọc trực tiếp các file này (`android/app/src/test/.../Atte
 - Hàng học sinh (`rows[]`): `studentId`, `name`, `status`, `original`, `note`, `parentReported`.
   - `status` / `original`: `present` | `late` | `excused` | `unexcused` (đúng `AttendanceStatus` của API). `original` là giá trị đang lưu trên server, `null` = chưa có dòng điểm danh (mặc định hiểu là `present`). `status` là giá trị đang hiển thị.
   - Hàng "đổi" = `status` khác `original ?? present`.
-  - `parentReported`: phụ huynh đã báo vắng trước (không tính vào số phụ huynh được báo).
+  - `parentReported`: phụ huynh đã báo vắng trước (không tính vào số phụ huynh được báo). `parentReason` (tùy chọn, chỉ `roster.json`): `sick` | `family` | `other`.
 - Mutation: `clientMutationId`, `studentId`, `status`, `note`, `clientUpdatedAt` (ISO 8601 có offset, luôn có giây).
 - `kind` của thẻ buổi: `Teaching` | `Missed` | `Upcoming` | `Taught` | `Cancelled`.
 - Đếm: "Có mặt" chỉ gồm `present` (không gồm `late`); "Vắng" = `excused` + `unexcused`; "Muộn" = `late`.

@@ -264,6 +264,10 @@
     <string name="attendance_offline_title">Đang ngoại tuyến</string>
     <string name="attendance_offline_body">Điểm danh lưu trên máy, tự gửi phụ huynh khi có mạng.</string>
     <string name="attendance_edit_banner_title">Sửa lần cuối lúc %1$s</string>
+    <string name="attendance_edit_banner_title_by">Sửa lần cuối bởi %1$s lúc %2$s</string>
+    <string name="attendance_reason_sick">Ốm</string>
+    <string name="attendance_reason_family">Việc gia đình</string>
+    <string name="attendance_reason_other">Lý do khác</string>
     <string name="attendance_edit_banner_title_none">Đang sửa điểm danh</string>
     <string name="attendance_edit_banner_body">Thay đổi sẽ báo lại cho phụ huynh liên quan.</string>
     <string name="attendance_readonly_expired">Buổi đã quá 7 ngày, chỉ xem được.</string>

@@ -45,7 +45,13 @@ data class AttendanceItemDto(
     val note: String? = null,
     val clientUpdatedAt: String? = null,
     val syncedAt: String? = null,
+    val recordedByName: String? = null,
+    val parentReport: ParentReportDto? = null,
 )
+
+/** `reason`: sick | family | other (`AbsenceReason`). */
+@Serializable
+data class ParentReportDto(val reason: String, val note: String? = null, val reportedAt: String? = null)
 
 @Serializable
 data class SyncRequestDto(

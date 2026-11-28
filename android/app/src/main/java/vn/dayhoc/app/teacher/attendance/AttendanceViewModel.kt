@@ -46,6 +46,7 @@ data class AttendanceUiState(
     val editMode: Boolean = false,
     val readOnly: ReadOnly? = null,
     val lastEditedAt: Instant? = null,
+    val lastEditedBy: String? = null,
     val saving: Boolean = false,
     val offline: Boolean = false,
     val confirmDiscard: Boolean = false,
@@ -146,6 +147,7 @@ class AttendanceViewModel(
                         else -> null
                     },
                     lastEditedAt = lastEditedAt(dto.items),
+                    lastEditedBy = lastEditedBy(dto.items),
                     failedCode = batches.firstOrNull { b -> b.state == OutboxState.Failed }?.errorCode,
                 )
             }

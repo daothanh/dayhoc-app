@@ -206,4 +206,21 @@ class AttendanceFixturesTest {
             assertEquals(c.str("expected"), repeatLabel(c.getValue("weekdays").jsonArray.map { it.jsonPrimitive.int }))
         }
     }
+
+    @Test
+    fun `dung hang tu phan hoi diem danh`() = fixture("roster.json").cases().forEach { c ->
+        val items = Json { ignoreUnknownKeys = true }.decodeFromJsonElement(
+            kotlinx.serialization.builtins.ListSerializer(AttendanceItemDto.serializer()), c.getValue("items"),
+        )
+        val want = c.obj("expected")
+        val wantRows = want.getValue("rows").jsonArray.map {
+            val o = it.jsonObject
+            AttRow(
+                o.str("studentId")!!, o.str("name")!!, AttStatus.fromWire(o.str("status"))!!, AttStatus.fromWire(o.str("original")),
+                o.str("note"), o.getValue("parentReported").jsonPrimitive.boolean, o.str("parentReason"),
+            )
+        }
+        assertEquals(c.str("name"), wantRows, rowsOf(items))
+        assertEquals(c.str("name"), want.str("lastEditedBy"), lastEditedBy(items))
+    }
 }
