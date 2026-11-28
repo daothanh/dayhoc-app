@@ -43,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
@@ -331,7 +332,7 @@ private fun ColumnScope.AddStudentsStep(state: OnboardingUiState, vm: Onboarding
             enabled = !form.busy,
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DhTextField(
                 value = form.phone,
                 onValueChange = { vm.updateStudent(phone = it.take(20)) },
@@ -354,7 +355,8 @@ private fun ColumnScope.AddStudentsStep(state: OnboardingUiState, vm: Onboarding
                 enabled = !form.busy,
                 shape = RoundedCornerShape(Dimens.fieldRadius),
                 border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.size(44.dp),
+                // Vuông bằng đúng ô nhập bên cạnh (Figma B08); OutlinedTextField có nhãn chừa 8dp phía trên.
+                modifier = Modifier.padding(top = 8.dp).size(OutlinedTextFieldDefaults.MinHeight),
             ) {
                 Icon(painterResource(R.drawable.ic_address_book), stringResource(R.string.contacts_pick_phone))
             }
