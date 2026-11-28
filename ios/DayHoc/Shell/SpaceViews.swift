@@ -9,46 +9,13 @@ struct RoleSpace<Content: View, Trailing: View>: View {
     @ViewBuilder let content: () -> Content
 
     @State private var switcher = false
-    @Environment(\.dhColors) private var colors
-
-    private func header(_ title: LocalizedStringKey) -> some View {
-        HStack(spacing: TeachHubTokens.Dimens.spacingControl) {
-            RoleChip(store: app.memberships) { switcher = true }
-                .fixedSize()
-            Text(title)
-                .dhText(TeachHubTokens.Typo.h2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .layoutPriority(-1)
-            Spacer(minLength: 0)
-            trailing()
-        }
-        .padding(.leading, TeachHubTokens.Dimens.spacingPage)
-        .padding(.trailing, TeachHubTokens.Dimens.spacingInline)
-        .frame(height: 56)
-        .background(colors.surface)
-        .overlay(alignment: .bottom) { Rectangle().fill(colors.outlineVariant).frame(height: 1.5) }
-    }
-
     var body: some View {
         NavigationStack {
-            Group {
-                if let title {
-                    // App Bar `Root` có tiêu đề: tự vẽ để chip vai trò không bị thanh điều hướng nén còn avatar.
-                    VStack(spacing: 0) {
-                        header(title)
-                        content()
-                    }
-                    .toolbar(.hidden, for: .navigationBar)
-                } else {
-                    content()
-                        .toolbar {
-                            ToolbarItem(placement: .topBarLeading) {
-                                RoleChip(store: app.memberships) { switcher = true }
-                            }
-                        }
-                }
+            VStack(spacing: 0) {
+                DhAppBar(title: title, leading: { RoleChip(store: app.memberships) { switcher = true } }, trailing: trailing)
+                content()
             }
+            .toolbar(.hidden, for: .navigationBar)
             .dhScreen()
         }
         .sheet(isPresented: $switcher) {

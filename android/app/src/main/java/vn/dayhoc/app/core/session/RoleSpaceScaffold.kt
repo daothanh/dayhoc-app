@@ -25,8 +25,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import vn.dayhoc.app.R
-import vn.dayhoc.app.core.designsystem.TeachHubText
-import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
+import vn.dayhoc.app.core.designsystem.DhAppBar
 
 /**
  * Khung chung của mỗi không gian vai trò: App Bar `Root` có C20 Chip vai trò mở [RoleSwitcherSheet] (T00).
@@ -49,17 +48,7 @@ fun RoleSpaceScaffold(
     val resources = LocalResources.current
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.spacingControl)) {
-                        RoleChip(state) { sheet = true }
-                        if (title != null) Text(title, style = TeachHubText.h2, maxLines = 1)
-                    }
-                },
-                actions = actions,
-            )
-        },
+        topBar = { DhAppBar(title = title, leading = { RoleChip(state) { sheet = true } }, trailing = actions) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()), content = content)
     }

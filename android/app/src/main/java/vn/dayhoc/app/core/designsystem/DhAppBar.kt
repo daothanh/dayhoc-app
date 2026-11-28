@@ -1,0 +1,47 @@
+package vn.dayhoc.app.core.designsystem
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
+
+/**
+ * App Bar `Root` (Figma Navigation/App Bar, A01): [leading] (chip vai trò), [title] H2 tuỳ chọn,
+ * [trailing] bên phải. Cao 56, nền surface, viền dưới outlineVariant 1.5. Tiêu đề nhường chỗ trước.
+ */
+@Composable
+fun DhAppBar(
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    leading: @Composable () -> Unit = {},
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.statusBarsPadding()) {
+            Row(
+                Modifier.fillMaxWidth().height(56.dp).padding(start = Dimens.spacingPage, end = Dimens.spacingInline),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingControl),
+            ) {
+                leading()
+                if (title != null) Text(title, style = TeachHubText.h2, maxLines = 1, modifier = Modifier.weight(1f))
+                else androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                trailing()
+            }
+            HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
