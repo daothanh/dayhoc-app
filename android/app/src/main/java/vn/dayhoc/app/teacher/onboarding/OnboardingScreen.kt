@@ -116,16 +116,20 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.onboarding_title)) },
-                actions = {
-                    val step = state.step
-                    // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
-                    if (step != null && !state.loading && step.skippable) {
-                        DhTextButton(stringResource(R.string.onboarding_skip), viewModel::skip, enabled = !state.saving)
-                    }
-                },
-            )
+            Column {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.onboarding_title)) },
+                    actions = {
+                        val step = state.step
+                        // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
+                        if (step != null && !state.loading && step.skippable) {
+                            DhTextButton(stringResource(R.string.onboarding_skip), viewModel::skip, enabled = !state.saving)
+                        }
+                    },
+                )
+                // Figma Navigation/App Bar: kẻ dưới 1.5px border/default.
+                HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
