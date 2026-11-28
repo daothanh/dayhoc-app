@@ -111,6 +111,38 @@
     <string name="space_coming">Màn này đang được chuyển sang bản mới.</string>
     <string name="space_no_invite">Chưa kết nối với lớp nào. Nhờ thầy cô gửi link mời.</string>
 
+    <!-- [T03] Hôm nay (Figma A01, A23–A25) -->
+    <string name="today_title">Hôm nay</string>
+    <string name="today_sync_done">Đã đồng bộ</string>
+    <string name="today_sync_busy">Đang đồng bộ…</string>
+    <string name="today_sync_offline">Ngoại tuyến</string>
+    <string name="today_notifications">Thông báo</string>
+    <string name="today_section_sessions">Buổi dạy hôm nay (%1$d)</string>
+    <string name="today_section_todo">Cần xử lý</string>
+    <string name="today_students">%1$d học sinh</string>
+    <string name="today_chip_teaching">Đang dạy</string>
+    <string name="today_chip_missed">Chưa điểm danh</string>
+    <string name="today_chip_upcoming">Sắp tới</string>
+    <string name="today_chip_taught">Đã điểm danh</string>
+    <string name="today_chip_taught_count">Đã điểm danh %1$d/%2$d</string>
+    <string name="today_chip_cancelled">Đã hủy</string>
+    <string name="today_attendance">Điểm danh</string>
+    <string name="today_setup_title">Còn %1$d việc cần thiết lập</string>
+    <string name="today_setup_add_students">Thêm học sinh</string>
+    <string name="today_setup_set_schedule">Đặt lịch học</string>
+    <string name="today_setup_continue">Tiếp tục</string>
+    <string name="today_overdue_title">Hóa đơn quá hạn</string>
+    <string name="today_overdue_total">Tổng %1$s</string>
+    <string name="today_empty_title">Hôm nay không có buổi dạy</string>
+    <string name="today_empty_next">Buổi tiếp theo: %1$s · %2$s · %3$s. Xem lịch để dời hoặc tạo buổi bù.</string>
+    <string name="today_empty_none">Lịch tuần này trống. Tạo lịch để buổi học hiện ở đây.</string>
+    <string name="today_empty_action">Xem lịch tuần</string>
+    <string name="today_load_failed">Không tải được dữ liệu. Kiểm tra mạng rồi thử lại.</string>
+    <string name="today_retry">Thử lại</string>
+    <string name="today_offline_title">Đang ngoại tuyến</string>
+    <string name="today_offline_body">Bạn vẫn điểm danh được. Dữ liệu tự đồng bộ khi có mạng.</string>
+    <string name="coming_soon">Tính năng đang hoàn thiện</string>
+
     <!-- [T02] Onboarding giáo viên (Figma B07–B09) -->
     <string name="onboarding_title">Thiết lập lớp học</string>
     <string name="onboarding_progress">Bước %1$d/%2$d</string>

@@ -38,6 +38,8 @@ import vn.dayhoc.app.core.session.Roles
 import vn.dayhoc.app.core.session.isVersionBelow
 import vn.dayhoc.app.teacher.TeacherSpace
 import vn.dayhoc.app.teacher.onboarding.OnboardingScreen
+import vn.dayhoc.app.teacher.onboarding.OnboardingStep
+import vn.dayhoc.app.teacher.today.TodayViewModel
 import vn.dayhoc.app.teacher.onboarding.OnboardingViewModel
 
 @Serializable
@@ -56,8 +58,9 @@ data object CenterWaitlistRoute
 @Serializable
 data object TeacherRoute
 
+/** [startStep] = mở lại đúng bước đã bỏ qua (banner ở T03); `null` = bước đang dở theo server. */
 @Serializable
-data object OnboardingRoute
+data class OnboardingRoute(val startStep: String? = null)
 
 @Serializable
 data object ParentRoute
@@ -147,14 +150,16 @@ fun AppRoot(container: AppContainer) {
             TeacherSpace(
                 store = container.membershipStore,
                 onboardingApi = container.onboardingApi,
-                onOpenOnboarding = { nav.navigate(OnboardingRoute) { launchSingleTop = true } },
+                today = viewModel { TodayViewModel(container.todayApi) },
+                onOpenOnboarding = { step -> nav.navigate(OnboardingRoute(step?.wire)) { launchSingleTop = true } },
                 onSwitched = { m -> nav.resetTo(spaceRoute(m.role)) },
                 onAddRole = { nav.navigate(RolePickerRoute(adding = true)) },
                 onLogout = logout,
             )
         }
-        composable<OnboardingRoute> {
-            val vm = viewModel { OnboardingViewModel(container.onboardingApi, container.pendingFeeStore) }
+        composable<OnboardingRoute> { entry ->
+            val start = OnboardingStep.fromWire(entry.toRoute<OnboardingRoute>().startStep)
+            val vm = viewModel { OnboardingViewModel(container.onboardingApi, container.pendingFeeStore, startStep = start) }
             OnboardingScreen(viewModel = vm, onFinished = { nav.popBackStack() })
         }
         composable<ParentRoute> {

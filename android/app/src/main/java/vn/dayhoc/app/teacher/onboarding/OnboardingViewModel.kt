@@ -84,6 +84,8 @@ data class OnboardingUiState(
 class OnboardingViewModel(
     private val api: OnboardingApi,
     private val pendingFee: PendingFeeStore,
+    /** Mở thẳng một bước đã bỏ qua (banner ở T03); chỉ áp cho lần tải đầu, sau đó theo server. */
+    private val startStep: OnboardingStep? = null,
     private val today: () -> LocalDate = LocalDate::now,
 ) : ViewModel() {
     private val _state = MutableStateFlow(OnboardingUiState())
@@ -111,7 +113,7 @@ class OnboardingViewModel(
         _state.update { OnboardingUiState() }
         viewModelScope.launch {
             try {
-                show(apiCall { api.get() })
+                show(apiCall { api.get() }, startStep)
             } catch (e: ApiError) {
                 _state.update { it.copy(loading = false, loadFailed = true) }
             }
@@ -387,8 +389,8 @@ class OnboardingViewModel(
         return keys.run("step", step to body) { apiCall { api.setStep(step.wire, it, body) } }
     }
 
-    private fun show(onboarding: OnboardingDto) {
-        val step = onboarding.current
+    private fun show(onboarding: OnboardingDto, override: OnboardingStep? = null) {
+        val step = override ?: onboarding.current
         val changed = step != _state.value.step
         _state.update {
             it.copy(loading = false, loadFailed = false, saving = false, recordFailed = false, step = step, finished = step == null)

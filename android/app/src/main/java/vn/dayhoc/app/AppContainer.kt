@@ -14,6 +14,7 @@ import vn.dayhoc.app.core.network.Network
 import vn.dayhoc.app.core.session.MembershipStore
 import vn.dayhoc.app.core.session.SessionApi
 import vn.dayhoc.app.teacher.onboarding.OnboardingApi
+import vn.dayhoc.app.teacher.today.TodayApi
 import vn.dayhoc.app.teacher.onboarding.PendingFeeStore
 
 private val Context.sessionDataStore by preferencesDataStore(name = "session")
@@ -51,6 +52,8 @@ class AppContainer(context: Context) {
     val membershipStore = MembershipStore(sessionApi, sessionPrefs, appScope)
 
     val onboardingApi: OnboardingApi = network.retrofit.create(OnboardingApi::class.java)
+
+    val todayApi: TodayApi = network.retrofit.create(TodayApi::class.java)
 
     val pendingFeeStore = PendingFeeStore(sessionPrefs)
 

@@ -40,6 +40,16 @@ class OnboardingViewModelTest {
     private fun vm() = OnboardingViewModel(api, fees) { today }
 
     @Test
+    fun `mo tu banner thi vao dung buoc da bo qua`() = runTest {
+        api.onboarding = OnboardingDto(
+            listOf(OnboardingDto.StepDto("create_class", "done"), OnboardingDto.StepDto("add_students", "skipped"), OnboardingDto.StepDto("set_schedule", "skipped")),
+        )
+        val vm = OnboardingViewModel(api, fees, OnboardingStep.SetSchedule) { today }
+        advanceUntilIdle()
+        assertEquals(OnboardingStep.SetSchedule, vm.state.value.step)
+    }
+
+    @Test
     fun `tao lop loi mang thi thu lai dung lai id va khoa, khong tao lop thu hai`() = runTest {
         val vm = vm()
         advanceUntilIdle()
