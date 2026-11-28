@@ -69,6 +69,18 @@ class TodayRulesTest {
     }
 
     @Test
+    fun `banner bo buoc set_schedule khi trang thai trong chua co lich`() {
+        val next = NextSession("Toán 9A", LocalDate.of(2026, 11, 16), "17:30")
+        assertEquals(emptyList<OnboardingStep>(), bannerSteps(listOf(OnboardingStep.SetSchedule), true, null))
+        assertEquals(
+            listOf(OnboardingStep.AddStudents),
+            bannerSteps(listOf(OnboardingStep.AddStudents, OnboardingStep.SetSchedule), true, null),
+        )
+        assertEquals(listOf(OnboardingStep.SetSchedule), bannerSteps(listOf(OnboardingStep.SetSchedule), true, next))
+        assertEquals(listOf(OnboardingStep.SetSchedule), bannerSteps(listOf(OnboardingStep.SetSchedule), false, null))
+    }
+
+    @Test
     fun `gop cong no qua han`() {
         val rows = listOf(
             ReceivableRow(3_000_000, 5),

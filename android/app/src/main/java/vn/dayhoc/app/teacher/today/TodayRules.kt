@@ -130,3 +130,7 @@ fun earliestPlanned(sessions: List<SessionDto>): SessionDto? =
 enum class EmptyVariant { NextSession, NoSchedule }
 
 fun emptyVariant(next: NextSession?): EmptyVariant = if (next != null) EmptyVariant.NextSession else EmptyVariant.NoSchedule
+
+/** Màn A35 đã có nút "Tạo lịch" cùng đích với bước `set_schedule`, nên banner bỏ bước đó (hết bước thì ẩn). */
+fun bannerSteps(steps: List<OnboardingStep>, sessionsEmpty: Boolean, next: NextSession?): List<OnboardingStep> =
+    if (sessionsEmpty && emptyVariant(next) == EmptyVariant.NoSchedule) steps.filter { it != OnboardingStep.SetSchedule } else steps

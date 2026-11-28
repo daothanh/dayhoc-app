@@ -125,7 +125,8 @@ fun TodayContent(
                         item { Section(stringResource(R.string.today_section_sessions, sessions.size)) }
                         items(sessions, key = { it.id }) { SessionCard(it, zone, onSession, onAttendance) }
                     }
-                    if (data.setupSteps.isNotEmpty()) item { SetupBanner(data.setupSteps, onContinueSetup) }
+                    val setup = bannerSteps(data.setupSteps, sessions.isEmpty(), data.next)
+                    if (setup.isNotEmpty()) item { SetupBanner(setup, onContinueSetup) }
                     val overdue = data.overdue
                     if (overdue != null && overdue.count > 0) {
                         item { Section(stringResource(R.string.today_section_todo)) }
