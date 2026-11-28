@@ -137,10 +137,55 @@ class TodayViewModelTest {
         advanceUntilIdle()
         assertFalse(vm.state.value.offline)
     }
+
+    @Test
+    fun `loi khong phai mang khi da co du lieu thi giu du lieu va bao mot lan`() = runTest {
+        val vm = vm()
+        vm.refresh()
+        advanceUntilIdle()
+        api.sessionsError = ApiError.Http("X", 500)
+        vm.refresh()
+        advanceUntilIdle()
+
+        val s = vm.state.value
+        assertTrue(s.refreshError)
+        assertFalse(s.offline)
+        assertEquals(4, s.data!!.sessions.size)
+        vm.refreshErrorShown()
+        assertFalse(vm.state.value.refreshError)
+    }
+
+    @Test
+    fun `gio sai dinh dang thi bo buoi do, khong lam sap man`() = runTest {
+        api.today = api.today + SessionDto("bad", "c1", "Hỏng", "không phải giờ", "không phải giờ", "planned")
+        val vm = vm()
+        vm.refresh()
+        advanceUntilIdle()
+        assertEquals(4, vm.state.value.data!!.sessions.size)
+    }
+
+    @Test
+    fun `exception la bat ky lan dau thi roi ve failed`() = runTest {
+        api.sessionsCrash = IllegalStateException("boom")
+        val vm = vm()
+        vm.refresh()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.failed)
+    }
+
+    @Test
+    fun `the buoi tu chuyen trang thai theo gio`() {
+        val start = Instant.parse("2026-11-09T10:30:00Z")
+        val s = TodaySession("a", "Toán 9A", start, start.plusSeconds(5400), SessionKind.Upcoming, null, null, null, null)
+        assertEquals(SessionKind.Upcoming, arrange(listOf(s), start.minusSeconds(60)).single().kind)
+        assertEquals(SessionKind.Teaching, arrange(listOf(s), start.plusSeconds(60)).single().kind)
+        assertEquals(SessionKind.Missed, arrange(listOf(s), start.plusSeconds(5400)).single().kind)
+    }
 }
 
 private class FakeTodayApi : TodayApi {
     var sessionsError: ApiError? = null
+    var sessionsCrash: Exception? = null
     var attendanceError: ApiError? = null
     var receivablesError: ApiError? = null
     var notificationsError: ApiError? = null
@@ -167,6 +212,7 @@ private class FakeTodayApi : TodayApi {
     override suspend fun sessions(from: String, to: String): SessionList {
         sessionCalls += from to to
         sessionsError?.let { throw it }
+        sessionsCrash?.let { throw it }
         return SessionList(if (from == to) today else upcoming)
     }
 

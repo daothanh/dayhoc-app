@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.time.Clock
 import java.time.LocalDate
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -35,6 +36,8 @@ data class TodayUiState(
     val loading: Boolean = true,
     /** Tải lại khi đã có dữ liệu (kéo xuống, quay lại màn). */
     val refreshing: Boolean = false,
+    /** Làm mới lỗi không do mạng khi đã có dữ liệu (5xx, sai định dạng): màn báo một lần rồi gọi [TodayViewModel.refreshErrorShown]. */
+    val refreshError: Boolean = false,
     /** Lần tải đầu lỗi: hiện trạng thái lỗi + Thử lại. */
     val failed: Boolean = false,
     /** Tải lại lỗi do mạng khi đang có dữ liệu cũ: giữ dữ liệu, hiện banner ngoại tuyến. */
@@ -65,19 +68,26 @@ class TodayViewModel(
             try {
                 val data = fetch()
                 _state.value = TodayUiState(data = data, loading = false)
-            } catch (e: ApiError) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Mọi lỗi khác (kể cả sai định dạng) cũng rơi về failed/offline, không làm sập app.
+                val network = e == ApiError.Network || e == ApiError.Timeout
                 _state.update { s ->
-                    if (s.data == null) {
-                        TodayUiState(loading = false, failed = true)
-                    } else {
-                        s.copy(refreshing = false, offline = e == ApiError.Network || e == ApiError.Timeout)
+                    when {
+                        s.data == null -> TodayUiState(loading = false, failed = true)
+                        network -> s.copy(refreshing = false, offline = true)
+                        else -> s.copy(refreshing = false, refreshError = true)
                     }
                 }
             }
         }
     }
 
+    fun refreshErrorShown() = _state.update { it.copy(refreshError = false) }
+
     private suspend fun fetch(): TodayData = coroutineScope {
+        // shortcut: dùng múi giờ máy thay cho múi giờ tenant, đổi khi membership có timezone
         val today = LocalDate.now(clock)
         val day = today.toString()
         val sessions = async { apiCall { api.sessions(day, day) }.items }
@@ -94,9 +104,9 @@ class TodayViewModel(
         val attendance = dtos.filter { it.status == "taught" }
             .map { s -> s.id to async { soft { api.attendance(s.id) } } }
             .associate { (id, d) -> id to d }
-        val list = dtos.map { dto ->
-            val start = toInstant(dto.startsAt)
-            val end = toInstant(dto.endsAt)
+        val list = dtos.mapNotNull { dto ->
+            val start = toInstantOrNull(dto.startsAt) ?: return@mapNotNull null
+            val end = toInstantOrNull(dto.endsAt) ?: return@mapNotNull null
             val cls = byClass[dto.classId]
             val att = attendance[dto.id]?.await()
             TodaySession(
@@ -109,6 +119,7 @@ class TodayViewModel(
                 location = cls?.location?.takeIf { it.isNotBlank() },
                 attended = att?.let { it.summary.present + it.summary.late },
                 total = att?.items?.size,
+                status = dto.status,
             )
         }
         val next = if (list.isEmpty()) nextSession(today) else null
@@ -133,7 +144,9 @@ class TodayViewModel(
     /** Lỗi API của phần không bắt buộc: bỏ qua, trả `null`. */
     private suspend fun <T> soft(block: suspend () -> T): T? = try {
         apiCall(block)
-    } catch (e: ApiError) {
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
         null
     }
 }

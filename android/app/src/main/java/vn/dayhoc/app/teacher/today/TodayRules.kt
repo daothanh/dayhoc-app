@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import vn.dayhoc.app.teacher.onboarding.OnboardingDto
 import vn.dayhoc.app.teacher.onboarding.OnboardingStep
 
@@ -33,13 +34,26 @@ data class TodaySession(
     /** Chỉ có khi buổi đã điểm danh và lấy được số liệu; `null` thì chip không kèm số. */
     val attended: Int?,
     val total: Int?,
+    /** Trạng thái server (`planned`, `taught`, `cancelled`) để tính lại [kind] khi giờ trôi qua. */
+    val status: String = "planned",
 )
+
+/** Tính lại [TodaySession.kind] theo `now` rồi xếp lại: thẻ tự chuyển Sắp tới → Đang dạy → Chưa điểm danh theo giờ. */
+fun arrange(sessions: List<TodaySession>, now: Instant): List<TodaySession> =
+    sortSessions(sessions.map { it.copy(kind = classify(it.status, it.start, it.end, now)) })
 
 /** Đang dạy → Chưa điểm danh → Sắp tới → Đã điểm danh → Đã hủy; cùng nhóm thì theo giờ bắt đầu. */
 fun sortSessions(sessions: List<TodaySession>): List<TodaySession> =
     sessions.sortedWith(compareBy({ it.kind.ordinal }, { it.start }))
 
 fun toInstant(iso: String): Instant = OffsetDateTime.parse(iso).toInstant()
+
+/** Chuỗi giờ sai định dạng thì `null`: buổi đó bị bỏ qua thay vì làm sập màn. */
+fun toInstantOrNull(iso: String): Instant? = try {
+    toInstant(iso)
+} catch (e: DateTimeParseException) {
+    null
+}
 
 private val HHMM = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -86,4 +100,4 @@ fun overdueSummary(rows: List<ReceivableRow>): Overdue =
 
 /** Buổi `planned` sớm nhất trong danh sách (cho dòng "Buổi tiếp theo" của Empty). */
 fun earliestPlanned(sessions: List<SessionDto>): SessionDto? =
-    sessions.filter { it.status == "planned" }.minByOrNull { toInstant(it.startsAt) }
+    sessions.filter { it.status == "planned" && toInstantOrNull(it.startsAt) != null }.minByOrNull { toInstant(it.startsAt) }

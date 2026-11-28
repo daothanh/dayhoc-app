@@ -83,13 +83,23 @@ fun TeacherSpace(
     )
 
     val todayState by today.state.collectAsStateWithLifecycle()
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { today.refresh() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (tab == 0) today.refresh() }
+    LaunchedEffect(tab) { if (tab == 0) today.refresh() }
     val snackbar = remember { SnackbarHostState() }
     val comingSoon = stringResource(R.string.coming_soon)
     val showComingSoon: () -> Unit = {
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
             snackbar.showSnackbar(comingSoon)
+        }
+    }
+
+    val refreshFailed = stringResource(R.string.today_refresh_failed)
+    LaunchedEffect(todayState.refreshError) {
+        if (todayState.refreshError) {
+            snackbar.currentSnackbarData?.dismiss()
+            today.refreshErrorShown()
+            snackbar.showSnackbar(refreshFailed)
         }
     }
 

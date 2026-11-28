@@ -141,6 +141,7 @@
     <string name="today_retry">Thử lại</string>
     <string name="today_offline_title">Đang ngoại tuyến</string>
     <string name="today_offline_body">Bạn vẫn điểm danh được. Dữ liệu tự đồng bộ khi có mạng.</string>
+    <string name="today_refresh_failed">Không làm mới được, thử lại sau.</string>
     <string name="coming_soon">Tính năng đang hoàn thiện</string>
 
     <!-- [T02] Onboarding giáo viên (Figma B07–B09) -->

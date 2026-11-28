@@ -40,8 +40,19 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Locale
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import vn.dayhoc.app.R
+import vn.dayhoc.app.core.designsystem.DhBellButton
 import vn.dayhoc.app.core.designsystem.DhBottomNavHeight
 import vn.dayhoc.app.core.designsystem.DhCard
 import vn.dayhoc.app.core.designsystem.DhCardStyle
@@ -71,6 +82,17 @@ fun TodayContent(
     onContinueSetup: (OnboardingStep) -> Unit,
 ) {
     val data = state.data
+    // Giờ trôi qua thì thẻ buổi tự chuyển trạng thái; sang ngày mới thì tải lại.
+    var now by remember { mutableStateOf(Instant.now()) }
+    val latestRefresh by rememberUpdatedState(onRefresh)
+    LaunchedEffect(zone) {
+        while (true) {
+            delay(60_000)
+            now = Instant.now()
+            // shortcut: dùng múi giờ máy thay cho múi giờ tenant, đổi khi membership có timezone
+            if (LocalDate.now(zone) != state.data?.date) latestRefresh()
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         if (state.offline) {
             DhOfflineBanner(stringResource(R.string.today_offline_title), stringResource(R.string.today_offline_body))
@@ -90,11 +112,12 @@ fun TodayContent(
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
                 ) {
                     item { Caption(formatDateLine(data.date)) }
-                    if (data.sessions.isEmpty()) {
+                    val sessions = arrange(data.sessions, now)
+                    if (sessions.isEmpty()) {
                         item { EmptyToday(data.next, onOpenSchedule) }
                     } else {
-                        item { Section(stringResource(R.string.today_section_sessions, data.sessions.size)) }
-                        items(data.sessions, key = { it.id }) { SessionCard(it, zone, onComingSoon) }
+                        item { Section(stringResource(R.string.today_section_sessions, sessions.size)) }
+                        items(sessions, key = { it.id }) { SessionCard(it, zone, onComingSoon) }
                     }
                     if (data.setupSteps.isNotEmpty()) item { SetupBanner(data.setupSteps, onContinueSetup) }
                     val overdue = data.overdue
@@ -125,7 +148,7 @@ private fun Caption(text: String) =
 
 @Composable
 private fun Section(text: String) =
-    Text(text.uppercase(), style = TeachHubText.section, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(text.uppercase(Locale.ROOT), style = TeachHubText.section, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
 @Composable
 private fun Skeleton() {
@@ -200,7 +223,6 @@ private fun EmptyToday(next: NextSession?, onOpenSchedule: () -> Unit) {
 /** Chip đồng bộ nét đứt + chuông có chấm khi còn thông báo chưa đọc (App Bar `Root`). */
 @Composable
 fun RowScope.TodayAppBarActions(state: TodayUiState, onBell: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
     DhChip(
         stringResource(
             when {
@@ -211,13 +233,5 @@ fun RowScope.TodayAppBarActions(state: TodayUiState, onBell: () -> Unit) {
         ),
         style = DhChipStyle.Dashed,
     )
-    Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onBell), Alignment.Center) {
-        Icon(painterResource(R.drawable.ic_bell), stringResource(R.string.today_notifications), Modifier.size(24.dp))
-        if ((state.data?.unread ?: 0) > 0) {
-            Box(
-                Modifier.align(Alignment.TopStart).offset(x = 28.dp, y = 10.dp).size(8.dp).clip(CircleShape)
-                    .background(colors.onErrorContainer).border(1.5.dp, colors.background, CircleShape),
-            )
-        }
-    }
+    DhBellButton(state.data?.unread ?: 0, stringResource(R.string.today_notifications), onBell)
 }
