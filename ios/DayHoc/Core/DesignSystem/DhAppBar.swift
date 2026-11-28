@@ -29,3 +29,10 @@ struct DhAppBar<Leading: View, Trailing: View>: View {
         .overlay(alignment: .bottom) { Rectangle().fill(colors.outlineVariant).frame(height: 1.5) }
     }
 }
+
+extension DhAppBar where Leading == EmptyView {
+    /// Không có phần dẫn đầu (onboarding: chỉ tiêu đề và "Bỏ qua").
+    init(title: LocalizedStringKey?, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.init(title: title, leading: { EmptyView() }, trailing: trailing)
+    }
+}
