@@ -63,6 +63,12 @@ class TodayRulesTest {
     }
 
     @Test
+    fun `chon bien the trang thai trong theo buoi ke tiep`() {
+        assertEquals(EmptyVariant.NextSession, emptyVariant(NextSession("Toán 9A", LocalDate.of(2026, 11, 16), "17:30")))
+        assertEquals(EmptyVariant.NoSchedule, emptyVariant(null))
+    }
+
+    @Test
     fun `gop cong no qua han`() {
         val rows = listOf(
             ReceivableRow(3_000_000, 5),

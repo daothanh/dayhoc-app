@@ -125,3 +125,8 @@ fun overdueSummary(rows: List<ReceivableRow>): Overdue =
 /** Buổi `planned` sớm nhất trong danh sách (cho dòng "Buổi tiếp theo" của Empty). */
 fun earliestPlanned(sessions: List<SessionDto>): SessionDto? =
     sessions.filter { it.status == "planned" && toInstantOrNull(it.startsAt) != null }.minByOrNull { toInstant(it.startsAt) }
+
+/** Hai biến thể trạng thái "Hôm nay không có buổi": A24 còn buổi kế tiếp, A35 chưa có lịch nào. */
+enum class EmptyVariant { NextSession, NoSchedule }
+
+fun emptyVariant(next: NextSession?): EmptyVariant = if (next != null) EmptyVariant.NextSession else EmptyVariant.NoSchedule

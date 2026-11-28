@@ -59,6 +59,7 @@ import vn.dayhoc.app.core.designsystem.DhCardStyle
 import vn.dayhoc.app.core.designsystem.DhChip
 import vn.dayhoc.app.core.designsystem.DhChipStyle
 import vn.dayhoc.app.core.designsystem.DhEmptyState
+import vn.dayhoc.app.core.designsystem.DhIllustrationType
 import vn.dayhoc.app.core.designsystem.DhInfoBanner
 import vn.dayhoc.app.core.designsystem.DhListRow
 import vn.dayhoc.app.core.designsystem.DhOfflineBanner
@@ -119,7 +120,7 @@ fun TodayContent(
                     item { Caption(formatDateLine(data.date)) }
                     val sessions = arrange(data.sessions, now, state.pending, state.syncFailed)
                     if (sessions.isEmpty()) {
-                        item { EmptyToday(data.next, onOpenSchedule) }
+                        item { EmptyToday(data.next, onOpenSchedule) { onContinueSetup(OnboardingStep.SetSchedule) } }
                     } else {
                         item { Section(stringResource(R.string.today_section_sessions, sessions.size)) }
                         items(sessions, key = { it.id }) { SessionCard(it, zone, onSession, onAttendance) }
@@ -219,11 +220,21 @@ private fun SetupBanner(steps: List<OnboardingStep>, onContinue: (OnboardingStep
 }
 
 @Composable
-private fun EmptyToday(next: NextSession?, onOpenSchedule: () -> Unit) {
-    val description = if (next != null) {
-        stringResource(R.string.today_empty_next, next.className, formatShortDay(next.day), next.time)
-    } else {
-        stringResource(R.string.today_empty_none)
+private fun EmptyToday(next: NextSession?, onOpenSchedule: () -> Unit, onCreateSchedule: () -> Unit) {
+    val title = stringResource(R.string.today_empty_title)
+    when (emptyVariant(next)) {
+        EmptyVariant.NextSession -> DhEmptyState(
+            title,
+            stringResource(R.string.today_empty_next, next!!.className, formatShortDay(next.day), next.time),
+            stringResource(R.string.today_empty_action),
+            onOpenSchedule,
+        )
+        EmptyVariant.NoSchedule -> DhEmptyState(
+            title,
+            stringResource(R.string.today_empty_none),
+            stringResource(R.string.today_empty_create),
+            onCreateSchedule,
+            illustration = DhIllustrationType.CalendarPlus,
+        )
     }
-    DhEmptyState(stringResource(R.string.today_empty_title), description, stringResource(R.string.today_empty_action), onOpenSchedule)
 }

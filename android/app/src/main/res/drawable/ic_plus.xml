@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phosphor "plus" Regular (MIT), khung 16 như glyph trong badge của Figma Display/Illustration; tô màu bằng tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="16dp" android:height="16dp" android:viewportWidth="16" android:viewportHeight="16">
+    <group android:translateX="-83" android:translateY="-83">
+        <path android:fillColor="#FF000000" android:pathData="M97 91C97 91.1326 96.9473 91.2598 96.8536 91.3536C96.7598 91.4473 96.6326 91.5 96.5 91.5H91.5V96.5C91.5 96.6326 91.4473 96.7598 91.3536 96.8536C91.2598 96.9473 91.1326 97 91 97C90.8674 97 90.7402 96.9473 90.6464 96.8536C90.5527 96.7598 90.5 96.6326 90.5 96.5V91.5H85.5C85.3674 91.5 85.2402 91.4473 85.1464 91.3536C85.0527 91.2598 85 91.1326 85 91C85 90.8674 85.0527 90.7402 85.1464 90.6464C85.2402 90.5527 85.3674 90.5 85.5 90.5H90.5V85.5C90.5 85.3674 90.5527 85.2402 90.6464 85.1464C90.7402 85.0527 90.8674 85 91 85C91.1326 85 91.2598 85.0527 91.3536 85.1464C91.4473 85.2402 91.5 85.3674 91.5 85.5V90.5H96.5C96.6326 90.5 96.7598 90.5527 96.8536 90.6464C96.9473 90.7402 97 90.8674 97 91Z" />
+    </group>
+</vector>

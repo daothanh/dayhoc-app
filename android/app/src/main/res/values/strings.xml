@@ -137,6 +137,7 @@
     <string name="today_empty_next">Buổi tiếp theo: %1$s · %2$s · %3$s. Xem lịch để dời hoặc tạo buổi bù.</string>
     <string name="today_empty_none">Lịch tuần này trống. Tạo lịch để buổi học hiện ở đây.</string>
     <string name="today_empty_action">Xem lịch tuần</string>
+    <string name="today_empty_create">Tạo lịch</string>
     <string name="today_load_failed">Không tải được dữ liệu. Kiểm tra mạng rồi thử lại.</string>
     <string name="today_retry">Thử lại</string>
     <string name="today_offline_title">Đang ngoại tuyến</string>
