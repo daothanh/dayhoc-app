@@ -12,31 +12,37 @@ protocol ConnectivityMonitor: Sendable {
 /// `NWPathMonitor`: chỉ coi là online khi đường mạng `.satisfied`. Khi mạng trở lại gọi `onReconnect`.
 final class PathConnectivityMonitor: ConnectivityMonitor, @unchecked Sendable {
     private let monitor = NWPathMonitor()
-    private let state = OSAllocatedUnfairLock(initialState: (online: true, subscribers: [UUID: AsyncStream<Bool>.Continuation]()))
+    private let changes = Broadcaster<Bool>(replayLast: false, buffer: 1)
+    /// `nil` cho tới khi hệ thống báo đường mạng lần đầu; không mặc định online.
+    private let known = OSAllocatedUnfairLock<Bool?>(initialState: nil)
 
     init(onReconnect: @escaping @Sendable () -> Void) {
-        monitor.pathUpdateHandler = { [state] path in
+        monitor.pathUpdateHandler = { [known, changes] path in
             let on = path.status == .satisfied
-            let (changed, subs) = state.withLock { s -> (Bool, [AsyncStream<Bool>.Continuation]) in
-                let changed = s.online != on
-                s.online = on
-                return (changed, Array(s.subscribers.values))
+            let previous = known.withLock { k -> Bool? in
+                defer { k = on }
+                return k
             }
-            guard changed else { return }
-            subs.forEach { $0.yield(on) }
-            if on { onReconnect() }
+            guard previous != on else { return }
+            changes.send(on)
+            if on, previous == false { onReconnect() }
         }
         monitor.start(queue: DispatchQueue(label: "vn.dayhoc.app.connectivity"))
     }
 
-    var isOnline: Bool { state.withLock { $0.online } }
+    /// Đường mạng hiện tại của hệ thống (`.satisfied`); chưa có báo cáo đầu thì đọc thẳng `currentPath`.
+    var isOnline: Bool { known.withLock { $0 } ?? (monitor.currentPath.status == .satisfied) }
 
     func updates() -> AsyncStream<Bool> {
-        let (stream, continuation) = AsyncStream.makeStream(of: Bool.self, bufferingPolicy: .bufferingNewest(1))
-        let id = UUID()
-        state.withLock { $0.subscribers[id] = continuation }
+        let stream = changes.stream()
+        // Người nghe mới nhận ngay trạng thái hiện tại, rồi các thay đổi sau.
+        let (out, continuation) = AsyncStream.makeStream(of: Bool.self, bufferingPolicy: .bufferingNewest(1))
         continuation.yield(isOnline)
-        continuation.onTermination = { [state] _ in state.withLock { _ = $0.subscribers.removeValue(forKey: id) } }
-        return stream
+        let forwarding = Task {
+            for await on in stream { continuation.yield(on) }
+            continuation.finish()
+        }
+        continuation.onTermination = { _ in forwarding.cancel() }
+        return out
     }
 }

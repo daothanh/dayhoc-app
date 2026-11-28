@@ -40,19 +40,20 @@ func arrange(_ sessions: [TodaySession], now: Date, pendingIds: Set<String> = []
     let classified = sessions.map { s -> TodaySession in
         var s = s
         s.kind = classify(status: s.status, start: s.start, end: s.end, now: now)
-        s.syncFailed = failedIds.contains(s.id)
         return s
     }
-    return sortSessions(mergePending(classified, pendingIds: pendingIds))
+    return sortSessions(mergePending(classified, pendingIds: pendingIds, failedIds: failedIds))
 }
 
-/// Buổi có lô chờ đồng bộ (trừ buổi đã hủy trên server) thành thẻ Taught + `pending`.
-func mergePending(_ sessions: [TodaySession], pendingIds: Set<String>) -> [TodaySession] {
+/// Buổi có lô chờ đồng bộ (trừ buổi đã hủy trên server) thành thẻ Taught + `pending`; buổi có lô `failed`
+/// (`failedIds`, tập con của `pendingIds`) thêm `syncFailed`. Cả hai tập đã lọc theo chủ hiện tại.
+func mergePending(_ sessions: [TodaySession], pendingIds: Set<String>, failedIds: Set<String> = []) -> [TodaySession] {
     sessions.map { s in
         var s = s
         let hit = pendingIds.contains(s.id) && s.kind != .cancelled
         if hit { s.kind = .taught }
         s.pending = hit
+        s.syncFailed = hit && failedIds.contains(s.id)
         return s
     }
 }

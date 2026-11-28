@@ -88,20 +88,24 @@ struct Applied: Equatable, Sendable {
     let staleCount: Int
 }
 
-/// Áp kết quả từng mutation: `applied`/`duplicate` thì giá trị gửi đi thành giá trị đang lưu;
-/// `stale` thì lấy `current` của server (bản mới hơn thắng). `results` cùng thứ tự với `mutations`.
+/// Áp kết quả từng mutation, ghép theo `clientMutationId` (không theo thứ tự): `applied`/`duplicate` thì giá trị gửi đi
+/// thành giá trị đang lưu; `stale` thì lấy `current` của server (bản mới hơn thắng); `rejected` thì giữ nguyên hàng.
 func applyResults(_ rows: [AttRow], mutations: [OutboxMutation], results: [MutationResultDTO]) -> Applied {
     var byStudent = Dictionary(rows.map { ($0.studentId, $0) }, uniquingKeysWith: { a, _ in a })
+    let byId = Dictionary(results.map { ($0.clientMutationId, $0) }, uniquingKeysWith: { a, _ in a })
     var stale = 0
-    for (m, r) in zip(mutations, results) {
-        guard let row = byStudent[m.studentId] else { continue }
+    for m in mutations {
+        guard let r = byId[m.clientMutationId], var row = byStudent[m.studentId] else { continue }
         switch r.result {
         case "applied", "duplicate":
-            if let s = AttStatus(rawValue: m.status) { byStudent[m.studentId] = { var x = row; x.original = s; return x }() }
+            if let s = AttStatus(rawValue: m.status) { row.original = s; byStudent[m.studentId] = row }
         case "stale":
             stale += 1
             if let cur = r.current, let s = AttStatus(rawValue: cur.status) {
-                byStudent[m.studentId] = { var x = row; x.status = s; x.original = s; x.note = cur.note; return x }()
+                row.status = s
+                row.original = s
+                row.note = cur.note
+                byStudent[m.studentId] = row
             }
         default: break
         }
@@ -109,14 +113,23 @@ func applyResults(_ rows: [AttRow], mutations: [OutboxMutation], results: [Mutat
     return Applied(rows: rows.compactMap { byStudent[$0.studentId] }, staleCount: stale)
 }
 
-/// Phản hồi 200 của một lô: xong, hoặc có phần tử bị từ chối vĩnh viễn (cửa sổ sửa đóng, không còn học sinh…).
+let editWindowClosed = "ATTENDANCE_EDIT_WINDOW_CLOSED"
+
+/// Phản hồi 200 của một lô. Kết quả theo từng phần tử: chỉ "cửa sổ sửa đóng" làm cả buổi không sửa được nữa
+/// (`rejected`); phần tử `rejected` mã khác (học sinh không còn trong lớp, gói chỉ đọc…) không làm hỏng lô: lô vẫn xong
+/// (`done`) và các học sinh đó được báo riêng (`rejectedStudentIds`).
 enum BatchVerdict: Equatable, Sendable {
     case done
     case rejected(String)
 }
 
 func verdictOf(_ results: [MutationResultDTO]) -> BatchVerdict {
-    results.first { $0.result == "rejected" }.map { .rejected($0.errorCode ?? "REJECTED") } ?? .done
+    results.contains { $0.result == "rejected" && $0.errorCode == editWindowClosed } ? .rejected(editWindowClosed) : .done
+}
+
+/// Học sinh có phần tử `rejected` (không ghi được) trong phản hồi.
+func rejectedStudentIds(_ results: [MutationResultDTO]) -> [String] {
+    results.filter { $0.result == "rejected" }.map(\.studentId)
 }
 
 /// Quyết định với lô khi gọi API lỗi: giữ lại thử sau, hoặc dừng (lỗi không thử lại được).
@@ -139,10 +152,11 @@ func decideOnError(_ e: APIError, attempts: Int) -> ErrorDecision {
     }
 }
 
-/// Lỗi vĩnh viễn mà lô không còn ý nghĩa nữa (buổi đã hủy, quá hạn sửa, không thấy buổi): xóa lô.
-/// Các lỗi khác (403, 422…) giữ lô ở trạng thái `failed` để giáo viên gửi lại hoặc sửa.
+/// Lỗi vĩnh viễn mà lô không còn ý nghĩa nữa (buổi đã hủy, quá hạn sửa, `NOT_FOUND`): xóa lô. 404 không kèm mã lỗi
+/// (`HTTP_404`, vd. proxy trả) thì không xóa. Các lỗi khác (403, 422…, đủ `maxAttempts` lần lỗi server) giữ lô ở trạng
+/// thái `failed` để giáo viên gửi lại hoặc sửa.
 func isDeletableError(_ code: String) -> Bool {
-    ["SESSION_CANCELLED", "ATTENDANCE_EDIT_WINDOW_CLOSED", "NOT_FOUND", "HTTP_404"].contains(code)
+    ["SESSION_CANCELLED", editWindowClosed, "NOT_FOUND"].contains(code)
 }
 
 /// `2026-11-09T17:45:00.123+07:00`: có mili giây, đúng mẫu `date-time` của hợp đồng.

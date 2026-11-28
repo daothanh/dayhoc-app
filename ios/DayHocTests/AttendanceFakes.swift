@@ -2,15 +2,29 @@ import Foundation
 import os
 @testable import DayHoc
 
+struct InjectedError: Error {}
+
 actor InMemoryOutbox: OutboxStore {
+    private var failRemove = false
+    private var failAll = false
+    func setFailRemove(_ on: Bool) { failRemove = on }
+    func setFailAll(_ on: Bool) { failAll = on }
     private var list: [OutboxBatch]
     private var subs: [UUID: AsyncStream<[OutboxBatch]>.Continuation] = [:]
 
     init(_ initial: [OutboxBatch] = []) { list = initial }
 
-    func all() -> [OutboxBatch] { list }
+    func snapshot() -> [OutboxBatch] { list }
+    func all() throws -> [OutboxBatch] {
+        if failAll { throw InjectedError() }
+        return list
+    }
     func enqueue(_ b: OutboxBatch) { list.append(b); publish() }
-    func remove(_ key: String) { list.removeAll { $0.idempotencyKey == key }; publish() }
+    func remove(_ key: String) throws {
+        if failRemove { throw InjectedError() }
+        list.removeAll { $0.idempotencyKey == key }
+        publish()
+    }
     func addAttempt(_ key: String) { update(key) { $0.attempts += 1 } }
     func markFailed(_ key: String, code: String) { update(key) { $0.state = .failed; $0.errorCode = code } }
     func retryFailed(sessionId: String) {

@@ -28,10 +28,12 @@ struct AttendanceHost: View {
             device: services.store,
             engine: services.engine,
             connectivity: services.connectivity,
-            owner: services.currentOwner ?? OutboxOwner(userId: "unknown", tenantId: ""),
+            ownerProvider: { await app.currentOwner() },
             notify: { notice in
                 app.toast = switch notice {
-                case .saved(let n) where n > 0: String(localized: "attendance.saved.notified \(n)")
+                case .saved(_, let names) where !names.isEmpty:
+                    String(localized: "attendance.saved.rejected \(names.joined(separator: ", "))")
+                case .saved(let n, _) where n > 0: String(localized: "attendance.saved.notified \(n)")
                 case .saved: String(localized: "attendance.saved")
                 case .savedLocal: String(localized: "attendance.saved.local")
                 case .stale: String(localized: "attendance.stale")

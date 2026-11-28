@@ -140,7 +140,6 @@ struct TeacherSpaceView: View {
 
     @State private var tab = 0
     @State private var loggingOut = false
-    @State private var today: TodayModel
     /// Buổi đang mở ở sheet T05a, và buổi đang mở ở T04 (màn đẩy, không bottom nav).
     @State private var sheet: TodaySession?
     @State private var attendance: AttendanceRoute?
@@ -151,8 +150,9 @@ struct TeacherSpaceView: View {
 
     init(app: AppModel) {
         self.app = app
-        _today = State(initialValue: TodayModel(source: TodayAPI(api: app.api), outbox: app.attendance.store.batches()))
     }
+
+    private var today: TodayModel { app.today }
 
     private let items = [
         DhNavItem(id: 0, label: "nav.today", icon: "home-2"),
@@ -195,9 +195,11 @@ struct TeacherSpaceView: View {
                 .task { app.attendance.requestSync() }
                 // Đồng bộ nền xong một lô: tải lại Hôm nay; lô bị xóa vì lỗi không thử lại được thì báo.
                 .task {
-                    for await event in app.attendance.engine.events {
+                    for await event in app.attendance.engine.events() {
                         switch event {
-                        case .synced: await today.refresh()
+                        case .synced(_, let rejected):
+                            if rejected > 0 { app.toast = String(localized: "attendance.partlyRejected \(rejected)") }
+                            await today.refresh()
                         case .dropped(_, let code): app.toast = droppedText(code)
                         }
                     }
@@ -219,12 +221,11 @@ struct TeacherSpaceView: View {
                             comingSoon()
                         }
                     )
-                    .presentationDetents([.medium])
+                    .presentationDetents([.medium, .large])
                     .presentationBackground(colors.surface)
                 }
                 .navigationDestination(item: $attendance) { route in
                     AttendanceHost(app: app, route: route, timeZone: today.timeZone) { attendance = nil }
-                        .navigationBarBackButtonHidden()
                 }
                 .alert(
                     Text("logout.pending.title \(unsyncedOnLogout ?? 0)"),

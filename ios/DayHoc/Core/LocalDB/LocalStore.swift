@@ -8,7 +8,9 @@ actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
     private let key: DatabaseKey
     nonisolated(unsafe) private let defaults: UserDefaults // UserDefaults an toàn đa luồng; SDK chưa khai Sendable
     private var db: SQLiteDB?
-    private var subscribers: [UUID: AsyncStream<[OutboxBatch]>.Continuation] = [:]
+    private let changes = Broadcaster<[OutboxBatch]>(replayLast: true, buffer: 1)
+    /// Tạo mã thiết bị phải có khóa: hai luồng gọi cùng lúc không được sinh hai mã.
+    private static let deviceIdLock = NSLock()
 
     private static let rosterTTL: Int64 = 14 * 24 * 3600 * 1000
 
@@ -49,6 +51,13 @@ actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
               sessionId TEXT NOT NULL, ownerUserId TEXT NOT NULL, tenantId TEXT NOT NULL, json TEXT NOT NULL,
               cachedAt INTEGER NOT NULL, PRIMARY KEY(sessionId, ownerUserId, tenantId))
             """)
+        // Bản sao lưu iCloud/máy tính không được mang tên học sinh đi.
+        for suffix in ["", "-wal", "-shm"] {
+            var url = URL(fileURLWithPath: path + suffix)
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? url.setResourceValues(values)
+        }
         db = opened
         return opened
     }
@@ -63,16 +72,13 @@ actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
     func wipe() {
         removeFiles()
         key.delete()
-        publish([])
+        changes.send([])
     }
 
-    /// Đăng nhập: bỏ dữ liệu của người dùng/tenant khác (đăng nhập tài khoản khác sau khi hết phiên).
-    func purgeForeign(owner: OutboxOwner) throws {
-        let db = try open()
-        let args: [SQLiteValue] = [.text(owner.userId), .text(owner.tenantId)]
-        try db.run("DELETE FROM outbox_batches WHERE ownerUserId != ? OR tenantId != ?", args)
-        try db.run("DELETE FROM roster_cache WHERE ownerUserId != ? OR tenantId != ?", args)
-        try publishCurrent()
+    /// Gắn chủ mới: chỉ bản chụp danh sách (có tên học sinh) của chủ khác bị xóa. Lô của chủ cũ giữ nguyên trong
+    /// outbox, không gửi, chờ chủ đó đăng nhập lại.
+    func purgeForeignRosters(owner: OutboxOwner) throws {
+        try open().run("DELETE FROM roster_cache WHERE ownerUserId != ? OR tenantId != ?", [.text(owner.userId), .text(owner.tenantId)])
     }
 
     // MARK: Outbox
@@ -102,12 +108,12 @@ actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
             """, [.text(b.idempotencyKey), .text(b.sessionId), .text(b.owner.userId), .text(b.owner.tenantId),
                   .text(b.deviceId), .text(b.deviceTime), .text(json), .int(b.markSessionTaught ? 1 : 0),
                   .int(b.createdAt), .int(Int64(b.attempts)), .text(b.state.rawValue), b.errorCode.map { .text($0) } ?? .null])
-        try publishCurrent()
+        publishCurrent()
     }
 
     func remove(_ key: String) throws {
         try open().run("DELETE FROM outbox_batches WHERE idempotencyKey = ?", [.text(key)])
-        try publishCurrent()
+        publishCurrent()
     }
 
     func addAttempt(_ key: String) throws {
@@ -116,33 +122,35 @@ actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
 
     func markFailed(_ key: String, code: String) throws {
         try open().run("UPDATE outbox_batches SET state = 'failed', errorCode = ? WHERE idempotencyKey = ?", [.text(code), .text(key)])
-        try publishCurrent()
+        publishCurrent()
     }
 
+    /// Dòng hỏng (`CORRUPT`) không bao giờ về pending: nội dung không đọc được nên không gửi được.
     func retryFailed(sessionId: String) throws {
-        try open().run("UPDATE outbox_batches SET state = 'pending', errorCode = NULL, attempts = 0 WHERE sessionId = ? AND state = 'failed'",
-                       [.text(sessionId)])
-        try publishCurrent()
+        let db = try open()
+        for b in try all() where b.sessionId == sessionId && b.state == .failed && b.errorCode != "CORRUPT" {
+            try db.run("UPDATE outbox_batches SET state = 'pending', errorCode = NULL, attempts = 0 WHERE idempotencyKey = ?", [.text(b.idempotencyKey)])
+        }
+        publishCurrent()
     }
 
+    /// Đăng ký đồng bộ trước khi trả về; người nghe mới nhận ngay danh sách hiện tại.
     nonisolated func batches() -> AsyncStream<[OutboxBatch]> {
-        let (stream, continuation) = AsyncStream.makeStream(of: [OutboxBatch].self, bufferingPolicy: .bufferingNewest(1))
-        let id = UUID()
-        Task { await self.subscribe(id, continuation) }
-        continuation.onTermination = { _ in Task { await self.unsubscribe(id) } }
+        let stream = changes.stream()
+        Task { await self.publishSnapshotIfPresent() }
         return stream
     }
 
-    private func subscribe(_ id: UUID, _ c: AsyncStream<[OutboxBatch]>.Continuation) {
-        subscribers[id] = c
-        c.yield((try? all()) ?? [])
+    /// Chưa có CSDL (chưa đăng nhập, vừa đăng xuất) thì phát danh sách rỗng, không tạo CSDL mới.
+    private func publishSnapshotIfPresent() {
+        if db == nil && !FileManager.default.fileExists(atPath: path) { changes.send([]); return }
+        publishCurrent()
     }
 
-    private func unsubscribe(_ id: UUID) { subscribers[id] = nil }
-
-    private func publishCurrent() throws { publish(try all()) }
-
-    private func publish(_ list: [OutboxBatch]) { for c in subscribers.values { c.yield(list) } }
+    /// Lỗi đọc sau khi ghi không được làm hỏng thao tác ghi đã xong.
+    private func publishCurrent() {
+        if let list = try? all() { changes.send(list) }
+    }
 
     // MARK: Bản chụp danh sách
 
@@ -166,6 +174,8 @@ actor LocalStore: OutboxStore, RosterCache, DeviceIdProvider {
     // MARK: Mã thiết bị
 
     nonisolated func deviceId() -> String {
+        Self.deviceIdLock.lock()
+        defer { Self.deviceIdLock.unlock() }
         if let id = defaults.string(forKey: "attendance.deviceId") { return id }
         let id = UUID().uuidString.lowercased()
         defaults.set(id, forKey: "attendance.deviceId")

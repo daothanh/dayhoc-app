@@ -2647,7 +2647,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Đồng bộ lỗi"
+            "value": "Điểm danh trước chưa đồng bộ được"
           }
         }
       }
@@ -2703,6 +2703,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vẫn đăng xuất"
+          }
+        }
+      }
+    },
+    "attendance.error.corrupt": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu điểm danh lưu trên máy bị lỗi. Hãy điểm danh lại."
+          }
+        }
+      }
+    },
+    "attendance.error.owner": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa xác định được tài khoản đang dùng. Hãy thử lại."
+          }
+        }
+      }
+    },
+    "attendance.error.discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không bỏ được điểm danh đã lưu trên máy. Hãy thử lại."
+          }
+        }
+      }
+    },
+    "attendance.saved.rejected %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu điểm danh, trừ %@ (không ghi được)"
+          }
+        }
+      }
+    },
+    "attendance.partlyRejected %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đồng bộ điểm danh, nhưng %lld học sinh không ghi được"
           }
         }
       }

@@ -18,6 +18,7 @@ struct AttendanceSyncEngineTests {
         await roster.put(sessionId: "sess-1", owner: testOwner, json: "{}")
         let engine = makeEngine(service, outbox, roster)
         service.setSync { _, req in FakeService.ok(req) }
+        let events = engine.events()
 
         let report = await engine.flush()
 
@@ -27,16 +28,16 @@ struct AttendanceSyncEngineTests {
         #expect(call?.body.deviceId == "device-1")
         #expect(call?.body.deviceTime == "2026-11-09T17:45:00.000+07:00") // body đã lưu, không dựng lại
         #expect(call?.body.mutations.first?.clientMutationId == "m-k1")
-        #expect(await outbox.all().isEmpty)
+        #expect(await outbox.snapshot().isEmpty)
         #expect(await roster.get(sessionId: "sess-1", owner: testOwner) == nil)
-        #expect(await next(engine.events) == .synced(sessionId: "sess-1"))
+        #expect(await next(events) == .synced(sessionId: "sess-1"))
     }
 
     @Test func duplicateCountsAsSuccess() async {
         let outbox = InMemoryOutbox([makeBatch("k1")])
         service.setSync { _, req in FakeService.ok(req, results: FakeService.each(req, "duplicate")) }
         #expect(await makeEngine(service, outbox).flush().result == .done)
-        #expect(await outbox.all().isEmpty)
+        #expect(await outbox.snapshot().isEmpty)
     }
 
     @Test func networkErrorKeepsBatchStopsAndKeepsOrder() async {
@@ -46,8 +47,8 @@ struct AttendanceSyncEngineTests {
         #expect(report.result == .retry)
         #expect(report.outcomes["k1"] == .kept(network: true))
         #expect(service.syncCalls.count == 1)
-        #expect(await outbox.all().map(\.idempotencyKey) == ["k1", "k2"])
-        #expect(await outbox.all().first?.attempts == 0)
+        #expect(await outbox.snapshot().map(\.idempotencyKey) == ["k1", "k2"])
+        #expect(await outbox.snapshot().first?.attempts == 0)
     }
 
     @Test func serverErrorCountsAttemptRetriesSameKeyAndDoesNotBlockOtherSessions() async {
@@ -59,8 +60,8 @@ struct AttendanceSyncEngineTests {
         let engine = makeEngine(service, outbox)
         let first = await engine.flush()
         #expect(first.result == .retry)
-        #expect(await outbox.all().map(\.idempotencyKey) == ["k1"])
-        #expect(await outbox.all().first?.attempts == 1)
+        #expect(await outbox.snapshot().map(\.idempotencyKey) == ["k1"])
+        #expect(await outbox.snapshot().first?.attempts == 1)
 
         service.setSync { _, req in FakeService.ok(req) }
         #expect(await engine.flush().result == .done)
@@ -74,11 +75,11 @@ struct AttendanceSyncEngineTests {
             return FakeService.ok(req)
         }
         let engine = makeEngine(service, outbox)
+        var it = engine.events().makeAsyncIterator()
         let report = await engine.flush()
         #expect(report.result == .done)
-        #expect(await outbox.all().isEmpty)
-        #expect(report.outcomes["k1"] == .deleted("SESSION_CANCELLED"))
-        var it = engine.events.makeAsyncIterator()
+        #expect(await outbox.snapshot().isEmpty)
+        #expect(report.outcomes["k1"] == .deleted("SESSION_CANCELLED", result: nil))
         #expect(await it.next() == .dropped(sessionId: "sess-1", code: "SESSION_CANCELLED"))
         #expect(await it.next() == .synced(sessionId: "sess-2"))
     }
@@ -87,8 +88,13 @@ struct AttendanceSyncEngineTests {
         let outbox = InMemoryOutbox([makeBatch("k1")])
         service.setSync { _, req in FakeService.ok(req, results: FakeService.each(req, "rejected", code: "ATTENDANCE_EDIT_WINDOW_CLOSED")) }
         let report = await makeEngine(service, outbox).flush()
-        #expect(await outbox.all().isEmpty)
-        #expect(report.outcomes["k1"] == .deleted("ATTENDANCE_EDIT_WINDOW_CLOSED"))
+        #expect(await outbox.snapshot().isEmpty)
+        if case .deleted(let code, let result)? = report.outcomes["k1"] {
+            #expect(code == "ATTENDANCE_EDIT_WINDOW_CLOSED")
+            #expect(result != nil) // T04 áp phần server đã nhận trước khi từ chối
+        } else {
+            Issue.record("lô phải bị xóa")
+        }
     }
 
     @Test func otherPermanentErrorMarksFailedAndBlocksOnlyThatSession() async {
@@ -100,7 +106,7 @@ struct AttendanceSyncEngineTests {
         let engine = makeEngine(service, outbox)
         let report = await engine.flush()
         #expect(report.outcomes["k1"] == .failed("IDEMPOTENCY_KEY_REUSED"))
-        let left = await outbox.all()
+        let left = await outbox.snapshot()
         #expect(left.map(\.idempotencyKey) == ["k1", "k1b"]) // lô lỗi giữ lại, lô sau cùng buổi chờ, buổi khác đã gửi
         #expect(left.first?.state == .failed)
         #expect(left.first?.errorCode == "IDEMPOTENCY_KEY_REUSED")
@@ -112,7 +118,7 @@ struct AttendanceSyncEngineTests {
         await outbox.retryFailed(sessionId: "sess-1")
         service.setSync { _, req in FakeService.ok(req) }
         #expect(await engine.flush().result == .done)
-        #expect(await outbox.all().isEmpty)
+        #expect(await outbox.snapshot().isEmpty)
     }
 
     @Test func tenthServerFailureMarksFailedWithMaxAttempts() async {
@@ -120,7 +126,7 @@ struct AttendanceSyncEngineTests {
         service.setSync { _, _ in throw httpError(500, "INTERNAL_ERROR") }
         let report = await makeEngine(service, outbox).flush()
         #expect(report.outcomes["k1"] == .failed("MAX_ATTEMPTS"))
-        #expect(await outbox.all().first?.state == .failed)
+        #expect(await outbox.snapshot().first?.state == .failed)
     }
 
     @Test func onlyCurrentOwnersBatchesAreSent() async {
@@ -129,7 +135,7 @@ struct AttendanceSyncEngineTests {
         service.setSync { _, req in FakeService.ok(req) }
         _ = await makeEngine(service, outbox).flush()
         #expect(service.syncCalls.map { $0.key } == ["mine"])
-        #expect(await outbox.all().map(\.idempotencyKey) == ["theirs"])
+        #expect(await outbox.snapshot().map(\.idempotencyKey) == ["theirs"])
     }
 
     @Test func callMadeWhileBusyWaitsThenRunsAgainSoNewBatchIsNotLost() async {
@@ -150,7 +156,66 @@ struct AttendanceSyncEngineTests {
         #expect(a.result == .done)
         #expect(b.outcomes["k2"] != nil)
         #expect(service.syncCalls.map { $0.key } == ["k1", "k2"])
-        #expect(await outbox.all().isEmpty)
+        #expect(await outbox.snapshot().isEmpty)
+    }
+}
+
+extension AttendanceSyncEngineTests {
+    @Test func eventsAreBroadcastToEverySubscriberAndSurviveASubscriberStopping() async {
+        let outbox = InMemoryOutbox([makeBatch("k1")])
+        service.setSync { _, req in FakeService.ok(req) }
+        let engine = makeEngine(service, outbox)
+        let first = engine.events()
+        let second = engine.events()
+        _ = await engine.flush()
+        #expect(await next(first) == .synced(sessionId: "sess-1"))
+        #expect(await next(second) == .synced(sessionId: "sess-1"))
+
+        // Người nghe dừng (task bị hủy) không làm luồng của người nghe sau chết: lần gọi mới là luồng mới.
+        await outbox.enqueue(makeBatch("k2", session: "sess-2"))
+        let third = engine.events()
+        _ = await engine.flush()
+        #expect(await next(third) == .synced(sessionId: "sess-2"))
+    }
+
+    @Test func enqueueAndFlushWritesAndSendsUnderOneLockAndRefusesWithoutOwner() async throws {
+        let outbox = InMemoryOutbox()
+        service.setSync { _, req in FakeService.ok(req) }
+        let report = try await makeEngine(service, outbox).enqueueAndFlush(makeBatch("k1"))
+        #expect(report.outcomes["k1"] != nil)
+        #expect(await outbox.snapshot().isEmpty)
+
+        // Chưa có chủ (đăng xuất/hết phiên): không ghi gì vào outbox.
+        let blocked = makeEngine(service, outbox, owner: nil)
+        await #expect(throws: EngineError.ownerMismatch) { try await blocked.enqueueAndFlush(makeBatch("k2")) }
+        #expect(await outbox.snapshot().isEmpty)
+    }
+
+    @Test func databaseErrorAfter200DoesNotCountAttemptAndKeepsBatchPending() async {
+        let outbox = InMemoryOutbox([makeBatch("k1")])
+        await outbox.setFailRemove(true)
+        service.setSync { _, req in FakeService.ok(req) }
+        let report = await makeEngine(service, outbox).flush()
+        #expect(report.result == .retry)
+        let left = await outbox.snapshot()
+        #expect(left.single?.state == .pending)
+        #expect(left.single?.attempts == 0)
+    }
+
+    @Test func unreadableOutboxIsAbsorbedAndRetried() async {
+        let outbox = InMemoryOutbox([makeBatch("k1")])
+        await outbox.setFailAll(true)
+        #expect(await makeEngine(service, outbox).flush().result == .retry)
+        #expect(service.syncCalls.isEmpty)
+    }
+
+    @Test func batchRemovedByT04BeforeItsTurnIsNotSent() async throws {
+        let outbox = InMemoryOutbox([makeBatch("k1"), makeBatch("k2", session: "sess-2")])
+        let engine = makeEngine(service, outbox)
+        service.setSync { _, req in FakeService.ok(req) }
+        try await engine.remove(keys: ["k1"])
+        _ = await engine.flush()
+        #expect(service.syncCalls.map { $0.key } == ["k2"])
     }
 }
 

@@ -36,8 +36,12 @@ final class TodayModel {
     private(set) var offline = false
 
     /// Mã buổi có lô điểm danh chưa đồng bộ trong outbox (đọc cục bộ, không đợi mạng), và trong đó buổi có lô lỗi.
-    private(set) var pendingSessions: Set<String> = []
-    private(set) var failedSessions: Set<String> = []
+    /// Chỉ tính lô của chủ hiện tại (T03 không hiện lô của người khác).
+    var pendingSessions: Set<String> { Set(ownBatches.map(\.sessionId)) }
+    var failedSessions: Set<String> { Set(ownBatches.filter { $0.state == .failed }.map(\.sessionId)) }
+    private var batches: [OutboxBatch] = []
+    private var owner: OutboxOwner?
+    private var ownBatches: [OutboxBatch] { owner.map { o in batches.filter { $0.owner == o } } ?? [] }
 
     var syncing: Bool { loading || refreshing }
 
@@ -46,28 +50,41 @@ final class TodayModel {
     private let tz: TimeZone
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var outboxTask: Task<Void, Never>?
+    @ObservationIgnored private var ownerTask: Task<Void, Never>?
 
     // shortcut: dùng múi giờ máy thay cho múi giờ tenant, đổi khi membership có timezone
     init(
         source: any TodayDataSource,
         now: @escaping () -> Date = { .now },
         timeZone: TimeZone = .autoupdatingCurrent,
-        outbox: AsyncStream<[OutboxBatch]>? = nil
+        outbox: AsyncStream<[OutboxBatch]>? = nil,
+        owner: AsyncStream<OutboxOwner?>? = nil
     ) {
         self.source = source
         self.now = now
         tz = timeZone
-        guard let outbox else { return }
-        outboxTask = Task { [weak self] in
-            for await batches in outbox {
-                guard let self else { return }
-                self.pendingSessions = Set(batches.map(\.sessionId))
-                self.failedSessions = Set(batches.filter { $0.state == .failed }.map(\.sessionId))
+        if let outbox {
+            outboxTask = Task { [weak self] in
+                for await list in outbox {
+                    guard let self else { return }
+                    self.batches = list
+                }
+            }
+        }
+        if let owner {
+            ownerTask = Task { [weak self] in
+                for await o in owner {
+                    guard let self else { return }
+                    self.owner = o
+                }
             }
         }
     }
 
-    deinit { outboxTask?.cancel() }
+    deinit {
+        outboxTask?.cancel()
+        ownerTask?.cancel()
+    }
 
     var timeZone: TimeZone { tz }
 

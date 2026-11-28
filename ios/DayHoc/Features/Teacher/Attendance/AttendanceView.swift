@@ -1,7 +1,5 @@
 import SwiftUI
 
-private let segments: [AttStatus] = [.present, .late, .excused, .unexcused]
-
 /// [T04] Điểm danh (Figma A03–A09, A26–A28). Màn đẩy, không có bottom nav. `endsAt` lấy từ thẻ buổi ở T03.
 struct AttendanceView: View {
     let model: AttendanceModel
@@ -16,7 +14,7 @@ struct AttendanceView: View {
             DhAppBar(
                 verbatimTitle: title,
                 subtitle: subtitle,
-                onBack: { if model.canLeaveFreely { onClose() } else { model.askDiscard() } },
+                onBack: back,
                 leading: { EmptyView() },
                 trailing: { EmptyView() }
             )
@@ -46,6 +44,7 @@ struct AttendanceView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task { await model.load() }
         .task { await model.observeConnectivity() }
+        .background(SwipeBackGate(allowed: model.canLeaveFreely))
         .onChange(of: model.done) { _, done in if done { onClose() } }
         .alert("attendance.discard.title", isPresented: Binding(get: { model.confirmDiscard }, set: { if !$0 { model.stay() } })) {
             Button("attendance.discard.stay", role: .cancel) { model.stay() }
@@ -53,6 +52,11 @@ struct AttendanceView: View {
         } message: {
             Text("attendance.discard.body")
         }
+    }
+
+    private func back() {
+        if model.saving { return }
+        if model.canLeaveFreely { onClose() } else { model.askDiscard() }
     }
 
     private var title: String {
@@ -96,8 +100,8 @@ struct AttendanceView: View {
                     ForEach(model.rows, id: \.studentId) { row in
                         StudentRow(
                             row: row, expanded: model.expandedId == row.studentId, enabled: model.readOnly == nil,
-                            onToggle: { withAnimation(.easeInOut(duration: 0.15)) { model.toggle(row.studentId) } },
-                            onSelect: { status in withAnimation(.easeInOut(duration: 0.15)) { model.select(row.studentId, status) } }
+                            onToggle: { model.toggle(row.studentId) },
+                            onSelect: { model.select(row.studentId, $0) }
                         )
                     }
                 } header: {
@@ -139,6 +143,9 @@ struct AttendanceView: View {
         case "ATTENDANCE_EDIT_WINDOW_CLOSED": String(localized: "attendance.error.windowClosed")
         case "SESSION_CANCELLED": String(localized: "attendance.error.cancelled")
         case "NOT_FOUND": String(localized: "attendance.error.notFound")
+        case "CORRUPT": String(localized: "attendance.error.corrupt")
+        case AttendanceLocalError.ownerMissing: String(localized: "attendance.error.owner")
+        case AttendanceLocalError.discardFailed: String(localized: "attendance.error.discard")
         default: String(localized: "attendance.error.generic")
         }
     }
@@ -165,15 +172,12 @@ struct AttendanceView: View {
         case .saveChanges: "attendance.saveChanges"
         case .saveLocal: "attendance.saveLocal"
         }
-        return DhPrimaryButton(title: text, loadingTitle: "attendance.saving", isLoading: model.saving) {
-            Task { await model.save() }
+        return DhBottomActionBar {
+            DhPrimaryButton(title: text, loadingTitle: "attendance.saving", isLoading: model.saving) {
+                Task { await model.save() }
+            }
+            .disabled(!model.canSave)
         }
-        .disabled(!model.canSave)
-        .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
-        .padding(.top, TeachHubTokens.Dimens.spacingContent)
-        .padding(.bottom, TeachHubTokens.Dimens.spacingPage)
-        .background(colors.surface)
-        .overlay(alignment: .top) { Rectangle().fill(colors.outlineVariant).frame(height: 1.5) }
     }
 }
 
@@ -187,44 +191,27 @@ private struct StudentRow: View {
     @Environment(\.dhColors) private var colors
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: expanded || row.changed ? 12 : 0)
-        VStack(spacing: 0) {
-            VStack(spacing: TeachHubTokens.Dimens.spacingControl) {
-                Button(action: onToggle) {
-                    HStack(spacing: TeachHubTokens.Dimens.spacingContent) {
-                        DhAvatar(name: row.name)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(verbatim: row.name)
-                                .dhText(expanded ? TeachHubTokens.Typo.bodyBold : TeachHubTokens.Typo.body)
-                                .foregroundStyle(colors.onSurface)
-                                .lineLimit(1)
-                            if let sub = subtitle {
-                                Text(sub).dhText(TeachHubTokens.Typo.caption).foregroundStyle(colors.onSurfaceVariant).lineLimit(1)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        chip
-                    }
-                    .frame(minHeight: 40)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .disabled(!enabled)
-                .accessibilityElement(children: .combine)
-                if expanded {
-                    DhSegmented(
-                        options: segments.map { statusName($0) },
-                        selectedIndex: segments.firstIndex(of: row.status) ?? 0,
-                        onSelect: { onSelect(segments[$0]) }
-                    )
+        DhExpandableRow(expanded: expanded, highlighted: row.changed, onTap: enabled ? onToggle : nil) {
+            DhAvatar(name: row.name)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(verbatim: row.name)
+                    .dhText(expanded ? TeachHubTokens.Typo.bodyBold : TeachHubTokens.Typo.body)
+                    .foregroundStyle(colors.onSurface)
+                    .lineLimit(1)
+                if let sub = subtitle {
+                    Text(sub).dhText(TeachHubTokens.Typo.caption).foregroundStyle(colors.onSurfaceVariant).lineLimit(1)
                 }
             }
-            .padding(TeachHubTokens.Dimens.spacingControl)
-            if !expanded && !row.changed { Rectangle().fill(colors.surfaceContainerLow).frame(height: 1) }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            chip
+        } expandedContent: {
+            DhSegmented(
+                options: AttStatus.allCases.map(\.title),
+                selectedIndex: AttStatus.allCases.firstIndex(of: row.status) ?? 0,
+                onSelect: { onSelect(AttStatus.allCases[$0]) }
+            )
         }
-        .background(expanded ? colors.surfaceContainerLow : colors.surface, in: shape)
-        .overlay { if row.changed && !expanded { shape.stroke(colors.primary, lineWidth: 1.5) } }
-        .clipShape(shape)
+        .accessibilityElement(children: .contain)
     }
 
     private var subtitle: String? {
@@ -239,15 +226,58 @@ private struct StudentRow: View {
         case .excused: .warningFilled
         case .unexcused: .dangerFilled
         }
-        return DhChip(text: statusName(row.status), style: style)
+        return DhChip(text: row.status.title, style: style)
     }
 }
 
-func statusName(_ s: AttStatus) -> String {
-    switch s {
-    case .present: String(localized: "attendance.status.present")
-    case .late: String(localized: "attendance.status.late")
-    case .excused: String(localized: "attendance.status.excused")
-    case .unexcused: String(localized: "attendance.status.unexcused")
+extension AttStatus {
+    /// Nhãn hiển thị (Có mặt · Muộn · Vắng CP · Vắng KP).
+    var title: String {
+        switch self {
+        case .present: String(localized: "attendance.status.present")
+        case .late: String(localized: "attendance.status.late")
+        case .excused: String(localized: "attendance.status.excused")
+        case .unexcused: String(localized: "attendance.status.unexcused")
+        }
     }
+}
+
+/// Bật/tắt cử chỉ vuốt cạnh trái để quay lại của UINavigationController theo `allowed`: ẩn nav bar thì SwiftUI tắt cử
+/// chỉ này; ở đây bật lại khi không có gì để mất (không dirty, không đang lưu) và chặn khi có.
+private struct SwipeBackGate: UIViewControllerRepresentable {
+    let allowed: Bool
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var allowed = true
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool { allowed }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Probe: UIViewController {
+        var coordinator: Coordinator?
+        private weak var previousDelegate: (any UIGestureRecognizerDelegate)?
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            guard let gesture = navigationController?.interactivePopGestureRecognizer, let coordinator else { return }
+            previousDelegate = gesture.delegate
+            gesture.delegate = coordinator
+            gesture.isEnabled = true
+        }
+
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            navigationController?.interactivePopGestureRecognizer?.delegate = previousDelegate
+        }
+    }
+
+    func makeUIViewController(context: Context) -> Probe {
+        let probe = Probe()
+        probe.coordinator = context.coordinator
+        context.coordinator.allowed = allowed
+        return probe
+    }
+
+    func updateUIViewController(_ controller: Probe, context: Context) { context.coordinator.allowed = allowed }
 }

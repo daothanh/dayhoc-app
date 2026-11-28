@@ -68,15 +68,16 @@ struct LocalStoreTests {
         #expect(await s.get(sessionId: "s", owner: testOwner) == nil)
     }
 
-    @Test func purgeForeignKeepsOnlyCurrentOwner() async throws {
+    @Test func purgeForeignRostersKeepsEveryBatchOfEveryOwner() async throws {
         defer { cleanup() }
         let s = store()
         let other = OutboxOwner(userId: "u2", tenantId: "t1")
         try await s.enqueue(makeBatch("mine"))
         try await s.enqueue(makeBatch("theirs", owner: other))
         await s.put(sessionId: "s", owner: other, json: "{}")
-        try await s.purgeForeign(owner: testOwner)
-        #expect(try await s.all().map(\.idempotencyKey) == ["mine"])
+        try await s.purgeForeignRosters(owner: testOwner)
+        // Lô của chủ cũ giữ nguyên (không gửi), chỉ bản chụp danh sách của chủ khác bị xóa.
+        #expect(Set(try await s.all().map(\.idempotencyKey)) == ["mine", "theirs"])
         #expect(await s.get(sessionId: "s", owner: other) == nil)
     }
 
@@ -94,5 +95,36 @@ struct LocalStoreTests {
         let s = LocalStore(directory: dir, key: key, defaults: d)
         #expect(s.deviceId() == s.deviceId())
         #expect(UUID(uuidString: s.deviceId()) != nil)
+    }
+
+    @Test func dbFileIsExcludedFromBackup() async throws {
+        defer { cleanup() }
+        let s = store()
+        try await s.enqueue(makeBatch("a"))
+        let values = try URL(fileURLWithPath: dbPath).resourceValues(forKeys: [.isExcludedFromBackupKey])
+        #expect(values.isExcludedFromBackup == true)
+    }
+
+    @Test func retryFailedDoesNotReviveABatchWhoseBodyIsUnreadable() async throws {
+        defer { cleanup() }
+        let s = store()
+        var failed = makeBatch("a")
+        failed.state = .failed
+        failed.errorCode = "VALIDATION_FAILED"
+        try await s.enqueue(failed)
+        try await s.retryFailed(sessionId: "sess-1")
+        #expect(try await s.all().first?.state == .pending)
+    }
+
+    @Test func batchesStreamsAreIndependentAndRegisterBeforeReturning() async throws {
+        defer { cleanup() }
+        let s = store()
+        var a = s.batches().makeAsyncIterator()
+        var b = s.batches().makeAsyncIterator()
+        _ = await a.next()
+        _ = await b.next()
+        try await s.enqueue(makeBatch("x"))
+        #expect(await a.next()?.count == 1)
+        #expect(await b.next()?.count == 1)
     }
 }

@@ -23,14 +23,7 @@ struct SessionSheet: View {
                     .foregroundStyle(colors.onSurface)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button(action: onDismiss) {
-                    Image("ic_close").renderingMode(.template).resizable().frame(width: 24, height: 24)
-                        .foregroundStyle(colors.onSurface)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("session.sheet.close")
+                DhIconButton(icon: "ic_close", label: "session.sheet.close", action: onDismiss)
             }
             Text(repeatText.map { String(localized: "session.sheet.repeat \(day) \($0)") } ?? day)
                 .dhText(TeachHubTokens.Typo.body)
@@ -54,8 +47,7 @@ struct SessionSheet: View {
 
     private func chevron(_ title: LocalizedStringKey, _ subtitle: String?) -> some View {
         DhListRow(title: title, subtitle: subtitle, onTap: onComingSoon) {
-            Image("ic_arrow_right").renderingMode(.template).resizable().frame(width: 20, height: 20)
-                .foregroundStyle(colors.onSurface)
+            DhChevron()
         }
     }
 }
