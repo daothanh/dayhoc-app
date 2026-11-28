@@ -109,6 +109,7 @@ private fun dhStyle(spec: Typo.Spec) = TextStyle(
 object TeachHubText {
     val h1 = dhStyle(Typo.h1)
     val h2 = dhStyle(Typo.h2)
+    val h3 = dhStyle(Typo.h3)
     val body = dhStyle(Typo.body)
     val bodyBold = dhStyle(Typo.bodyBold)
     val label = dhStyle(Typo.label)
