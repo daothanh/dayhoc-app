@@ -57,10 +57,14 @@ struct DhBottomNav: View {
     }
 }
 
-/// Nút phụ trung tính (DS v2 `outlinePrimary`): viền outline, chữ onSurface, cao 48.
+/// Nút phụ trung tính (DS v2 `outlinePrimary`): viền `buttonBorder` 2px, chữ onSurface, cao 48.
+/// `small` = cao 40 cho nút nằm trong nội dung; `icon` là ký hiệu SF dẫn trước nhãn (Figma: plus).
 struct DhSecondaryButton: View {
     let title: LocalizedStringKey
     var fullWidth = true
+    var small = false
+    /// Ký hiệu SF dẫn trước nhãn; `nil` thì không có.
+    var icon: String?
     /// Định danh cho UI test; `nil` thì không gắn.
     var identifier: String?
     let action: () -> Void
@@ -70,16 +74,22 @@ struct DhSecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.body.weight(.semibold))
-                .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 48)
-                .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
-                .foregroundStyle(isEnabled ? colors.onSurface : colors.onSurfaceVariant)
-                .overlay(
-                    RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.buttonRadius)
-                        .stroke(isEnabled ? colors.outline : colors.outlineVariant, lineWidth: 1.5)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.buttonRadius))
+            HStack(spacing: TeachHubTokens.Dimens.spacingControl) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 20))
+                }
+                Text(title)
+                    .dhText(small ? TeachHubTokens.Typo.buttonSmall : TeachHubTokens.Typo.button)
+            }
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: small ? 40 : 48)
+            .padding(.horizontal, small ? TeachHubTokens.Dimens.spacingContent : TeachHubTokens.Dimens.spacingPage)
+            .foregroundStyle(isEnabled ? colors.onSurface : colors.onSurfaceVariant)
+            .overlay(
+                RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.buttonRadius)
+                    .stroke(isEnabled ? colors.buttonBorder : colors.outlineVariant, lineWidth: 2)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.buttonRadius))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(identifier ?? "")

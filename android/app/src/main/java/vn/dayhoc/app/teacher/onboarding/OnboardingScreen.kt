@@ -3,7 +3,6 @@ package vn.dayhoc.app.teacher.onboarding
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.ContactsContract.CommonDataKinds.Phone
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -38,13 +37,12 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
@@ -71,16 +69,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import vn.dayhoc.app.R
+import vn.dayhoc.app.core.designsystem.DhInfoBanner
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
+import vn.dayhoc.app.core.designsystem.DhRadio
 import vn.dayhoc.app.core.designsystem.DhSecondaryButton
 import vn.dayhoc.app.core.designsystem.DhTextField
+import vn.dayhoc.app.core.designsystem.TeachHubText
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
 private const val TOTAL_STEPS = 3
@@ -88,13 +88,12 @@ private val DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 private const val DAY_MS = 86_400_000L
 private val DURATIONS = listOf(60, 90, 120)
 
-/** [T02] Thiết lập lớp học 3 bước (Figma B07–B09). [onExit] khi giáo viên chọn thoát giữa chừng. */
+/** [T02] Thiết lập lớp học 3 bước (Figma B07–B09). Thiết lập bắt buộc, chỉ rời khi hoàn tất. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit, onExit: () -> Unit) {
+fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    var confirmExit by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.finished) { if (state.finished) onFinished() }
     val snackText = state.snack?.let { it.text ?: it.res?.let { res -> stringResource(res) } }
@@ -106,22 +105,16 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit, onE
     }
     // Sang bước khác: bỏ snackbar cũ để không che nút của bước mới.
     LaunchedEffect(state.step) { snackbar.currentSnackbarData?.dismiss() }
-    BackHandler { confirmExit = true }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.onboarding_title)) },
-                navigationIcon = {
-                    IconButton(onClick = { confirmExit = true }) {
-                        Icon(painterResource(R.drawable.ic_close), stringResource(R.string.onboarding_exit))
-                    }
-                },
                 actions = {
                     val step = state.step
-                    if (step != null && !state.loading) {
-                        // Bước 1 bắt buộc (US-0.2 AC2).
-                        TextButton(onClick = viewModel::skip, enabled = step.skippable && !state.saving) {
+                    // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
+                    if (step != null && !state.loading && step.skippable) {
+                        TextButton(onClick = viewModel::skip, enabled = !state.saving) {
                             Text(stringResource(R.string.onboarding_skip))
                         }
                     }
@@ -143,23 +136,6 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit, onE
             }
         }
     }
-
-    if (confirmExit) {
-        AlertDialog(
-            onDismissRequest = { confirmExit = false },
-            title = { Text(stringResource(R.string.onboarding_exit_title)) },
-            text = { Text(stringResource(R.string.onboarding_exit_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmExit = false
-                    onExit()
-                }) { Text(stringResource(R.string.onboarding_exit_leave)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmExit = false }) { Text(stringResource(R.string.onboarding_exit_stay)) }
-            },
-        )
-    }
 }
 
 /** "Bước N/3" + thanh 3 đoạn, tô tới bước đang làm. */
@@ -167,16 +143,20 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit, onE
 private fun ProgressHeader(step: OnboardingStep) {
     val n = step.ordinal + 1
     Column(Modifier.padding(start = Dimens.spacingPage, end = Dimens.spacingPage, top = 8.dp)) {
-        Text(stringResource(R.string.onboarding_progress, n, TOTAL_STEPS), style = MaterialTheme.typography.labelMedium)
+        Text(
+            stringResource(R.string.onboarding_progress, n, TOTAL_STEPS),
+            style = TeachHubText.label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             repeat(TOTAL_STEPS) { i ->
                 Box(
                     Modifier
                         .weight(1f)
-                        .height(4.dp)
+                        .height(5.dp)
                         .clip(CircleShape)
                         .background(
-                            if (i < n) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                            if (i < n) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerLow,
                         ),
                 )
             }
@@ -253,19 +233,14 @@ private fun ColumnScope.CreateClassStep(state: OnboardingUiState, vm: Onboarding
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 44.dp)
                         .selectable(f.feeType == type, role = Role.RadioButton) {
                             vm.updateClassForm { it.copy(feeType = type) }
                         },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // DS v2: chỉ báo đang chọn màu mực, không dùng lime.
-                    RadioButton(
-                        selected = f.feeType == type,
-                        onClick = null,
-                        colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.onSurface),
-                    )
-                    Text(stringResource(label), Modifier.padding(start = 12.dp))
+                    DhRadio(selected = f.feeType == type)
+                    Text(stringResource(label), style = TeachHubText.body, modifier = Modifier.padding(start = 12.dp))
                 }
             }
         }
@@ -344,7 +319,7 @@ private fun ColumnScope.AddStudentsStep(state: OnboardingUiState, vm: Onboarding
             enabled = !form.busy,
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DhTextField(
                 value = form.phone,
                 onValueChange = { vm.updateStudent(phone = it.take(20)) },
@@ -366,22 +341,24 @@ private fun ColumnScope.AddStudentsStep(state: OnboardingUiState, vm: Onboarding
                 },
                 enabled = !form.busy,
                 shape = RoundedCornerShape(Dimens.fieldRadius),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                modifier = Modifier.padding(top = 8.dp).size(56.dp),
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.size(44.dp),
             ) {
-                Icon(painterResource(R.drawable.ic_person), stringResource(R.string.contacts_pick_phone))
+                Icon(painterResource(R.drawable.ic_address_book), stringResource(R.string.contacts_pick_phone))
             }
         }
         DhSecondaryButton(
             text = stringResource(if (form.busy) R.string.onboarding_saving else R.string.onboarding_add_student),
             onClick = { vm.addStudent(guardian) },
             enabled = !form.busy && !form.enrollFailed,
+            icon = painterResource(R.drawable.ic_add),
             modifier = Modifier.fillMaxWidth(),
         )
         if (form.added.isNotEmpty()) {
             Text(
                 stringResource(R.string.onboarding_added_count, form.added.size),
-                style = MaterialTheme.typography.labelMedium,
+                style = TeachHubText.section,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),
             )
             form.added.forEach { s -> AddedRow(s) }
@@ -406,17 +383,21 @@ private fun AddedRow(s: AddedStudent) {
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
     ) {
         Box(
-            Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+            Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
             Alignment.Center,
         ) {
-            Text(initials(s.name), color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Bold)
+            Text(
+                initials(s.name),
+                style = TeachHubText.bodyBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
         Column {
-            Text(s.name, style = MaterialTheme.typography.bodyLarge)
+            Text(s.name, style = TeachHubText.bodyBold)
             if (s.phone != null) {
                 Text(
                     stringResource(R.string.onboarding_added_phone, s.phone),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = TeachHubText.caption,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -479,13 +460,13 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Text(stringResource(R.string.onboarding_rules_label) + " *", style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.onboarding_rules_label) + " *", style = TeachHubText.label)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val style = MaterialTheme.typography.labelMedium
+            val style = TeachHubText.label
             Text(stringResource(R.string.onboarding_rule_weekday) + " *", style = style, modifier = Modifier.weight(W_DAY))
             Text(stringResource(R.string.onboarding_rule_start) + " *", style = style, modifier = Modifier.weight(W_TIME))
             Text(stringResource(R.string.onboarding_rule_duration), style = style, modifier = Modifier.weight(W_DURATION))
-            if (rows.size > 1) Spacer(Modifier.width(40.dp))
+            if (rows.size > 1) Spacer(Modifier.width(44.dp))
         }
         rows.forEachIndexed { i, row ->
             // Key theo hàng: xóa hàng giữa không lẫn trạng thái menu của hàng khác.
@@ -507,7 +488,7 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
                             modifier = Modifier.weight(W_DURATION),
                         )
                         if (rows.size > 1) {
-                            IconButton(onClick = { vm.removeRow(i) }, modifier = Modifier.size(40.dp)) {
+                            IconButton(onClick = { vm.removeRow(i) }, modifier = Modifier.size(44.dp)) {
                                 Icon(painterResource(R.drawable.ic_close), stringResource(R.string.onboarding_rule_remove, i + 1))
                             }
                         }
@@ -524,11 +505,14 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
                 }
             }
         }
-        // Nút phụ trung tính (DS v2); Figma: chép giờ và thời lượng của hàng cuối, thứ để trống.
+        // Nút phụ trung tính (Figma Actions/Button Secondary, size S): Figma chép giờ và thời lượng
+        // của hàng cuối, thứ để trống.
         DhSecondaryButton(
             text = stringResource(R.string.onboarding_rule_add),
             onClick = vm::addRow,
             enabled = rows.size < OnboardingViewModel.MAX_RULES,
+            icon = painterResource(R.drawable.ic_add),
+            small = true,
         )
         val cls = state.classItem
         val rules = rows.mapNotNull { r -> r.weekday?.let { RuleDto(it, r.start, r.duration) } }
@@ -537,20 +521,12 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
             val (date, rule) = first
             val whenText = "${days[rule.weekday - 1]} ${date.dayOfMonth}/${date.monthValue} · " +
                 "${rule.startTime}–${hhmm(minutesOf(rule.startTime) + rule.durationMin)}"
-            Surface(
-                shape = RoundedCornerShape(Dimens.cardRadius),
-                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) {
-                Column(Modifier.padding(Dimens.spacingContent), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.onboarding_first_session, whenText), style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        rules.sortedWith(compareBy({ it.weekday }, { minutesOf(it.startTime) }))
-                            .joinToString(" · ") { "${days[it.weekday - 1]} ${it.startTime}" },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
+            DhInfoBanner(
+                title = stringResource(R.string.onboarding_first_session, whenText),
+                description = rules.sortedWith(compareBy({ it.weekday }, { minutesOf(it.startTime) }))
+                    .joinToString(" · ") { "${days[it.weekday - 1]} ${it.startTime}" },
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
     }
     RecordNotice(state, vm)
@@ -601,7 +577,7 @@ private fun ColumnScope.ScrollBody(content: @Composable ColumnScope.() -> Unit) 
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
             .padding(Dimens.spacingPage),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         content = content,
     )
 }
@@ -609,20 +585,23 @@ private fun ColumnScope.ScrollBody(content: @Composable ColumnScope.() -> Unit) 
 @Composable
 private fun Heading(title: String, caption: String) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineMedium)
-        Text(caption, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = TeachHubText.h1)
+        Text(caption, style = TeachHubText.body, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
-/** Thanh hành động đáy: một nút chính (Figma Bottom Action Bar). */
+/** Thanh hành động đáy: một nút chính (Figma Bottom Action Bar), nền trắng, vạch kẻ trên. */
 @Composable
 private fun ActionBar(text: String, enabled: Boolean, onClick: () -> Unit) {
-    DhPrimaryButton(
-        text = text,
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-    )
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).navigationBarsPadding()) {
+        HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        DhPrimaryButton(
+            text = text,
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+        )
+    }
 }
 
 @Composable
@@ -673,20 +652,20 @@ private fun PickerField(value: String, label: String, placeholder: String?, onCl
     }
 }
 
-/** Ô gọn cho hàng lịch (cao 48, viền outline). */
+/** Ô gọn cho hàng lịch (cao 44, viền outline). */
 @Composable
 private fun CompactField(text: String, onClick: () -> Unit, modifier: Modifier, placeholder: Boolean = false) {
     val shape = RoundedCornerShape(Dimens.fieldRadius)
     Surface(
         shape = shape,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        modifier = modifier.height(48.dp).clip(shape).clickable(role = Role.Button, onClick = onClick),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
+        modifier = modifier.height(44.dp).clip(shape).clickable(role = Role.Button, onClick = onClick),
     ) {
-        Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text,
                 maxLines = 1,
-                style = MaterialTheme.typography.bodyLarge,
+                style = TeachHubText.body,
                 color = if (placeholder) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )

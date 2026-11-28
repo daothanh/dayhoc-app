@@ -25,6 +25,6 @@ class HeaderInterceptor(
 
     companion object {
         const val AUTHORIZATION = "Authorization"
-        private val PUBLIC_PATHS = listOf("/auth/otp/send", "/auth/login", "/auth/refresh")
+        private val PUBLIC_PATHS = listOf("/auth/otp/send", "/auth/login", "/auth/sso/google", "/auth/refresh")
     }
 }

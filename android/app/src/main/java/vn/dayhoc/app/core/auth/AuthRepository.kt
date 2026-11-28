@@ -21,6 +21,21 @@ class AuthRepository(
 
     suspend fun login(email: String, code: String): UserDto {
         val response = apiCall { api.login(LoginRequest(method = "email_otp", email = email, code = code)) }
+        return saveSession(response)
+    }
+
+    suspend fun loginWithGoogle(idToken: String): UserDto {
+        val response = apiCall { api.ssoGoogle(GoogleSsoRequest(idToken)) }
+        return saveSession(response)
+    }
+
+    /** [nonce] là giá trị thô; bản băm SHA-256 của nó đã gửi cho Apple khi xin token. */
+    suspend fun loginWithApple(idToken: String, nonce: String, fullName: String?): UserDto {
+        val response = apiCall { api.ssoApple(AppleSsoRequest(idToken, nonce, fullName)) }
+        return saveSession(response)
+    }
+
+    private suspend fun saveSession(response: LoginResponse): UserDto {
         sessionMutex.withLock { tokenStore.save(Tokens(response.accessToken, response.refreshToken)) }
         return response.user
     }

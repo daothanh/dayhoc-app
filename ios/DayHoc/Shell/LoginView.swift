@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 // Figma B01: khoảng 18 giữa hình minh họa và khối đăng nhập (chưa có token tương ứng).
@@ -9,14 +10,12 @@ private let privacyUrl = "https://dayhoc.app/privacy-policy"
 
 /// [T01] Chào & Đăng nhập (Figma B01): logo, khẩu hiệu, hình minh họa, hai nút SSO, chia cách
 /// "hoặc dùng email", ô email, nút gửi mã và dòng điều khoản.
-///
-/// Nút Google/Apple đã dựng theo thiết kế nhưng chưa nối SDK: bấm vào chỉ báo dùng email.
-/// Luồng SSO thật làm ở task riêng.
 struct LoginView: View {
     @Bindable var model: LoginModel
 
     @State private var toast: String?
     @Environment(\.dhColors) private var colors
+    @Environment(\.authorizationController) private var authorizationController
 
     var body: some View {
         NavigationStack {
@@ -50,8 +49,16 @@ struct LoginView: View {
             }
             DhHeroClasses()
             Color.clear.frame(height: heroActionGap)
-            DhAppleButton(title: "login.continueApple", action: showSsoSoon)
-            DhGoogleButton(title: "login.continueGoogle", action: showSsoSoon)
+            DhAppleButton(
+                title: model.isAppleSigningIn ? "loading" : "login.continueApple",
+                enabled: model.canStartSso,
+                action: signInWithApple
+            )
+            DhGoogleButton(
+                title: model.isGoogleSigningIn ? "login.googleSigningIn" : "login.continueGoogle",
+                enabled: model.canStartSso,
+                action: signInWithGoogle
+            )
             DhDivider(label: "login.orEmail")
             DhTextField(
                 label: "login.email",
@@ -67,7 +74,7 @@ struct LoginView: View {
             .autocorrectionDisabled()
             .submitLabel(.send)
             .onSubmit(send)
-            .disabled(model.isSending)
+            .disabled(model.isSubmitting)
             DhPrimaryButton(
                 title: "login.sendOtp",
                 loadingTitle: "login.sending",
@@ -75,7 +82,7 @@ struct LoginView: View {
                 identifier: "login.sendOtp",
                 action: send
             )
-            .disabled(!model.isEmailValid)
+            .disabled(!model.isEmailValid || model.isSubmitting)
             termsNotice
         }
         .padding(TeachHubTokens.Dimens.spacingPage)
@@ -102,8 +109,31 @@ struct LoginView: View {
         text[range].foregroundColor = colors.secondary
     }
 
-    private func showSsoSoon() {
-        toast = String(localized: "login.ssoSoon")
+    private func signInWithApple() {
+        Task {
+            await model.continueWithApple { hashedNonce in
+                let request = ASAuthorizationAppleIDProvider().createRequest()
+                request.requestedScopes = [.email, .fullName]
+                request.nonce = hashedNonce
+                let result = try await authorizationController.performRequests([request])
+                guard case .appleID(let credential) = result,
+                      let data = credential.identityToken,
+                      let idToken = String(data: data, encoding: .utf8), !idToken.isEmpty else {
+                    throw MissingAppleIdentityToken()
+                }
+                return LoginModel.AppleCredential(
+                    idToken: idToken,
+                    email: credential.email,
+                    fullName: credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) }
+                )
+            }
+        }
+    }
+
+    private struct MissingAppleIdentityToken: Error {}
+
+    private func signInWithGoogle() {
+        Task { await model.continueWithGoogle() }
     }
 
     /// Bước OTP hiện khi đã gửi mã; bấm "Đổi email" hoặc quay lại là về bước nhập email.
@@ -134,6 +164,8 @@ extension LoginModel.Failure {
         case .offline: "error.offline"
         case .unavailable: "login.unavailable"
         case .generic: "login.failed"
+        case .emailRequiresOtp: "login.googleRequiresOtp"
+        case .googleFailed: "login.googleFailed"
         }
     }
 
@@ -145,6 +177,8 @@ extension LoginModel.Failure {
         case .offline: String(localized: "error.offline")
         case .unavailable: String(localized: "login.unavailable")
         case .generic: String(localized: "login.failed")
+        case .emailRequiresOtp: String(localized: "login.googleRequiresOtp")
+        case .googleFailed: String(localized: "login.googleFailed")
         }
     }
 }

@@ -51,13 +51,8 @@ class AppContainer(context: Context) {
     val pendingFeeStore = PendingFeeStore(sessionPrefs)
 
     /**
-     * Giáo viên đã rời onboarding trong lần mở app này: không tự mở lại tới lần mở app sau
-     * (US-0.2 AC3: mở lại app thì tiếp đúng bước dở).
+     * Đăng xuất: thu hồi phiên (nếu được), xóa token và mọi trạng thái của phiên trên máy.
      */
-    @Volatile
-    var onboardingDismissed = false
-
-    /** Đăng xuất: thu hồi phiên (nếu được), xóa token và mọi trạng thái của phiên trên máy. */
     suspend fun logout() {
         authRepository.logout()
         forgetSession()
@@ -69,6 +64,5 @@ class AppContainer(context: Context) {
      */
     suspend fun forgetSession() {
         membershipStore.clear()
-        onboardingDismissed = false
     }
 }

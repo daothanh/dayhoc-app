@@ -34,7 +34,7 @@ struct RootView: View {
             case .teacher:
                 TeacherSpaceView(app: model)
             case .onboarding(let onboarding):
-                OnboardingView(model: onboarding, onFinished: model.finishOnboarding, onExit: model.exitOnboarding)
+                OnboardingView(model: onboarding, onFinished: model.finishOnboarding)
             case .parent, .student:
                 PlaceholderSpaceView(app: model)
             }

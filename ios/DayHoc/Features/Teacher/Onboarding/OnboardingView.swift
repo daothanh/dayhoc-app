@@ -9,9 +9,6 @@ private let subjects = ["Toán", "Ngữ văn", "Tiếng Anh", "Vật lý", "Hóa
 struct OnboardingView: View {
     @Bindable var model: OnboardingModel
     let onFinished: () -> Void
-    let onExit: () -> Void
-
-    @State private var confirmExit = false
 
     var body: some View {
         NavigationStack {
@@ -29,22 +26,13 @@ struct OnboardingView: View {
             .navigationTitle("onboarding.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("onboarding.exit", systemImage: "xmark") { confirmExit = true }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if let step = model.step, !model.loading {
-                        // Bước 1 bắt buộc (US-0.2 AC2).
+                    // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
+                    if let step = model.step, !model.loading, step.skippable {
                         Button("onboarding.skip") { Task { await model.skip() } }
-                            .disabled(!step.skippable || model.saving)
+                            .disabled(model.saving)
                     }
                 }
-            }
-            .alert("onboarding.exitTitle", isPresented: $confirmExit) {
-                Button("onboarding.exitStay", role: .cancel) {}
-                Button("onboarding.exitLeave", action: onExit)
-            } message: {
-                Text("onboarding.exitBody")
             }
             .overlay(alignment: .bottom) { Toast(text: $model.message) }
         }
@@ -61,12 +49,14 @@ private struct ProgressHeader: View {
     var body: some View {
         let total = OnboardingStep.allCases.count
         VStack(alignment: .leading, spacing: 8) {
-            Text("onboarding.progress \(step.number) \(total)").font(.caption.weight(.medium))
+            Text("onboarding.progress \(step.number) \(total)")
+                .dhText(TeachHubTokens.Typo.label)
+                .foregroundStyle(colors.onSurfaceVariant)
             HStack(spacing: 4) {
                 ForEach(1...total, id: \.self) { i in
                     Capsule()
-                        .fill(i <= step.number ? colors.primary : colors.surfaceContainerHighest)
-                        .frame(height: 4)
+                        .fill(i <= step.number ? colors.onSurface : colors.surfaceContainerLow)
+                        .frame(height: 5)
                 }
             }
         }
@@ -123,7 +113,7 @@ private struct CreateClassStep: View {
     var body: some View {
         let f = model.classForm
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 Heading(title: "onboarding.stepCreateClass", caption: "onboarding.classCaption")
                 DhTextField(label: "onboarding.className", text: $model.classForm.name, prompt: "onboarding.classNameHint", identifier: "onboarding.className")
                 HStack(alignment: .top, spacing: 12) {
@@ -152,9 +142,10 @@ private struct CreateClassStep: View {
                         }
                     } label: {
                         HStack(spacing: 12) {
-                            // DS v2: chỉ báo đang chọn màu mực, không dùng lime.
-                            Image(systemName: f.feeType == option.type ? "largecircle.fill.circle" : "circle")
+                            // Figma B07: đang chọn là nền lime và chấm mực (DS v2).
+                            DhRadio(selected: f.feeType == option.type)
                             Text(option.label)
+                                .dhText(TeachHubTokens.Typo.body)
                             Spacer()
                         }
                         .frame(minHeight: 44)
@@ -210,7 +201,7 @@ private struct AddStudentsStep: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 Heading(title: "onboarding.studentsTitle", caption: "onboarding.studentsCaption")
                 DhTextField(
                     label: "onboarding.studentName",
@@ -234,23 +225,33 @@ private struct AddStudentsStep: View {
                         ContactPhonePicker.shared.present { model.pickedPhone($0) }
                     } label: {
                         Image(systemName: "person.crop.circle")
-                            .font(.title3)
-                            .frame(width: 52, height: 52)
-                            .overlay(RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.fieldRadius).stroke(colors.outline))
+                            .font(.system(size: 20))
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.fieldRadius)
+                                    .stroke(colors.outlineVariant, lineWidth: 1.5)
+                            )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(Text("contacts.pickPhone"))
                     .padding(.bottom, model.phoneError ? 22 : 0)
                 }
                 .disabled(model.studentBusy)
-                DhSecondaryButton(title: model.studentBusy ? "onboarding.saving" : "onboarding.addStudent", identifier: "onboarding.addStudent") {
+                DhSecondaryButton(
+                    title: model.studentBusy ? "onboarding.saving" : "onboarding.addStudent",
+                    icon: "plus",
+                    identifier: "onboarding.addStudent"
+                ) {
                     let name = model.studentName.trimmingCharacters(in: .whitespaces)
                     let guardian = String(localized: "onboarding.guardianDefaultName \(name)")
                     Task { await model.addStudent(guardian: guardian) }
                 }
                 .disabled(model.studentBusy || model.enrollFailed)
                 if !model.added.isEmpty {
-                    Text("onboarding.addedCount \(model.added.count)").font(.caption.weight(.medium)).padding(.top, 8)
+                    Text("onboarding.addedCount \(model.added.count)")
+                        .dhText(TeachHubTokens.Typo.section)
+                        .foregroundStyle(colors.onSurfaceVariant)
+                        .padding(.top, 8)
                     ForEach(Array(model.added.enumerated()), id: \.offset) { _, s in AddedRow(student: s) }
                 }
             }
@@ -295,18 +296,20 @@ private struct AddedRow: View {
     var body: some View {
         HStack(spacing: TeachHubTokens.Dimens.spacingContent) {
             Text(initials)
-                .font(.subheadline.bold())
-                .foregroundStyle(colors.onSecondaryContainer)
-                .frame(width: 40, height: 40)
-                .background(colors.secondaryContainer, in: Circle())
+                .dhText(TeachHubTokens.Typo.bodyBold)
+                .foregroundStyle(colors.onSurface)
+                .frame(width: 36, height: 36)
+                .background(colors.surfaceContainerHighest, in: Circle())
             VStack(alignment: .leading) {
-                Text(student.name)
+                Text(student.name).dhText(TeachHubTokens.Typo.bodyBold)
                 if let phone = student.phone {
-                    Text("onboarding.addedPhone \(phone)").font(.footnote).foregroundStyle(colors.onSurfaceVariant)
+                    Text("onboarding.addedPhone \(phone)")
+                        .dhText(TeachHubTokens.Typo.caption)
+                        .foregroundStyle(colors.onSurfaceVariant)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 
     private var initials: String {
@@ -327,19 +330,19 @@ private struct ScheduleStep: View {
         let overlap = findOverlap(model.rows)
         let valid = rowsValid(model.rows)
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 Heading(title: "onboarding.scheduleTitle", caption: "onboarding.scheduleCaption")
                 if model.pendingCourseFee != nil {
                     Text("onboarding.courseFeePending").font(.footnote).foregroundStyle(colors.onSurfaceVariant)
                 }
-                Text("onboarding.rulesLabel").font(.subheadline.bold())
+                (Text("onboarding.rulesLabel") + Text(verbatim: " *")).dhText(TeachHubTokens.Typo.label)
                 HStack(spacing: 8) {
-                    Text("onboarding.ruleWeekday").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("onboarding.ruleStart").frame(maxWidth: .infinity, alignment: .leading)
+                    (Text("onboarding.ruleWeekday") + Text(verbatim: " *")).frame(maxWidth: .infinity, alignment: .leading)
+                    (Text("onboarding.ruleStart") + Text(verbatim: " *")).frame(maxWidth: .infinity, alignment: .leading)
                     Text("onboarding.ruleDuration").frame(maxWidth: .infinity, alignment: .leading)
-                    if model.rows.count > 1 { Spacer().frame(width: 32) }
+                    if model.rows.count > 1 { Spacer().frame(width: 44) }
                 }
-                .font(.caption.weight(.medium))
+                .dhText(TeachHubTokens.Typo.label)
                 ForEach(Array(model.rows.enumerated()), id: \.element.id) { index, row in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
@@ -358,7 +361,7 @@ private struct ScheduleStep: View {
                             ) { model.rows[index].duration = durations[$0] }
                             if model.rows.count > 1 {
                                 Button { model.removeRow(row.id) } label: {
-                                    Image(systemName: "xmark").frame(width: 32, height: 44)
+                                    Image(systemName: "xmark").frame(width: 44, height: 44)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel(Text("onboarding.ruleRemove \(index + 1)"))
@@ -372,20 +375,11 @@ private struct ScheduleStep: View {
                     }
                 }
                 // Nút phụ trung tính (DS v2); Figma: chép giờ và thời lượng của hàng cuối, thứ để trống.
-                DhSecondaryButton(title: "onboarding.ruleAdd", fullWidth: false) { model.addRow() }
+                DhSecondaryButton(title: "onboarding.ruleAdd", fullWidth: false, small: true, icon: "plus") { model.addRow() }
                     .disabled(model.rows.count >= OnboardingModel.maxRules)
                 if valid, let cls = model.classItem, let first = firstSessionText(cls) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("onboarding.firstSession \(first)").font(.subheadline.bold())
-                        Text(summary).font(.footnote)
-                    }
-                    .padding(TeachHubTokens.Dimens.spacingContent)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.cardRadius)
-                            .stroke(colors.outlineVariant, lineWidth: 1.5)
-                    )
-                    .padding(.top, 8)
+                    DhInfoBanner(title: "onboarding.firstSession \(first)", description: summary)
+                        .padding(.top, 8)
                 }
             }
             .padding(TeachHubTokens.Dimens.spacingPage)
@@ -460,14 +454,16 @@ private struct Heading: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.title2.bold())
-            Text(caption).foregroundStyle(colors.onSurfaceVariant)
+            Text(title).dhText(TeachHubTokens.Typo.h1)
+            Text(caption)
+                .dhText(TeachHubTokens.Typo.body)
+                .foregroundStyle(colors.onSurfaceVariant)
         }
         .padding(.bottom, 4)
     }
 }
 
-/// Thanh hành động đáy: một nút chính (Figma Bottom Action Bar).
+/// Thanh hành động đáy: một nút chính (Figma Bottom Action Bar), nền surface, vạch kẻ trên.
 private struct ActionBar: View {
     let title: LocalizedStringKey
     let enabled: Bool
@@ -476,12 +472,15 @@ private struct ActionBar: View {
     @Environment(\.dhColors) private var colors
 
     var body: some View {
-        DhPrimaryButton(title: title, identifier: identifier) { Task { await action() } }
-            .disabled(!enabled)
-            .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
-            .padding(.top, 8)
-            .padding(.bottom, TeachHubTokens.Dimens.spacingPage)
-            .background(colors.scaffoldBackground)
+        VStack(spacing: 0) {
+            Rectangle().fill(colors.outlineVariant).frame(height: 1.5)
+            DhPrimaryButton(title: title, identifier: identifier) { Task { await action() } }
+                .disabled(!enabled)
+                .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
+                .padding(.top, 12)
+                .padding(.bottom, TeachHubTokens.Dimens.spacingPage)
+        }
+        .background(colors.surface)
     }
 }
 
@@ -573,13 +572,16 @@ private struct CompactMenu: View {
             ForEach(options.indices, id: \.self) { i in Button(options[i]) { onPick(i) } }
         } label: {
             HStack(spacing: 4) {
-                Text(text).lineLimit(1).foregroundStyle(placeholder ? colors.onSurfaceVariant : colors.onSurface)
+                Text(text)
+                    .dhText(TeachHubTokens.Typo.body)
+                    .lineLimit(1)
+                    .foregroundStyle(placeholder ? colors.onSurfaceVariant : colors.onSurface)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.down").font(.caption).foregroundStyle(colors.onSurfaceVariant)
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 44)
-            .overlay(shape.stroke(colors.outline))
+            .overlay(shape.stroke(colors.outline, lineWidth: 1.5))
         }
     }
 }

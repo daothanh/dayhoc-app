@@ -8,7 +8,11 @@ struct DayHocApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if let model { RootView(model: model) }
+            Group {
+                if let model { RootView(model: model) }
+            }
+            // Google Sign-In mở lại app bằng URL scheme: chuyển URL cho SDK xử lý.
+            .onOpenURL { _ = GoogleSignInSupport.handle($0) }
         }
     }
 

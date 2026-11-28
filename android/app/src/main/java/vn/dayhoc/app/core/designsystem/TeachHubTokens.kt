@@ -29,6 +29,7 @@ object TeachHubTokens {
         val surfaceTint = Color(0xFFFFFFFF)
         val scaffoldBackground = Color(0xFFF7F7F4)
         val divider = Color(0xFFF0F0EB)
+        val buttonBorder = Color(0xFFD3D3CB)
         val primaryColor = Color(0xFFBDFF3E)
         val successColor = Color(0xFF047857)
         val warningColor = Color(0xFFA15C07)
@@ -62,6 +63,7 @@ object TeachHubTokens {
         val surfaceTint = Color(0xFF171716)
         val scaffoldBackground = Color(0xFF0F0F0E)
         val divider = Color(0xFF1F1F1D)
+        val buttonBorder = Color(0xFF6B6B64)
         val primaryColor = Color(0xFFBDFF3E)
         val successColor = Color(0xFF6EE7B7)
         val warningColor = Color(0xFFFCD34D)
@@ -91,5 +93,24 @@ object TeachHubTokens {
         val focusRingWidth = 2.dp
         val buttonElevation = 0.dp
         val appBarElevation = 0.dp
+    }
+    /** Text style DayHoc (Figma). Dựng TextStyle ở TeachHubTheme. */
+    object Typo {
+        data class Spec(
+            val fontSize: Float,
+            val lineHeight: Float,
+            val fontWeight: Int,
+            val letterSpacing: Float,
+        )
+
+        val h1 = Spec(20f, 28f, 600, -0.3f)
+        val h2 = Spec(17f, 24f, 600, -0.17f)
+        val body = Spec(14f, 20f, 400, 0f)
+        val bodyBold = Spec(14f, 20f, 600, 0f)
+        val label = Spec(12f, 16f, 500, 0f)
+        val caption = Spec(12f, 16f, 400, 0f)
+        val button = Spec(15f, 20f, 600, 0f)
+        val buttonSmall = Spec(13f, 18f, 600, 0f)
+        val section = Spec(12f, 16f, 600, 0.6f)
     }
 }

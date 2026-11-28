@@ -8,13 +8,18 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dark
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Light
+import vn.dayhoc.app.core.designsystem.TeachHubTokens.Typo
 
 // Nền màn hình (background) = scaffoldBackground; Scaffold của M3 lấy màu này làm nền.
 private val LightColors = lightColorScheme(
@@ -85,34 +90,61 @@ private val BeVietnamPro = FontFamily(
     Font(R.font.be_vietnam_pro_bold, FontWeight.Bold),
 )
 
-/** Typography M3 giữ nguyên cỡ chữ, chỉ đổi font sang [BeVietnamPro] cho khớp Figma. */
-private val TeachHubTypography: Typography = Typography().let { base ->
-    base.copy(
-        displayLarge = base.displayLarge.copy(fontFamily = BeVietnamPro),
-        displayMedium = base.displayMedium.copy(fontFamily = BeVietnamPro),
-        displaySmall = base.displaySmall.copy(fontFamily = BeVietnamPro),
-        headlineLarge = base.headlineLarge.copy(fontFamily = BeVietnamPro),
-        headlineMedium = base.headlineMedium.copy(fontFamily = BeVietnamPro),
-        headlineSmall = base.headlineSmall.copy(fontFamily = BeVietnamPro),
-        titleLarge = base.titleLarge.copy(fontFamily = BeVietnamPro),
-        titleMedium = base.titleMedium.copy(fontFamily = BeVietnamPro),
-        titleSmall = base.titleSmall.copy(fontFamily = BeVietnamPro),
-        bodyLarge = base.bodyLarge.copy(fontFamily = BeVietnamPro),
-        bodyMedium = base.bodyMedium.copy(fontFamily = BeVietnamPro),
-        bodySmall = base.bodySmall.copy(fontFamily = BeVietnamPro),
-        labelLarge = base.labelLarge.copy(fontFamily = BeVietnamPro),
-        labelMedium = base.labelMedium.copy(fontFamily = BeVietnamPro),
-        labelSmall = base.labelSmall.copy(fontFamily = BeVietnamPro),
-    )
+/** Dựng [TextStyle] từ text style DayHoc (cỡ chữ, giãn dòng, giãn chữ theo Figma). */
+private fun dhStyle(spec: Typo.Spec) = TextStyle(
+    fontFamily = BeVietnamPro,
+    fontWeight = FontWeight(spec.fontWeight),
+    fontSize = spec.fontSize.sp,
+    lineHeight = spec.lineHeight.sp,
+    letterSpacing = spec.letterSpacing.sp,
+)
+
+/** Text style DayHoc (Figma). Màn dùng trực tiếp theo tên trong DS. */
+object TeachHubText {
+    val h1 = dhStyle(Typo.h1)
+    val h2 = dhStyle(Typo.h2)
+    val body = dhStyle(Typo.body)
+    val bodyBold = dhStyle(Typo.bodyBold)
+    val label = dhStyle(Typo.label)
+    val caption = dhStyle(Typo.caption)
+    val button = dhStyle(Typo.button)
+    val buttonSmall = dhStyle(Typo.buttonSmall)
+    val section = dhStyle(Typo.section)
 }
+
+/** Vai trò M3 ánh xạ sang thang DayHoc để chỗ nào còn dùng role cũng khớp Figma. */
+private val TeachHubTypography = Typography(
+    displayLarge = TeachHubText.h1,
+    displayMedium = TeachHubText.h2,
+    displaySmall = TeachHubText.h2,
+    headlineLarge = TeachHubText.h1,
+    headlineMedium = TeachHubText.h1,
+    headlineSmall = TeachHubText.h2,
+    titleLarge = TeachHubText.h2,
+    titleMedium = TeachHubText.bodyBold,
+    titleSmall = TeachHubText.label,
+    bodyLarge = TeachHubText.body,
+    bodyMedium = TeachHubText.body,
+    bodySmall = TeachHubText.caption,
+    labelLarge = TeachHubText.button,
+    labelMedium = TeachHubText.label,
+    labelSmall = TeachHubText.caption,
+)
+
+/** Màu viền nút phụ theo chế độ (token `buttonBorder`). DS đọc qua composition local. */
+val LocalButtonBorderColor = staticCompositionLocalOf { Light.buttonBorder }
 
 /** Theme DayHoc dựng hoàn toàn từ [TeachHubTokens]. */
 @Composable
 fun TeachHubTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = TeachHubTypography,
-        shapes = TeachHubShapes,
-        content = content,
-    )
+    CompositionLocalProvider(
+        LocalButtonBorderColor provides if (darkTheme) Dark.buttonBorder else Light.buttonBorder,
+    ) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = TeachHubTypography,
+            shapes = TeachHubShapes,
+            content = content,
+        )
+    }
 }

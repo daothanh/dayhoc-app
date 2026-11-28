@@ -1,5 +1,12 @@
 // Debug (dev): backend chạy local. `/$()/` để `//` không bị hiểu là comment.
 PRODUCT_BUNDLE_IDENTIFIER = vn.dayhoc.app.dev
+CODE_SIGN_ENTITLEMENTS = Config/DayHoc.entitlements
 API_URL = http:/$()/localhost:3000/v1
 // Bản này cho phép HTTP tới localhost (ATS NSAllowsLocalNetworking).
 INFOPLIST_FILE = Config/Info-Debug.plist
+// Google Sign-In: GID_CLIENT_ID là iOS OAuth client của bundle này, GID_SERVER_CLIENT_ID là Web
+// client ID (khớp GOOGLE_CLIENT_IDS của backend) để `id_token` có đúng audience, GID_URL_SCHEME là
+// client ID đảo ngược mà Google dùng để mở lại app.
+GID_CLIENT_ID = 305225338991-eg6h9lb26na0br8qph3gaff5041dga2f.apps.googleusercontent.com
+GID_SERVER_CLIENT_ID = 305225338991-7vf98anmjogm9jksgd9kdije4ah8ncgk.apps.googleusercontent.com
+GID_URL_SCHEME = com.googleusercontent.apps.305225338991-eg6h9lb26na0br8qph3gaff5041dga2f

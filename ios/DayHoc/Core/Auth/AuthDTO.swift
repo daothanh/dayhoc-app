@@ -12,7 +12,28 @@ struct LoginRequest: Encodable, Sendable {
     let code: String
 }
 
-/// 200 của `POST /v1/auth/login`.
+/// Body `POST /v1/auth/sso/google`.
+struct GoogleSsoRequest: Encodable, Sendable {
+    let idToken: String
+
+    enum CodingKeys: String, CodingKey {
+        case idToken = "id_token"
+    }
+}
+
+/// Body `POST /v1/auth/sso/apple`; nonce ở đây là giá trị thô, không phải bản băm.
+struct AppleSsoRequest: Encodable, Sendable {
+    let idToken: String
+    let nonce: String
+    let fullName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case idToken = "id_token"
+        case nonce, fullName
+    }
+}
+
+/// 200 của `POST /v1/auth/login` và các endpoint SSO.
 struct LoginResponse: Decodable, Sendable {
     let accessToken: String
     let refreshToken: String

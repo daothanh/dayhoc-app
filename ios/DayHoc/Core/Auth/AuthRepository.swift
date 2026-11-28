@@ -1,4 +1,4 @@
-/// Đăng nhập email OTP và phiên (spec Mục 5.2a).
+/// Đăng nhập email OTP, SSO và quản lý phiên (spec Mục 5.2a).
 struct AuthRepository: Sendable {
     let api: APIClient
     let tokenStore: any TokenStore
@@ -12,11 +12,21 @@ struct AuthRepository: Sendable {
 
     /// Đăng nhập (email chưa có tài khoản thì là đăng ký) và lưu token.
     func login(email: String, code: String) async throws -> UserDTO {
-        let response: LoginResponse = try await api.request(
-            "POST", "auth/login",
-            body: LoginRequest(email: email, code: code),
-            authorized: false
-        )
+        try await openSession("auth/login", body: LoginRequest(email: email, code: code))
+    }
+
+    /// Đổi ID token Google lấy phiên. Email cần OTP thì server trả 401 `UNAUTHENTICATED`
+    /// kèm `details.reason = EMAIL_REQUIRES_OTP`.
+    func loginWithGoogle(idToken: String) async throws -> UserDTO {
+        try await openSession("auth/sso/google", body: GoogleSsoRequest(idToken: idToken))
+    }
+
+    func loginWithApple(idToken: String, nonce: String, fullName: String?) async throws -> UserDTO {
+        try await openSession("auth/sso/apple", body: AppleSsoRequest(idToken: idToken, nonce: nonce, fullName: fullName))
+    }
+
+    private func openSession(_ path: String, body: some Encodable & Sendable) async throws -> UserDTO {
+        let response: LoginResponse = try await api.request("POST", path, body: body, authorized: false)
         try tokenStore.save(Tokens(accessToken: response.accessToken, refreshToken: response.refreshToken))
         return response.user
     }

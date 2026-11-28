@@ -25,6 +25,7 @@ sealed class ApiError : Exception() {
         val errors: JsonObject = JsonObject(emptyMap()),
     ) : ApiError() {
         fun detailInt(key: String): Int? = (details[key] as? JsonPrimitive)?.intOrNull
+        fun detailString(key: String): String? = (details[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
 
         /** Thông báo đầu tiên của server theo trường, nếu có. */
         fun firstFieldError(): String? = errors.values.firstNotNullOfOrNull { v ->
