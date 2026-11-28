@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
@@ -118,7 +119,13 @@ fun AppRoot(container: AppContainer) {
             }
         }
         composable<LoginRoute> {
-            val vm = viewModel { LoginViewModel(container.authRepository) }
+            val vm = viewModel { LoginViewModel(container.authRepository, createSavedStateHandle()) }
+            val appleCode by container.appleCallbackCode.collectAsState()
+            LaunchedEffect(appleCode) {
+                val code = appleCode ?: return@LaunchedEffect
+                container.appleCallbackCode.value = null
+                vm.onAppleCallback(code)
+            }
             // Đăng nhập xong: splash tải vai trò rồi mở đúng nơi.
             LoginScreen(vm, onLoggedIn = { nav.resetTo(SplashRoute) })
         }

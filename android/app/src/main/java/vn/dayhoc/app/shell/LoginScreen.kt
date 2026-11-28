@@ -1,7 +1,10 @@
 package vn.dayhoc.app.shell
 
+import android.content.ActivityNotFoundException
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +76,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -106,8 +110,24 @@ fun LoginScreen(viewModel: LoginViewModel, onLoggedIn: () -> Unit) {
     val scope = rememberCoroutineScope()
     val activity = LocalActivity.current
     val keyboard = LocalSoftwareKeyboardController.current
-    val appleSoon = stringResource(R.string.login_apple_soon)
-    val onAppleSignIn: () -> Unit = { scope.launch { snackbar.showSnackbar(appleSoon) } }
+    val onAppleSignIn: () -> Unit = {
+        keyboard?.hide()
+        viewModel.startAppleSignIn()
+    }
+    LaunchedEffect(state.appleAuthUrl) {
+        val url = state.appleAuthUrl ?: return@LaunchedEffect
+        try {
+            val host = activity ?: throw ActivityNotFoundException()
+            CustomTabsIntent.Builder().build().launchUrl(host, Uri.parse(url))
+            viewModel.appleBrowserOpened()
+        } catch (_: ActivityNotFoundException) {
+            viewModel.appleBrowserFailed()
+        }
+    }
+    LifecycleResumeEffect(Unit) {
+        viewModel.onReturnedFromBrowser()
+        onPauseOrDispose {}
+    }
     val onGoogleSignIn: () -> Unit = {
         scope.launch {
             if (!viewModel.startGoogleSignIn()) return@launch
@@ -186,7 +206,7 @@ private fun EmailStep(
     onAppleSignIn: () -> Unit,
     onGoogleSignIn: () -> Unit,
 ) {
-    val emailStepBusy = state.sending || state.googleSigningIn || state.loggedIn
+    val emailStepBusy = state.sending || state.googleSigningIn || state.appleSigningIn || state.loggedIn
     val type = MaterialTheme.typography
     val colors = MaterialTheme.colorScheme
     Column(
@@ -566,6 +586,8 @@ private fun failureText(failure: LoginFailure): String = when (failure) {
     LoginFailure.Generic -> stringResource(R.string.login_failed)
     LoginFailure.EmailRequiresOtp -> stringResource(R.string.login_google_requires_otp)
     LoginFailure.GoogleFailed -> stringResource(R.string.login_google_failed)
+    LoginFailure.AppleFailed -> stringResource(R.string.login_apple_failed)
+    LoginFailure.AppleUnsupported -> stringResource(R.string.login_apple_soon)
 }
 
 private fun mmss(seconds: Int) = "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"

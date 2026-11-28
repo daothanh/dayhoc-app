@@ -28,6 +28,7 @@
     <string name="login_terms_link_privacy">Chính sách dữ liệu</string>
     <string name="login_apple_soon">Chưa hỗ trợ đăng nhập bằng Apple. Bạn có thể dùng Google hoặc email.</string>
     <string name="login_google_signing_in">Đang đăng nhập bằng Google…</string>
+    <string name="login_apple_failed">Không đăng nhập được bằng Apple. Hãy thử lại hoặc dùng email.</string>
     <string name="login_google_failed">Không đăng nhập được bằng Google. Hãy thử lại hoặc dùng email.</string>
     <string name="login_google_requires_otp">Email này cần đăng nhập bằng mã OTP. Hãy bấm Gửi mã đăng nhập.</string>
 

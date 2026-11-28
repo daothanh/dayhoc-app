@@ -5,6 +5,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import vn.dayhoc.app.core.auth.AuthApi
 import vn.dayhoc.app.core.auth.AuthRepository
@@ -37,6 +38,9 @@ class AppContainer(context: Context) {
 
     /** `true` khi refresh token bị thu hồi; gốc điều hướng về màn đăng nhập rồi đặt lại `false`. */
     val sessionExpired = network.authenticator.sessionExpired
+
+    /** Mã một lần từ deep link `dayhoc://auth/apple/callback`; màn đăng nhập lấy rồi đặt lại `null`. */
+    val appleCallbackCode = MutableStateFlow<String?>(null)
 
     val authRepository = AuthRepository(network.retrofit.create(AuthApi::class.java), tokenStore, sessionMutex)
 

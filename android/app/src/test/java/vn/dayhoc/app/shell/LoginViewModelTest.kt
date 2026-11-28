@@ -8,13 +8,11 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,7 +21,11 @@ import org.junit.Test
 import retrofit2.Call
 import retrofit2.HttpException
 import retrofit2.Response
-import vn.dayhoc.app.core.auth.AppleSsoRequest
+import androidx.lifecycle.SavedStateHandle
+import vn.dayhoc.app.core.auth.AppleAndroidRedeemRequest
+import vn.dayhoc.app.core.auth.AppleAndroidRedeemResponse
+import vn.dayhoc.app.core.auth.AppleAndroidStartRequest
+import vn.dayhoc.app.core.auth.AppleAndroidStartResponse
 import vn.dayhoc.app.core.auth.AuthApi
 import vn.dayhoc.app.core.auth.AuthRepository
 import vn.dayhoc.app.core.auth.GoogleSsoRequest
@@ -41,12 +43,13 @@ import vn.dayhoc.app.core.auth.UserDto
 class LoginViewModelTest {
     private val api = FakeAuthApi()
     private val store = InMemoryTokenStore()
+    private val saved = SavedStateHandle()
     private lateinit var vm: LoginViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
-        vm = LoginViewModel(AuthRepository(api, store))
+        vm = LoginViewModel(AuthRepository(api, store), saved)
     }
 
     @After
@@ -224,147 +227,179 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Apple thanh cong thi gui nonce tho va ten da cat roi luu phien`() = runTest {
-        val nonce = vm.startAppleSignIn()!!
-        assertTrue(Regex("[0-9a-f]{64}").matches(nonce))
-
-        vm.signInWithApple("apple-id-token", nonce, "co.lan@example.com", " " + "𠮷".repeat(60) + " Lan ")
+    fun `Apple gui challenge S256 cua verifier roi mo URL trang Apple`() = runTest {
+        vm.startAppleSignIn()
         runCurrent()
 
-        assertEquals(AppleSsoRequest("apple-id-token", nonce, "𠮷".repeat(60)), api.lastApple)
+        val verifier = saved.get<String>("apple_code_verifier")!!
+        assertTrue(Regex("[A-Za-z0-9_-]{43}").matches(verifier))
+        assertEquals(AppleAndroidStartRequest(codeChallenge(verifier)), api.lastAppleStart)
+        assertEquals(APPLE_URL, vm.state.value.appleAuthUrl)
+        assertTrue(vm.state.value.appleSigningIn)
+
+        vm.appleBrowserOpened()
+        assertNull(vm.state.value.appleAuthUrl)
+    }
+
+    @Test
+    fun `callback Apple doi ma bang dung verifier roi luu phien`() = runTest {
+        openApple()
+        val verifier = saved.get<String>("apple_code_verifier")!!
+
+        vm.onAppleCallback("one-time-code")
+        runCurrent()
+
+        assertEquals(AppleAndroidRedeemRequest("one-time-code", verifier), api.lastAppleRedeem)
         assertEquals(Tokens("access", "refresh"), store.tokens)
         assertTrue(vm.state.value.loggedIn)
         assertFalse(vm.state.value.appleSigningIn)
+        assertNull(saved.get<String>("apple_code_verifier"))
+    }
+
+    @Test
+    fun `huy o trang Apple thi khong bao loi va khong luu phien`() = runTest {
+        api.appleRedeemResponse = AppleAndroidRedeemResponse(status = "cancelled")
+        openApple()
+
+        vm.onAppleCallback("one-time-code")
+        runCurrent()
+
+        assertNull(vm.state.value.failure)
+        assertFalse(vm.state.value.loggedIn)
+        assertFalse(vm.state.value.appleSigningIn)
+        assertNull(store.tokens)
+    }
+
+    @Test
+    fun `dong Custom Tab khong co callback thi tha nut sau mot nhip, khong bao loi`() = runTest {
+        openApple()
+
+        vm.onReturnedFromBrowser()
+        advanceTimeBy(1_000)
+        assertTrue(vm.state.value.appleSigningIn)
+        advanceTimeBy(600)
+
+        assertFalse(vm.state.value.appleSigningIn)
+        assertNull(vm.state.value.failure)
+        assertNull(saved.get<String>("apple_code_verifier"))
+    }
+
+    @Test
+    fun `callback toi ngay sau khi quay lai thi khong bi coi la huy`() = runTest {
+        openApple()
+
+        vm.onReturnedFromBrowser()
+        vm.onAppleCallback("one-time-code")
+        advanceTimeBy(2_000)
+
+        assertTrue(vm.state.value.loggedIn)
+        assertNotNull(api.lastAppleRedeem)
+    }
+
+    @Test
+    fun `verifier con sau khi he thong tat app thi van doi duoc ma`() = runTest {
+        openApple()
+        val verifier = saved.get<String>("apple_code_verifier")!!
+        // ViewModel mới dựng lại từ cùng SavedStateHandle (process death).
+        val restored = LoginViewModel(AuthRepository(api, store), saved)
+
+        restored.onAppleCallback("one-time-code")
+        runCurrent()
+
+        assertEquals(AppleAndroidRedeemRequest("one-time-code", verifier), api.lastAppleRedeem)
+        assertTrue(restored.state.value.loggedIn)
+    }
+
+    @Test
+    fun `deep link Apple khong do luot nay mo thi bo qua`() = runTest {
+        vm.onAppleCallback("stale-code")
+        runCurrent()
+
+        assertNull(api.lastAppleRedeem)
+        assertNull(vm.state.value.failure)
+        assertFalse(vm.state.value.appleSigningIn)
+    }
+
+    @Test
+    fun `server chua bat Apple Android thi bao chua ho tro`() = runTest {
+        api.appleStartError = httpError(404, """{"code":"NOT_FOUND"}""")
+        vm.startAppleSignIn()
+        runCurrent()
+
+        assertEquals(LoginFailure.AppleUnsupported, vm.state.value.failure)
+        assertFalse(vm.state.value.appleSigningIn)
+        assertNull(vm.state.value.appleAuthUrl)
+        assertNull(saved.get<String>("apple_code_verifier"))
+    }
+
+    @Test
+    fun `doi ma Apple loi 401 thi bao loi Apple, 503 thi bao he thong ban`() = runTest {
+        api.appleRedeemError = httpError(401, """{"code":"UNAUTHENTICATED"}""")
+        openApple()
+        vm.onAppleCallback("one-time-code")
+        runCurrent()
+        assertEquals(LoginFailure.AppleFailed, vm.state.value.failure)
+        assertNull(store.tokens)
+
+        api.appleRedeemError = httpError(503, """{"code":"SERVICE_UNAVAILABLE"}""")
+        vm.failureShown()
+        openApple()
+        vm.onAppleCallback("one-time-code")
+        runCurrent()
+        assertEquals(LoginFailure.Unavailable, vm.state.value.failure)
+        assertFalse(vm.state.value.appleSigningIn)
+    }
+
+    @Test
+    fun `Apple yeu cau OTP thi bao dung ly do`() = runTest {
+        api.appleRedeemError = httpError(401, """{"code":"UNAUTHENTICATED","details":{"reason":"EMAIL_REQUIRES_OTP"}}""")
+        openApple()
+        vm.onAppleCallback("one-time-code")
+        runCurrent()
+
+        assertEquals(LoginFailure.EmailRequiresOtp, vm.state.value.failure)
+        assertFalse(vm.state.value.loggedIn)
     }
 
     @Test
     fun `dang dang nhap Apple thi chan Apple lan hai, Google va OTP`() = runTest {
         vm.onEmailChange("co.lan@example.com")
-        assertNotNull(vm.startAppleSignIn())
+        vm.startAppleSignIn()
+        runCurrent()
 
-        assertNull(vm.startAppleSignIn())
+        vm.startAppleSignIn()
         assertFalse(vm.startGoogleSignIn())
         vm.sendCode()
         runCurrent()
 
+        assertEquals(1, api.appleStartCount)
         assertTrue(api.sentTo.isEmpty())
         assertTrue(vm.state.value.appleSigningIn)
-        assertFalse(vm.state.value.googleSigningIn)
     }
 
     @Test
     fun `dang dang nhap Google thi khong mo duoc Apple`() = runTest {
         assertTrue(vm.startGoogleSignIn())
 
-        assertNull(vm.startAppleSignIn())
+        vm.startAppleSignIn()
+        runCurrent()
+
+        assertEquals(0, api.appleStartCount)
         assertFalse(vm.state.value.appleSigningIn)
     }
 
     @Test
-    fun `huy xac thuc Apple thi khong bao loi va lan sau dung nonce moi`() = runTest {
-        val first = vm.startAppleSignIn()
-        vm.finishAppleSignIn(failed = false)
-
-        assertNull(vm.state.value.failure)
-        assertFalse(vm.state.value.appleSigningIn)
-        assertNull(api.lastApple)
-        val second = vm.startAppleSignIn()
-        assertNotNull(second)
-        assertNotEquals(first, second)
-    }
-
-    @Test
-    fun `xac thuc Apple loi thi bao loi chung`() = runTest {
-        assertNotNull(vm.startAppleSignIn())
-        vm.finishAppleSignIn(failed = true)
-
-        assertEquals(LoginFailure.Generic, vm.state.value.failure)
-        assertFalse(vm.state.value.appleSigningIn)
-    }
-
-    @Test
-    fun `Apple yeu cau OTP thi dien san email nhung khong tu gui ma`() = runTest {
-        api.appleError = httpError(401, """{"code":"UNAUTHENTICATED","details":{"reason":"EMAIL_REQUIRES_OTP"}}""")
-        vm.onEmailChange("sai")
-        vm.sendCode()
-        val nonce = vm.startAppleSignIn()!!
-        vm.signInWithApple("apple-id-token", nonce, "co.lan@example.com", null)
-        runCurrent()
-
-        val s = vm.state.value
-        assertEquals(LoginFailure.EmailRequiresOtp, s.failure)
-        assertEquals("co.lan@example.com", s.email)
-        assertFalse(s.showEmailError)
-        assertFalse(s.appleSigningIn)
-        assertFalse(s.loggedIn)
-        assertNull(s.sentTo)
-        assertNull(api.lastApple?.fullName)
-        assertNull(store.tokens)
-        assertTrue(api.sentTo.isEmpty())
-    }
-
-    @Test
-    fun `Apple yeu cau OTP ma khong co email thi giu email dang nhap`() = runTest {
-        api.appleError = httpError(401, """{"code":"UNAUTHENTICATED","details":{"reason":"EMAIL_REQUIRES_OTP"}}""")
-        vm.onEmailChange("co.lan@example.com")
-        val nonce = vm.startAppleSignIn()!!
-        vm.signInWithApple("apple-id-token", nonce, "", null)
-        runCurrent()
-
-        assertEquals(LoginFailure.EmailRequiresOtp, vm.state.value.failure)
-        assertEquals("co.lan@example.com", vm.state.value.email)
-    }
-
-    @Test
-    fun `Apple tra 503 thi bao he thong ban va cho thu lai`() = runTest {
-        api.appleError = httpError(503, """{"code":"SERVICE_UNAVAILABLE"}""")
-        val nonce = vm.startAppleSignIn()!!
-        vm.signInWithApple("apple-id-token", nonce, null, null)
-        runCurrent()
-
-        assertEquals(LoginFailure.Unavailable, vm.state.value.failure)
-        assertFalse(vm.state.value.appleSigningIn)
-        assertNull(store.tokens)
-        assertNotNull(vm.startAppleSignIn())
-    }
-
-    @Test
-    fun `Apple tra 401 khong co ly do thi bao loi chung`() = runTest {
-        api.appleError = httpError(401, """{"code":"UNAUTHENTICATED"}""")
-        val nonce = vm.startAppleSignIn()!!
-        vm.signInWithApple("apple-id-token", nonce, "co.lan@example.com", null)
-        runCurrent()
-
-        assertEquals(LoginFailure.Generic, vm.state.value.failure)
-        assertEquals("", vm.state.value.email)
-        assertNull(store.tokens)
-    }
-
-    @Test
-    fun `ban bam nonce gui Apple la SHA-256 hex chu thuong`() {
-        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", appleNonceHash("abc"))
-    }
-
-    @Test
-    fun `ten Apple duoc cat con 120 don vi UTF-16 va khong cat giua ky tu`() {
-        assertNull(appleFullName(null))
-        assertNull(appleFullName("   "))
-        assertEquals("Cô Lan", appleFullName("  Cô Lan \n"))
-        assertEquals("a".repeat(120), appleFullName("a".repeat(121)))
-        // 𠮷 chiếm 2 đơn vị UTF-16: 119 chữ "a" chỉ còn chỗ cho 1 đơn vị nên bỏ hẳn ký tự kế tiếp.
-        assertEquals("a".repeat(119), appleFullName("a".repeat(119) + "𠮷"))
-        // Khoảng trắng lộ ra ở cuối sau khi cắt cũng phải bỏ.
-        assertEquals("a".repeat(119), appleFullName("a".repeat(119) + " Lan"))
-    }
-
-    @Test
-    fun `body Apple khong co fullName khi khong co ten`() {
-        val json = Json { ignoreUnknownKeys = true }
-
+    fun `code challenge theo vi du RFC 7636`() {
         assertEquals(
-            """{"id_token":"t","nonce":"n"}""",
-            json.encodeToString(AppleSsoRequest.serializer(), AppleSsoRequest("t", "n")),
+            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+            codeChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
         )
+    }
+
+    private fun kotlinx.coroutines.test.TestScope.openApple() {
+        vm.startAppleSignIn()
+        runCurrent()
+        vm.appleBrowserOpened()
     }
 
     private fun kotlinx.coroutines.test.TestScope.sendCodeTo(email: String) {
@@ -376,6 +411,8 @@ class LoginViewModelTest {
     private fun httpError(status: Int, body: String) =
         HttpException(Response.error<Any>(status, body.toResponseBody("application/json".toMediaType())))
 }
+
+private const val APPLE_URL = "https://appleid.apple.com/auth/authorize?client_id=vn.dayhoc.app.web"
 
 private class FakeAuthApi : AuthApi {
     val sentTo = mutableListOf<String>()
@@ -403,13 +440,29 @@ private class FakeAuthApi : AuthApi {
         return LoginResponse("access", "refresh", 900, UserDto("u1", "co.lan@example.com", "Cô Lan", emptyList()))
     }
 
-    var lastApple: AppleSsoRequest? = null
-    var appleError: HttpException? = null
+    var lastAppleStart: AppleAndroidStartRequest? = null
+    var appleStartCount = 0
+    var appleStartError: HttpException? = null
 
-    override suspend fun ssoApple(body: AppleSsoRequest): LoginResponse {
-        lastApple = body
-        appleError?.let { throw it }
-        return LoginResponse("access", "refresh", 900, UserDto("u1", "co.lan@example.com", "Cô Lan", emptyList()))
+    override suspend fun appleAndroidStart(body: AppleAndroidStartRequest): AppleAndroidStartResponse {
+        lastAppleStart = body
+        appleStartCount++
+        appleStartError?.let { throw it }
+        return AppleAndroidStartResponse(APPLE_URL)
+    }
+
+    var lastAppleRedeem: AppleAndroidRedeemRequest? = null
+    var appleRedeemError: HttpException? = null
+    var appleRedeemResponse = AppleAndroidRedeemResponse(
+        accessToken = "access",
+        refreshToken = "refresh",
+        user = UserDto("u1", "co.lan@example.com", "Cô Lan", emptyList()),
+    )
+
+    override suspend fun appleAndroidRedeem(body: AppleAndroidRedeemRequest): AppleAndroidRedeemResponse {
+        lastAppleRedeem = body
+        appleRedeemError?.let { throw it }
+        return appleRedeemResponse
     }
 
     override fun refresh(body: RefreshRequest): Call<TokenResponse> = error("không dùng trong test này")

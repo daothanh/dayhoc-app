@@ -29,15 +29,24 @@ class AuthRepository(
         return saveSession(response)
     }
 
-    /** [nonce] là giá trị thô; bản băm SHA-256 của nó đã gửi cho Apple khi xin token. */
-    suspend fun loginWithApple(idToken: String, nonce: String, fullName: String?): UserDto {
-        val response = apiCall { api.ssoApple(AppleSsoRequest(idToken, nonce, fullName)) }
-        return saveSession(response)
+    /** Trả URL trang đăng nhập Apple để mở trong Custom Tab. */
+    suspend fun startAppleAndroid(codeChallenge: String): String =
+        apiCall { api.appleAndroidStart(AppleAndroidStartRequest(codeChallenge)) }.authorizationUrl
+
+    /** `null` khi người dùng hủy ở trang Apple. */
+    suspend fun redeemAppleAndroid(code: String, codeVerifier: String): UserDto? {
+        val r = apiCall { api.appleAndroidRedeem(AppleAndroidRedeemRequest(code, codeVerifier)) }
+        if (r.status == "cancelled") return null
+        val user = r.user ?: throw ApiError.InvalidResponse
+        return saveSession(r.accessToken ?: throw ApiError.InvalidResponse, r.refreshToken ?: throw ApiError.InvalidResponse, user)
     }
 
-    private suspend fun saveSession(response: LoginResponse): UserDto {
-        sessionMutex.withLock { tokenStore.save(Tokens(response.accessToken, response.refreshToken)) }
-        return response.user
+    private suspend fun saveSession(response: LoginResponse): UserDto =
+        saveSession(response.accessToken, response.refreshToken, response.user)
+
+    private suspend fun saveSession(access: String, refresh: String, user: UserDto): UserDto {
+        sessionMutex.withLock { tokenStore.save(Tokens(access, refresh)) }
+        return user
     }
 
     suspend fun me(): UserDto = apiCall { api.me() }
