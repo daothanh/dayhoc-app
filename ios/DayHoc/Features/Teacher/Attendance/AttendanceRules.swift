@@ -27,8 +27,8 @@ func rowsOf(_ items: [AttendanceItemDTO]) -> [AttRow] {
     items.map {
         let server = $0.status.flatMap(AttStatus.init(rawValue:))
         // Phụ huynh đã báo mà chưa có dòng điểm danh: điền sẵn "Vắng có phép" (US-3.1 AC5).
-        let shown = server ?? ($0.parentReport != nil ? .excused : .present)
-        return AttRow(studentId: $0.studentId, name: $0.fullName, status: shown, original: server, note: $0.note,
+        let prefilled: AttStatus? = $0.parentReport != nil ? .excused : nil
+        return AttRow(studentId: $0.studentId, name: $0.fullName, status: server ?? prefilled ?? .present, original: server ?? prefilled, note: $0.note,
                       parentReported: $0.parentReport != nil, parentReason: $0.parentReport?.reason)
     }
 }

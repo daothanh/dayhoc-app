@@ -39,9 +39,10 @@ data class AttRow(
 fun rowsOf(items: List<AttendanceItemDto>): List<AttRow> = items.map {
     val server = AttStatus.fromWire(it.status)
     val report = it.parentReport
-    // Phụ huynh đã báo mà chưa có dòng điểm danh: điền sẵn "Vắng có phép" (US-3.1 AC5).
-    val shown = server ?: if (report != null) AttStatus.Excused else AttStatus.Present
-    AttRow(it.studentId, it.fullName, shown, server, it.note, report != null, report?.reason)
+    // Phụ huynh đã báo mà chưa có dòng điểm danh: điền sẵn "Vắng có phép" (US-3.1 AC5), coi như giá trị gốc (không tính là đã đổi);
+    // lô đầu vẫn gửi mọi học sinh nên giá trị này lên server.
+    val prefilled = if (report != null) AttStatus.Excused else null
+    AttRow(it.studentId, it.fullName, server ?: prefilled ?: AttStatus.Present, server ?: prefilled, it.note, report != null, report?.reason)
 }
 
 /** Bộ đếm ở đầu T04. "Có mặt" không gồm "Muộn"; "Vắng" gồm cả có phép và không phép. */

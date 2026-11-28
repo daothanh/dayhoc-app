@@ -1,5 +1,5 @@
 {
-  "_doc": "Dựng hàng từ phản hồi GET /sessions/{id}/attendance (rowsOf) và người sửa lần cuối (lastEditedBy). items: trường thiếu = null (phản hồi cũ). parentReport.reason: sick | family | other. Chưa có status mà phụ huynh đã báo: status = excused, original = null, parentReported = true. Đã có status: giữ status. lastEditedBy: recordedByName của dòng có syncedAt mới nhất; null nếu tên null hoặc không dòng nào có syncedAt.",
+  "_doc": "Dựng hàng từ phản hồi GET /sessions/{id}/attendance (rowsOf) và người sửa lần cuối (lastEditedBy). items: trường thiếu = null (phản hồi cũ). parentReport.reason: sick | family | other. Chưa có status mà phụ huynh đã báo: status = excused, original = excused (không tính là đã đổi), parentReported = true. Đã có status: giữ status. lastEditedBy: recordedByName của dòng có syncedAt mới nhất; null nếu tên null hoặc không dòng nào có syncedAt.",
   "cases": [
     {
       "name": "phản hồi cũ không có hai trường mới",
@@ -14,7 +14,7 @@
       "items": [{"studentId": "s1", "fullName": "Dũng", "status": null, "note": null, "syncedAt": null, "recordedByName": null,
                  "parentReport": {"reason": "sick", "note": "Sốt", "reportedAt": "2026-11-09T06:00:00.000+07:00"}}],
       "expected": {
-        "rows": [{"studentId": "s1", "name": "Dũng", "status": "excused", "original": null, "note": null, "parentReported": true, "parentReason": "sick"}],
+        "rows": [{"studentId": "s1", "name": "Dũng", "status": "excused", "original": "excused", "note": null, "parentReported": true, "parentReason": "sick"}],
         "lastEditedBy": null
       }
     },
