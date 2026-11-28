@@ -30,9 +30,11 @@ fun DhAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 36.dp) {
     }
 }
 
+private val WHITESPACE = Regex("\\s+")
+
 /** Chữ cái đầu của từ đầu và từ cuối ("Nguyễn An" → "NA", "Đỗ Hà" → "ĐH"); một từ thì lấy chữ đầu; rỗng thì "?". */
 fun initialsOf(name: String): String {
-    val words = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    val words = name.trim().split(WHITESPACE).filter { it.isNotEmpty() }
     if (words.isEmpty()) return "?"
     val first = words.first().first()
     val last = if (words.size > 1) words.last().first().toString() else ""
