@@ -28,8 +28,10 @@ android {
         create("development") {
             dimension = "env"
             applicationIdSuffix = ".dev"
-            // 10.0.2.2 = máy chạy backend, nhìn từ emulator Android.
-            buildConfigField("String", "API_URL", "\"http://10.0.2.2:3000/v1\"")
+            // 10.0.2.2 = máy chạy backend, nhìn từ emulator Android. Máy thật: `adb reverse tcp:3000 tcp:3000`
+            // rồi build với `-PapiUrl=http://localhost:3000/v1`.
+            val apiUrl = project.findProperty("apiUrl") ?: "http://10.0.2.2:3000/v1"
+            buildConfigField("String", "API_URL", "\"$apiUrl\"")
             buildConfigField("boolean", "HTTP_LOGGING", "true")
             // Web client ID của Google (khớp GOOGLE_CLIENT_IDS backend) để lấy id_token gửi lên /auth/sso/google.
             buildConfigField(
