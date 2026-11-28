@@ -22,7 +22,7 @@ import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
 /**
  * App Bar `Root` (Figma Navigation/App Bar, A01): [leading] (chip vai trò), [title] H2 tuỳ chọn,
- * [trailing] bên phải. Biến thể `Detail` (A03): [onBack] thêm nút quay lại 44 ở đầu, [subtitle] là dòng Caption dưới tiêu đề. Cao 56, nền surface, viền dưới outlineVariant 1.5. Tiêu đề nhường chỗ trước.
+ * [trailing] bên phải. Khoảng cách giữa các phần tử 4 (Figma A02/A25); tiêu đề co trước, chip và nút không co, cắt bằng "…". Biến thể `Detail` (A03): [onBack] thêm nút quay lại 44 ở đầu, [subtitle] là dòng Caption dưới tiêu đề. Cao 56, nền surface, viền dưới outlineVariant 1.5. Tiêu đề nhường chỗ trước.
  */
 @Composable
 fun DhAppBar(
@@ -39,7 +39,7 @@ fun DhAppBar(
             Row(
                 Modifier.fillMaxWidth().height(56.dp).padding(start = if (onBack != null) Dimens.spacingInline else Dimens.spacingPage, end = Dimens.spacingInline),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingControl),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingInline),
             ) {
                 if (onBack != null) {
                     DhIconButton(R.drawable.ic_arrow_back, backDescription, onBack)
@@ -56,7 +56,7 @@ fun DhAppBar(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                } else if (title != null) Text(title, style = TeachHubText.h2, maxLines = 1, modifier = Modifier.weight(1f))
+                } else if (title != null) Text(title, style = TeachHubText.h2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 else androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                 trailing()
             }
