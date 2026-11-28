@@ -486,12 +486,13 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
             )
         }
         Text(stringResource(R.string.onboarding_rules_label) + " *", style = TeachHubText.label)
-        // Figma Schedule/Rule Row: Thứ 80 · Giờ bắt đầu co giãn · Thời lượng 112 · nút xóa 44 (ẩn khi chỉ 1 hàng).
+        // Figma Schedule/Rule Row vẽ ở khung 390 với Thứ 80 · Thời lượng 112 cố định; máy 360dp có nút xóa thì ô giờ
+        // chỉ còn 68dp, mất chữ. Chia theo tỉ lệ nội dung để "CN" · "17:30" · "120 phút" luôn hiện đủ.
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val style = TeachHubText.label
-            Text(stringResource(R.string.onboarding_rule_weekday) + " *", style = style, modifier = Modifier.width(RULE_DAY_WIDTH))
-            Text(stringResource(R.string.onboarding_rule_start) + " *", style = style, modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.onboarding_rule_duration), style = style, modifier = Modifier.width(RULE_DURATION_WIDTH))
+            Text(stringResource(R.string.onboarding_rule_weekday) + " *", style = style, modifier = Modifier.weight(W_DAY))
+            Text(stringResource(R.string.onboarding_rule_start) + " *", style = style, modifier = Modifier.weight(W_TIME))
+            Text(stringResource(R.string.onboarding_rule_duration), style = style, modifier = Modifier.weight(W_DURATION))
             if (rows.size > 1) Spacer(Modifier.width(44.dp))
         }
         rows.forEachIndexed { i, row ->
@@ -504,19 +505,19 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
                             placeholder = row.weekday == null,
                             options = days.toList(),
                             onSelect = { d -> vm.updateRow(i) { it.copy(weekday = d + 1) } },
-                            modifier = Modifier.width(RULE_DAY_WIDTH),
+                            modifier = Modifier.weight(W_DAY),
                         )
                         CompactField(
                             row.start,
                             onClick = { timeRow = i },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(W_TIME),
                             leadingIcon = painterResource(R.drawable.ic_clock),
                         )
                         MenuField(
                             text = stringResource(R.string.onboarding_rule_duration_value, row.duration),
                             options = durationLabels,
                             onSelect = { k -> vm.updateRow(i) { it.copy(duration = DURATIONS[k]) } },
-                            modifier = Modifier.width(RULE_DURATION_WIDTH),
+                            modifier = Modifier.weight(W_DURATION),
                         )
                         if (rows.size > 1) {
                             IconButton(onClick = { vm.removeRow(i) }, modifier = Modifier.size(44.dp)) {
@@ -575,8 +576,9 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
 }
 
 // Độ rộng cột Thứ · Giờ · Thời lượng: "90 phút" cần chỗ hơn "T2".
-private val RULE_DAY_WIDTH = 80.dp
-private val RULE_DURATION_WIDTH = 112.dp
+private const val W_DAY = 26f
+private const val W_TIME = 33f
+private const val W_DURATION = 41f
 
 @Composable
 private fun ColumnScope.ChooseClass(step: OnboardingStep, classes: List<ClassDto>, onChoose: (ClassDto) -> Unit) {
@@ -697,10 +699,11 @@ private fun CompactField(
         border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
         modifier = modifier.height(44.dp).clip(shape).clickable(role = Role.Button, onClick = onClick),
     ) {
+        // Lề 8, cách 4: ba ô cùng hàng với nút xóa phải vừa máy 360dp.
         Row(
-            Modifier.padding(horizontal = 12.dp),
+            Modifier.padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (leadingIcon != null) {
                 Icon(leadingIcon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -712,7 +715,8 @@ private fun CompactField(
                 color = if (placeholder) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            Icon(painterResource(R.drawable.ic_caret_down), null, Modifier.size(20.dp))
+            // Ô có icon đầu (giờ) đã báo chạm để chọn; bỏ mũi tên để nhường chỗ cho chữ.
+            if (leadingIcon == null) Icon(painterResource(R.drawable.ic_caret_down), null, Modifier.size(20.dp))
         }
     }
 }

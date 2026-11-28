@@ -3,8 +3,10 @@ import SwiftUI
 
 private let weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
 private let durations = [60, 90, 120]
-private let ruleDayWidth: CGFloat = 80
-private let ruleDurationWidth: CGFloat = 112
+/// Tỉ lệ cột hàng lịch (Thứ · Thời lượng; Giờ lấy phần còn lại). Figma vẽ 80/112 cố định ở khung 390, nhưng iPhone SE/mini
+/// có nút xóa thì ô giờ mất chữ; chia theo tỉ lệ nội dung để "CN" · "17:30" · "120 phút" luôn hiện đủ.
+private let ruleDayShare: CGFloat = 0.26
+private let ruleDurationShare: CGFloat = 0.41
 private let subjects = ["Toán", "Ngữ văn", "Tiếng Anh", "Vật lý", "Hóa học", "Sinh học", "Năng khiếu", "Khác"]
 
 /// [T02] Thiết lập lớp học 3 bước (Figma B07–B09).
@@ -360,6 +362,14 @@ private struct AddedRow: View {
 private struct ScheduleStep: View {
     @Bindable var model: OnboardingModel
     @Environment(\.dhColors) private var colors
+    @State private var contentWidth: CGFloat = 0
+
+    /// Bề rộng ô Thứ/Thời lượng; `nil` trước lần đo đầu.
+    private func ruleWidth(_ share: CGFloat) -> CGFloat? {
+        guard contentWidth > 0 else { return nil }
+        let fields = contentWidth - 16 - (model.rows.count > 1 ? 52 : 0)
+        return (fields * share).rounded(.down)
+    }
 
     var body: some View {
         let overlap = findOverlap(model.rows)
@@ -371,11 +381,10 @@ private struct ScheduleStep: View {
                     Text("onboarding.courseFeePending").font(.footnote).foregroundStyle(colors.onSurfaceVariant)
                 }
                 (Text("onboarding.rulesLabel") + Text(verbatim: " *")).dhText(TeachHubTokens.Typo.label)
-                // Figma Schedule/Rule Row: Thứ 80 · Giờ bắt đầu co giãn · Thời lượng 112 · nút xóa 44 (ẩn khi chỉ 1 hàng).
                 HStack(spacing: 8) {
-                    (Text("onboarding.ruleWeekday") + Text(verbatim: " *")).frame(width: ruleDayWidth, alignment: .leading)
+                    (Text("onboarding.ruleWeekday") + Text(verbatim: " *")).frame(width: ruleWidth(ruleDayShare), alignment: .leading)
                     (Text("onboarding.ruleStart") + Text(verbatim: " *")).frame(maxWidth: .infinity, alignment: .leading)
-                    Text("onboarding.ruleDuration").frame(width: ruleDurationWidth, alignment: .leading)
+                    Text("onboarding.ruleDuration").frame(width: ruleWidth(ruleDurationShare), alignment: .leading)
                     if model.rows.count > 1 { Spacer().frame(width: 44) }
                 }
                 .dhText(TeachHubTokens.Typo.label)
@@ -387,13 +396,13 @@ private struct ScheduleStep: View {
                                 placeholder: row.weekday == nil,
                                 options: weekdays
                             ) { model.rows[index].weekday = $0 + 1 }
-                            .frame(width: ruleDayWidth)
+                            .frame(width: ruleWidth(ruleDayShare))
                             TimeField(value: row.start) { model.rows[index].start = $0 }
                             CompactMenu(
                                 text: String(localized: "onboarding.ruleDurationValue \(row.duration)"),
                                 options: durations.map { String(localized: "onboarding.ruleDurationValue \($0)") }
                             ) { model.rows[index].duration = durations[$0] }
-                            .frame(width: ruleDurationWidth)
+                            .frame(width: ruleWidth(ruleDurationShare))
                             if model.rows.count > 1 {
                                 Button { model.removeRow(row.id) } label: {
                                     Image(systemName: "xmark").frame(width: 44, height: 44)
@@ -418,6 +427,7 @@ private struct ScheduleStep: View {
                 }
             }
             .padding(TeachHubTokens.Dimens.spacingPage)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width - 2 * TeachHubTokens.Dimens.spacingPage } action: { contentWidth = $0 }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {
@@ -601,7 +611,7 @@ private struct CompactMenu: View {
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.down").font(.caption).foregroundStyle(colors.onSurfaceVariant)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(colors.surface, in: shape)
             .overlay(shape.stroke(colors.outline, lineWidth: 1.5))
@@ -625,13 +635,13 @@ private struct TimeField: View {
             draft = Calendar.current.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: .now) ?? .now
             open = true
         } label: {
-            HStack(spacing: 8) {
+            // Icon đồng hồ đã báo chạm để chọn giờ; bỏ mũi tên để nhường chỗ cho chữ.
+            HStack(spacing: 4) {
                 Image("ic_clock").resizable().frame(width: 20, height: 20).foregroundStyle(colors.onSurfaceVariant)
-                Text(verbatim: value).dhText(TeachHubTokens.Typo.body).foregroundStyle(colors.onSurface)
+                Text(verbatim: value).dhText(TeachHubTokens.Typo.body).foregroundStyle(colors.onSurface).lineLimit(1)
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.down").font(.caption).foregroundStyle(colors.onSurfaceVariant)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(colors.surface, in: shape)
             .overlay(shape.stroke(colors.outline, lineWidth: 1.5))
