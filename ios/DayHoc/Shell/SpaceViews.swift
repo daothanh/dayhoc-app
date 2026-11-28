@@ -193,7 +193,7 @@ struct TeacherSpaceView: View {
     var body: some View {
         RoleSpace(
             app: app,
-            title: tab == 0 ? "today.title" : nil,
+            title: items[tab].label,
             trailing: { if tab == 0 { TodayAppBarActions(model: today, onBell: comingSoon) } },
             content: {
                 Group {
@@ -207,7 +207,6 @@ struct TeacherSpaceView: View {
                     } else {
                         ScrollView {
                             VStack(alignment: .leading, spacing: TeachHubTokens.Dimens.spacingContent) {
-                                Text(items[tab].label).font(.title.bold())
                                 Text("space.coming").foregroundStyle(colors.onSurfaceVariant)
                                 if tab == items.count - 1 {
                                     DhPrimaryButton(title: "logout", isLoading: loggingOut) {

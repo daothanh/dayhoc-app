@@ -107,7 +107,7 @@ fun TeacherSpace(
         store,
         onSwitched,
         onAddRole,
-        title = if (tab == 0) stringResource(R.string.today_title) else null,
+        title = items[tab].label,
         actions = { if (tab == 0) TodayAppBarActions(todayState, showComingSoon) },
     ) {
         if (tab == 0) {
@@ -123,7 +123,6 @@ fun TeacherSpace(
             Modifier.fillMaxSize().padding(Dimens.spacingPage).padding(bottom = DhBottomNavHeight),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
         ) {
-            Text(items[tab].label, style = MaterialTheme.typography.headlineMedium)
             Text(
                 stringResource(R.string.space_coming),
                 style = MaterialTheme.typography.bodyMedium,
