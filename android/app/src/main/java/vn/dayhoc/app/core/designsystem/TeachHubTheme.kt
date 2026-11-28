@@ -40,6 +40,9 @@ private val LightColors = lightColorScheme(
     onSurface = Light.onSurface,
     onSurfaceVariant = Light.onSurfaceVariant,
     surfaceContainerLow = Light.surfaceContainerLow,
+    // Hộp thoại, DatePicker, TimePicker dùng surfaceContainer/High; để trống thì M3 lấy tím mặc định.
+    surfaceContainer = Light.surface,
+    surfaceContainerHigh = Light.surface,
     surfaceContainerHighest = Light.surfaceContainerHighest,
     outline = Light.outline,
     outlineVariant = Light.outlineVariant,
@@ -66,6 +69,9 @@ private val DarkColors = darkColorScheme(
     onSurface = Dark.onSurface,
     onSurfaceVariant = Dark.onSurfaceVariant,
     surfaceContainerLow = Dark.surfaceContainerLow,
+    // Hộp thoại, DatePicker, TimePicker dùng surfaceContainer/High; để trống thì M3 lấy tím mặc định.
+    surfaceContainer = Dark.surface,
+    surfaceContainerHigh = Dark.surface,
     surfaceContainerHighest = Dark.surfaceContainerHighest,
     outline = Dark.outline,
     outlineVariant = Dark.outlineVariant,

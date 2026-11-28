@@ -3,16 +3,22 @@ import SwiftUI
 
 private let weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
 private let durations = [60, 90, 120]
+/// Tỉ lệ cột hàng lịch (Thứ · Thời lượng; Giờ lấy phần còn lại). Figma vẽ 80/112 cố định ở khung 390, nhưng iPhone SE/mini
+/// có nút xóa thì ô giờ mất chữ; chia theo tỉ lệ nội dung để "CN" · "17:30" · "120 phút" luôn hiện đủ.
+private let ruleDayShare: CGFloat = 0.26
+private let ruleDurationShare: CGFloat = 0.41
 private let subjects = ["Toán", "Ngữ văn", "Tiếng Anh", "Vật lý", "Hóa học", "Sinh học", "Năng khiếu", "Khác"]
 
 /// [T02] Thiết lập lớp học 3 bước (Figma B07–B09).
 struct OnboardingView: View {
     @Bindable var model: OnboardingModel
     let onFinished: () -> Void
+    @Environment(\.dhColors) private var colors
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                appBar
                 if model.loading {
                     ProgressView().frame(maxHeight: .infinity)
                 } else if model.loadFailed {
@@ -23,21 +29,44 @@ struct OnboardingView: View {
                 }
             }
             .dhScreen()
-            .navigationTitle("onboarding.title")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
-                    if let step = model.step, !model.loading, step.skippable {
-                        Button("onboarding.skip") { Task { await model.skip() } }
-                            .disabled(model.saving)
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .bottom) { Toast(text: $model.message) }
         }
         .task { await model.load() }
         .onChange(of: model.finished) { _, done in if done { onFinished() } }
+    }
+
+    /// App Bar (Figma `Navigation/App Bar`, B07–B09): nền `surface`, tiêu đề 17 SemiBold căn trái,
+    /// "Bỏ qua" chữ link bên phải, kẻ dưới 1.5px. Thanh điều hướng hệ thống căn giữa và bọc nút trong kính nên không dùng.
+    private var appBar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                Text("onboarding.title")
+                    .dhText(TeachHubTokens.Typo.h2)
+                    .foregroundStyle(colors.onSurface)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
+                if let step = model.step, !model.loading, step.skippable {
+                    Button { Task { await model.skip() } } label: {
+                        Text("onboarding.skip")
+                            .dhText(TeachHubTokens.Typo.buttonSmall)
+                            .foregroundStyle(model.saving ? colors.onSurfaceVariant : colors.secondary)
+                            .frame(minHeight: 44)
+                            .padding(.horizontal, 8)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.saving)
+                }
+            }
+            .padding(.leading, TeachHubTokens.Dimens.spacingPage)
+            .padding(.trailing, 8)
+            .frame(height: 56)
+            .background(colors.surface)
+            Rectangle().fill(colors.outlineVariant).frame(height: 1.5)
+        }
     }
 }
 
@@ -224,8 +253,10 @@ private struct AddStudentsStep: View {
                     Button {
                         ContactPhonePicker.shared.present { model.pickedPhone($0) }
                     } label: {
-                        Image(systemName: "person.crop.circle")
-                            .font(.system(size: 20))
+                        // Solar "User Id" Linear, cùng bộ với icon điều hướng.
+                        Image("ic_address_book")
+                            .resizable()
+                            .frame(width: 24, height: 24)
                             .frame(width: 44, height: 44)
                             .overlay(
                                 RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.fieldRadius)
@@ -237,16 +268,22 @@ private struct AddStudentsStep: View {
                     .padding(.bottom, model.phoneError ? 22 : 0)
                 }
                 .disabled(model.studentBusy)
+                // Đã nhập tên: viền đậm dần và nút nảy nhẹ một lần để báo đây là bước tiếp theo.
+                let ready = !model.studentName.trimmingCharacters(in: .whitespaces).isEmpty
+                    && !model.studentBusy && !model.enrollFailed
                 DhSecondaryButton(
                     title: model.studentBusy ? "onboarding.saving" : "onboarding.addStudent",
                     icon: "plus",
-                    identifier: "onboarding.addStudent"
+                    identifier: "onboarding.addStudent",
+                    emphasized: ready
                 ) {
                     let name = model.studentName.trimmingCharacters(in: .whitespaces)
                     let guardian = String(localized: "onboarding.guardianDefaultName \(name)")
                     Task { await model.addStudent(guardian: guardian) }
                 }
                 .disabled(model.studentBusy || model.enrollFailed)
+                .scaleEffect(ready ? 1 : 0.97)
+                .animation(.spring(response: 0.35, dampingFraction: 0.55), value: ready)
                 if !model.added.isEmpty {
                     Text("onboarding.addedCount \(model.added.count)")
                         .dhText(TeachHubTokens.Typo.section)
@@ -325,6 +362,14 @@ private struct AddedRow: View {
 private struct ScheduleStep: View {
     @Bindable var model: OnboardingModel
     @Environment(\.dhColors) private var colors
+    @State private var contentWidth: CGFloat = 0
+
+    /// Bề rộng ô Thứ/Thời lượng; `nil` trước lần đo đầu.
+    private func ruleWidth(_ share: CGFloat) -> CGFloat? {
+        guard contentWidth > 0 else { return nil }
+        let fields = contentWidth - 16 - (model.rows.count > 1 ? 52 : 0)
+        return (fields * share).rounded(.down)
+    }
 
     var body: some View {
         let overlap = findOverlap(model.rows)
@@ -337,9 +382,9 @@ private struct ScheduleStep: View {
                 }
                 (Text("onboarding.rulesLabel") + Text(verbatim: " *")).dhText(TeachHubTokens.Typo.label)
                 HStack(spacing: 8) {
-                    (Text("onboarding.ruleWeekday") + Text(verbatim: " *")).frame(maxWidth: .infinity, alignment: .leading)
+                    (Text("onboarding.ruleWeekday") + Text(verbatim: " *")).frame(width: ruleWidth(ruleDayShare), alignment: .leading)
                     (Text("onboarding.ruleStart") + Text(verbatim: " *")).frame(maxWidth: .infinity, alignment: .leading)
-                    Text("onboarding.ruleDuration").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("onboarding.ruleDuration").frame(width: ruleWidth(ruleDurationShare), alignment: .leading)
                     if model.rows.count > 1 { Spacer().frame(width: 44) }
                 }
                 .dhText(TeachHubTokens.Typo.label)
@@ -351,14 +396,13 @@ private struct ScheduleStep: View {
                                 placeholder: row.weekday == nil,
                                 options: weekdays
                             ) { model.rows[index].weekday = $0 + 1 }
-                            DatePicker("onboarding.ruleStart", selection: timeBinding(index), displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .environment(\.locale, Locale(identifier: "vi_VN"))
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(width: ruleWidth(ruleDayShare))
+                            TimeField(value: row.start) { model.rows[index].start = $0 }
                             CompactMenu(
                                 text: String(localized: "onboarding.ruleDurationValue \(row.duration)"),
                                 options: durations.map { String(localized: "onboarding.ruleDurationValue \($0)") }
                             ) { model.rows[index].duration = durations[$0] }
+                            .frame(width: ruleWidth(ruleDurationShare))
                             if model.rows.count > 1 {
                                 Button { model.removeRow(row.id) } label: {
                                     Image(systemName: "xmark").frame(width: 44, height: 44)
@@ -383,6 +427,7 @@ private struct ScheduleStep: View {
                 }
             }
             .padding(TeachHubTokens.Dimens.spacingPage)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width - 2 * TeachHubTokens.Dimens.spacingPage } action: { contentWidth = $0 }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {
@@ -414,19 +459,6 @@ private struct ScheduleStep: View {
         rules.sorted { ($0.weekday, minutesOf($0.startTime)) < ($1.weekday, minutesOf($1.startTime)) }
             .map { "\(weekdays[$0.weekday - 1]) \($0.startTime)" }
             .joined(separator: " · ")
-    }
-
-    private func timeBinding(_ index: Int) -> Binding<Date> {
-        Binding(
-            get: {
-                let m = minutesOf(model.rows[index].start)
-                return Calendar.current.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: .now) ?? .now
-            },
-            set: {
-                let c = Calendar.current.dateComponents([.hour, .minute], from: $0)
-                model.rows[index].start = hhmm((c.hour ?? 0) * 60 + (c.minute ?? 0))
-            }
-        )
     }
 }
 
@@ -579,9 +611,66 @@ private struct CompactMenu: View {
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.down").font(.caption).foregroundStyle(colors.onSurfaceVariant)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, minHeight: 44)
+            .background(colors.surface, in: shape)
             .overlay(shape.stroke(colors.outline, lineWidth: 1.5))
+        }
+    }
+}
+
+/// Ô "Giờ bắt đầu" (Figma Inputs/Select trong Schedule/Rule Row): cùng kiểu ô với Thứ/Thời lượng; chạm mở
+/// bánh xe chọn giờ trong sheet với Hủy/Chọn. `DatePicker` compact của hệ thống là viên xám, không theo DS.
+private struct TimeField: View {
+    let value: String
+    let onPick: (String) -> Void
+    @State private var open = false
+    @State private var draft = Date.now
+    @Environment(\.dhColors) private var colors
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.fieldRadius)
+        Button {
+            let m = minutesOf(value)
+            draft = Calendar.current.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: .now) ?? .now
+            open = true
+        } label: {
+            // Icon đồng hồ đã báo chạm để chọn giờ; bỏ mũi tên để nhường chỗ cho chữ.
+            HStack(spacing: 4) {
+                Image("ic_clock").resizable().frame(width: 20, height: 20).foregroundStyle(colors.onSurfaceVariant)
+                Text(verbatim: value).dhText(TeachHubTokens.Typo.body).foregroundStyle(colors.onSurface).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(colors.surface, in: shape)
+            .overlay(shape.stroke(colors.outline, lineWidth: 1.5))
+            .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("onboarding.ruleStart"))
+        .accessibilityValue(Text(verbatim: value))
+        .sheet(isPresented: $open) {
+            VStack(spacing: 0) {
+                HStack {
+                    Button { open = false } label: { Text("cancel").dhText(TeachHubTokens.Typo.buttonSmall).foregroundStyle(colors.secondary) }
+                    Spacer()
+                    Button {
+                        let c = Calendar.current.dateComponents([.hour, .minute], from: draft)
+                        onPick(hhmm((c.hour ?? 0) * 60 + (c.minute ?? 0)))
+                        open = false
+                    } label: { Text("ok").dhText(TeachHubTokens.Typo.buttonSmall).foregroundStyle(colors.secondary) }
+                }
+                .frame(minHeight: 44)
+                .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
+                .padding(.top, 8)
+                DatePicker("onboarding.ruleStart", selection: $draft, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .environment(\.locale, Locale(identifier: "vi_VN"))
+            }
+            .presentationDetents([.height(300)])
+            .presentationBackground(colors.surface)
         }
     }
 }

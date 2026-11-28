@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -96,5 +97,21 @@ fun DhSecondaryButton(
             Spacer(Modifier.width(Dimens.spacingControl))
         }
         Text(text, style = if (small) TeachHubText.buttonSmall else TeachHubText.button)
+    }
+}
+
+/**
+ * Nút chữ (Figma "Actions/Text Button"): chữ màu link — lime/800 ở Light, lime/500 ở Dark — 13 SemiBold, vùng chạm 44.
+ * Dùng thay `TextButton` của M3, vốn lấy `primary` lime nên không đọc được trên nền sáng (nút hộp thoại, "Bỏ qua").
+ */
+@Composable
+fun DhTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    TextButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.defaultMinSize(minHeight = 44.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+    ) {
+        Text(text, style = TeachHubText.buttonSmall)
     }
 }

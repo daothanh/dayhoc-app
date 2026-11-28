@@ -43,18 +43,23 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -63,6 +68,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -79,7 +86,9 @@ import vn.dayhoc.app.core.designsystem.DhInfoBanner
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.DhRadio
 import vn.dayhoc.app.core.designsystem.DhSecondaryButton
+import vn.dayhoc.app.core.designsystem.DhTextButton
 import vn.dayhoc.app.core.designsystem.DhTextField
+import vn.dayhoc.app.core.designsystem.LocalButtonBorderColor
 import vn.dayhoc.app.core.designsystem.TeachHubText
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
@@ -108,18 +117,20 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.onboarding_title)) },
-                actions = {
-                    val step = state.step
-                    // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
-                    if (step != null && !state.loading && step.skippable) {
-                        TextButton(onClick = viewModel::skip, enabled = !state.saving) {
-                            Text(stringResource(R.string.onboarding_skip))
+            Column {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.onboarding_title)) },
+                    actions = {
+                        val step = state.step
+                        // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
+                        if (step != null && !state.loading && step.skippable) {
+                            DhTextButton(stringResource(R.string.onboarding_skip), viewModel::skip, enabled = !state.saving)
                         }
-                    }
-                },
-            )
+                    },
+                )
+                // Figma Navigation/App Bar: kẻ dưới 1.5px border/default.
+                HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
@@ -319,7 +330,7 @@ private fun ColumnScope.AddStudentsStep(state: OnboardingUiState, vm: Onboarding
             enabled = !form.busy,
             modifier = Modifier.fillMaxWidth(),
         )
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DhTextField(
                 value = form.phone,
                 onValueChange = { vm.updateStudent(phone = it.take(20)) },
@@ -342,18 +353,32 @@ private fun ColumnScope.AddStudentsStep(state: OnboardingUiState, vm: Onboarding
                 enabled = !form.busy,
                 shape = RoundedCornerShape(Dimens.fieldRadius),
                 border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.size(44.dp),
+                // Vuông bằng đúng ô nhập bên cạnh (Figma B08); OutlinedTextField có nhãn chừa 8dp phía trên.
+                modifier = Modifier.padding(top = 8.dp).size(OutlinedTextFieldDefaults.MinHeight),
             ) {
                 Icon(painterResource(R.drawable.ic_address_book), stringResource(R.string.contacts_pick_phone))
             }
         }
-        DhSecondaryButton(
-            text = stringResource(if (form.busy) R.string.onboarding_saving else R.string.onboarding_add_student),
-            onClick = { vm.addStudent(guardian) },
-            enabled = !form.busy && !form.enrollFailed,
-            icon = painterResource(R.drawable.ic_add),
-            modifier = Modifier.fillMaxWidth(),
+        // Đã nhập tên: viền đậm dần và nút nảy nhẹ một lần để báo đây là bước tiếp theo.
+        val ready = form.name.isNotBlank() && !form.busy && !form.enrollFailed
+        val addBorder by animateColorAsState(
+            if (ready) MaterialTheme.colorScheme.onSurface else LocalButtonBorderColor.current,
+            label = "addStudentBorder",
         )
+        val addScale by animateFloatAsState(
+            if (ready) 1f else 0.97f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+            label = "addStudentScale",
+        )
+        CompositionLocalProvider(LocalButtonBorderColor provides addBorder) {
+            DhSecondaryButton(
+                text = stringResource(if (form.busy) R.string.onboarding_saving else R.string.onboarding_add_student),
+                onClick = { vm.addStudent(guardian) },
+                enabled = !form.busy && !form.enrollFailed,
+                icon = painterResource(R.drawable.ic_add),
+                modifier = Modifier.fillMaxWidth().graphicsLayer { scaleX = addScale; scaleY = addScale },
+            )
+        }
         if (form.added.isNotEmpty()) {
             Text(
                 stringResource(R.string.onboarding_added_count, form.added.size),
@@ -432,10 +457,10 @@ private fun DuplicateDialog(candidates: List<StudentCandidate>, vm: OnboardingVi
             }
         },
         confirmButton = {
-            TextButton(onClick = vm::confirmNewStudent) { Text(stringResource(R.string.students_duplicate_new)) }
+            DhTextButton(stringResource(R.string.students_duplicate_new), vm::confirmNewStudent)
         },
         dismissButton = {
-            TextButton(onClick = vm::dismissDuplicates) { Text(stringResource(R.string.students_duplicate_cancel)) }
+            DhTextButton(stringResource(R.string.students_duplicate_cancel), vm::dismissDuplicates)
         },
     )
 }
@@ -461,6 +486,8 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
             )
         }
         Text(stringResource(R.string.onboarding_rules_label) + " *", style = TeachHubText.label)
+        // Figma Schedule/Rule Row vẽ ở khung 390 với Thứ 80 · Thời lượng 112 cố định; máy 360dp có nút xóa thì ô giờ
+        // chỉ còn 68dp, mất chữ. Chia theo tỉ lệ nội dung để "CN" · "17:30" · "120 phút" luôn hiện đủ.
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val style = TeachHubText.label
             Text(stringResource(R.string.onboarding_rule_weekday) + " *", style = style, modifier = Modifier.weight(W_DAY))
@@ -480,7 +507,12 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
                             onSelect = { d -> vm.updateRow(i) { it.copy(weekday = d + 1) } },
                             modifier = Modifier.weight(W_DAY),
                         )
-                        CompactField(row.start, onClick = { timeRow = i }, modifier = Modifier.weight(W_TIME))
+                        CompactField(
+                            row.start,
+                            onClick = { timeRow = i },
+                            modifier = Modifier.weight(W_TIME),
+                            leadingIcon = painterResource(R.drawable.ic_clock),
+                        )
                         MenuField(
                             text = stringResource(R.string.onboarding_rule_duration_value, row.duration),
                             options = durationLabels,
@@ -544,9 +576,9 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
 }
 
 // Độ rộng cột Thứ · Giờ · Thời lượng: "90 phút" cần chỗ hơn "T2".
-private const val W_DAY = 8f
-private const val W_TIME = 9f
-private const val W_DURATION = 10f
+private const val W_DAY = 26f
+private const val W_TIME = 33f
+private const val W_DURATION = 41f
 
 @Composable
 private fun ColumnScope.ChooseClass(step: OnboardingStep, classes: List<ClassDto>, onChoose: (ClassDto) -> Unit) {
@@ -654,14 +686,28 @@ private fun PickerField(value: String, label: String, placeholder: String?, onCl
 
 /** Ô gọn cho hàng lịch (cao 44, viền outline). */
 @Composable
-private fun CompactField(text: String, onClick: () -> Unit, modifier: Modifier, placeholder: Boolean = false) {
+private fun CompactField(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    placeholder: Boolean = false,
+    leadingIcon: Painter? = null,
+) {
     val shape = RoundedCornerShape(Dimens.fieldRadius)
     Surface(
         shape = shape,
         border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
         modifier = modifier.height(44.dp).clip(shape).clickable(role = Role.Button, onClick = onClick),
     ) {
-        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Lề 8, cách 4: ba ô cùng hàng với nút xóa phải vừa máy 360dp.
+        Row(
+            Modifier.padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (leadingIcon != null) {
+                Icon(leadingIcon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(
                 text,
                 maxLines = 1,
@@ -669,7 +715,8 @@ private fun CompactField(text: String, onClick: () -> Unit, modifier: Modifier, 
                 color = if (placeholder) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            Icon(painterResource(R.drawable.ic_caret_down), null, Modifier.size(20.dp))
+            // Ô có icon đầu (giờ) đã báo chạm để chọn; bỏ mũi tên để nhường chỗ cho chữ.
+            if (leadingIcon == null) Icon(painterResource(R.drawable.ic_caret_down), null, Modifier.size(20.dp))
         }
     }
 }
@@ -736,12 +783,12 @@ private fun DateDialog(initial: LocalDate?, onDismiss: () -> Unit, onPick: (Loca
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
+            DhTextButton(stringResource(R.string.ok), {
                 st.selectedDateMillis?.let { onPick(LocalDate.ofEpochDay(it / DAY_MS)) }
                 onDismiss()
-            }) { Text(stringResource(R.string.ok)) }
+            })
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { DhTextButton(stringResource(R.string.cancel), onDismiss) },
     ) {
         DatePicker(st)
     }
@@ -755,12 +802,12 @@ private fun TimeDialog(initial: String, onDismiss: () -> Unit, onPick: (String) 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
+            DhTextButton(stringResource(R.string.ok), {
                 onPick(hhmm(st.hour * 60 + st.minute))
                 onDismiss()
-            }) { Text(stringResource(R.string.ok)) }
+            })
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { DhTextButton(stringResource(R.string.cancel), onDismiss) },
         text = { TimePicker(st) },
     )
 }

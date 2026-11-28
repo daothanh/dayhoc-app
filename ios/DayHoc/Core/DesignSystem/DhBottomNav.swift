@@ -67,6 +67,8 @@ struct DhSecondaryButton: View {
     var icon: String?
     /// Định danh cho UI test; `nil` thì không gắn.
     var identifier: String?
+    /// Viền đậm (màu chữ) để báo nút đã sẵn sàng; đổi có hoạt ảnh.
+    var emphasized = false
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
@@ -87,7 +89,8 @@ struct DhSecondaryButton: View {
             .foregroundStyle(isEnabled ? colors.onSurface : colors.onSurfaceVariant)
             .overlay(
                 RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.buttonRadius)
-                    .stroke(isEnabled ? colors.buttonBorder : colors.outlineVariant, lineWidth: 2)
+                    .stroke(isEnabled ? (emphasized ? colors.onSurface : colors.buttonBorder) : colors.outlineVariant, lineWidth: 2)
+                    .animation(.easeOut(duration: 0.2), value: emphasized)
             )
             .contentShape(RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.buttonRadius))
         }
