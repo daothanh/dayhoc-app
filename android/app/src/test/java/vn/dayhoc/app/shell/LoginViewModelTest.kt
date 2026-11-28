@@ -157,7 +157,7 @@ class LoginViewModelTest {
             }
             override suspend fun clear() = Unit
         }
-        vm = LoginViewModel(AuthRepository(api, brokenStore))
+        vm = LoginViewModel(AuthRepository(api, brokenStore), SavedStateHandle())
         sendCodeTo("co.lan@example.com")
 
         vm.onCodeChange("482913")

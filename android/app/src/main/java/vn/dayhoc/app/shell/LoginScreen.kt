@@ -1,10 +1,10 @@
 package vn.dayhoc.app.shell
 
 import android.content.ActivityNotFoundException
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.net.toUri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -118,9 +118,10 @@ fun LoginScreen(viewModel: LoginViewModel, onLoggedIn: () -> Unit) {
         val url = state.appleAuthUrl ?: return@LaunchedEffect
         try {
             val host = activity ?: throw ActivityNotFoundException()
-            CustomTabsIntent.Builder().build().launchUrl(host, Uri.parse(url))
+            CustomTabsIntent.Builder().build().launchUrl(host, url.toUri())
             viewModel.appleBrowserOpened()
-        } catch (_: ActivityNotFoundException) {
+        } catch (_: RuntimeException) {
+            // Không có trình duyệt (ActivityNotFoundException) hoặc bị chặn mở (SecurityException).
             viewModel.appleBrowserFailed()
         }
     }

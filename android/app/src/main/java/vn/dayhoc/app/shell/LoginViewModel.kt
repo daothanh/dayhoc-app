@@ -59,7 +59,7 @@ data class LoginUiState(
 class LoginViewModel(
     private val auth: AuthRepository,
     // Giữ code_verifier qua lúc hệ thống tắt app khi người dùng đang ở trang Apple.
-    private val saved: SavedStateHandle = SavedStateHandle(),
+    private val saved: SavedStateHandle,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
@@ -173,9 +173,12 @@ class LoginViewModel(
             try {
                 val url = auth.startAppleAndroid(codeChallenge(verifier))
                 _state.update { it.copy(appleAuthUrl = url) }
-            } catch (e: ApiError) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 saved.remove<String>(KEY_APPLE_VERIFIER)
-                _state.update { it.copy(appleSigningIn = false, failure = e.toAppleFailure()) }
+                val failure = (e as? ApiError)?.toAppleFailure() ?: LoginFailure.AppleFailed
+                _state.update { it.copy(appleSigningIn = false, failure = failure) }
             }
         }
     }
