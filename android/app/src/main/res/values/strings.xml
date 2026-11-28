@@ -230,4 +230,56 @@
         <item>T7</item>
         <item>CN</item>
     </string-array>
+
+    <!-- NA-07: T05a Chi tiết buổi, T04 Điểm danh -->
+    <string name="session_sheet_close">Đóng</string>
+    <string name="session_sheet_edit_attendance">Sửa điểm danh</string>
+    <string name="session_sheet_repeat">%1$s · lặp %2$s</string>
+    <string name="session_sheet_reschedule">Dời buổi</string>
+    <string name="session_sheet_reschedule_hint">Đổi ngày/giờ, tự báo phụ huynh</string>
+    <string name="session_sheet_makeup">Tạo buổi bù</string>
+    <string name="session_sheet_cancel">Hủy buổi</string>
+    <string name="session_sheet_cancel_hint">Phụ huynh và học sinh được báo ngay</string>
+    <string name="session_sheet_note">Phụ huynh và học sinh được báo tự động khi đổi lịch.</string>
+    <string name="today_chip_pending">Chờ đồng bộ — phụ huynh chưa được báo</string>
+    <string name="today_sync_pending">Chờ đồng bộ (%1$d)</string>
+    <string name="attendance_title">Điểm danh</string>
+    <string name="attendance_title_edit">Sửa điểm danh · %1$s</string>
+    <string name="attendance_hint">Mặc định tất cả có mặt. Chạm học sinh để đổi.</string>
+    <string name="attendance_legend">CP = có phép · KP = không phép</string>
+    <string name="attendance_status_present">Có mặt</string>
+    <string name="attendance_status_late">Muộn</string>
+    <string name="attendance_status_excused">Vắng CP</string>
+    <string name="attendance_status_unexcused">Vắng KP</string>
+    <string name="attendance_count_present">Có mặt %1$d</string>
+    <string name="attendance_count_absent">Vắng %1$d</string>
+    <string name="attendance_count_late">Muộn %1$d</string>
+    <string name="attendance_row_parent_reported">PH đã báo vắng trước</string>
+    <string name="attendance_row_changed">Vừa đổi</string>
+    <string name="attendance_save">Lưu điểm danh</string>
+    <string name="attendance_save_notify">Lưu · báo %1$d phụ huynh</string>
+    <string name="attendance_save_changes">Lưu thay đổi</string>
+    <string name="attendance_save_local">Lưu trên máy · gửi sau</string>
+    <string name="attendance_saving">Đang lưu…</string>
+    <string name="attendance_offline_title">Đang ngoại tuyến</string>
+    <string name="attendance_offline_body">Điểm danh lưu trên máy, tự gửi phụ huynh khi có mạng.</string>
+    <string name="attendance_edit_banner_title">Sửa lần cuối lúc %1$s</string>
+    <string name="attendance_edit_banner_title_none">Đang sửa điểm danh</string>
+    <string name="attendance_edit_banner_body">Thay đổi sẽ báo lại cho phụ huynh liên quan.</string>
+    <string name="attendance_readonly_expired">Buổi đã quá 7 ngày, chỉ xem được.</string>
+    <string name="attendance_readonly_cancelled">Buổi đã hủy, không điểm danh được.</string>
+    <string name="attendance_load_failed">Không tải được danh sách học sinh. Kiểm tra mạng rồi thử lại.</string>
+    <string name="attendance_discard_title">Bỏ thay đổi điểm danh?</string>
+    <string name="attendance_discard_body">Các thay đổi chưa được lưu sẽ mất.</string>
+    <string name="attendance_discard_stay">Ở lại</string>
+    <string name="attendance_discard_confirm">Bỏ thay đổi</string>
+    <string name="attendance_error_generic">Không lưu được. Kiểm tra kết nối rồi thử lại.</string>
+    <string name="attendance_error_window_closed">Buổi đã quá 7 ngày, không sửa điểm danh được nữa.</string>
+    <string name="attendance_error_cancelled">Buổi đã hủy, không điểm danh được.</string>
+    <string name="attendance_error_not_found">Không tìm thấy buổi hoặc học sinh. Hãy mở lại danh sách.</string>
+    <string name="attendance_stale">Một số học sinh vừa được sửa trên thiết bị khác</string>
+    <string name="attendance_saved">Đã lưu điểm danh</string>
+    <string name="attendance_saved_notified">Đã lưu điểm danh · đã báo %1$d phụ huynh</string>
+    <string name="attendance_saved_local">Đã lưu trên máy · sẽ đồng bộ khi có mạng</string>
+    <string name="attendance_dropped">Không đồng bộ được điểm danh của một buổi, lô này đã bị bỏ.</string>
 </resources>

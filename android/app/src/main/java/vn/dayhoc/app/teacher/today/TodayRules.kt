@@ -36,11 +36,21 @@ data class TodaySession(
     val total: Int?,
     /** Trạng thái server (`planned`, `taught`, `cancelled`) để tính lại [kind] khi giờ trôi qua. */
     val status: String = "planned",
+    val classId: String = "",
+    /** Có lô điểm danh chờ đồng bộ trong outbox: thẻ hiện như đã điểm danh nhưng phụ huynh chưa được báo. */
+    val pending: Boolean = false,
 )
 
 /** Tính lại [TodaySession.kind] theo `now` rồi xếp lại: thẻ tự chuyển Sắp tới → Đang dạy → Chưa điểm danh theo giờ. */
-fun arrange(sessions: List<TodaySession>, now: Instant): List<TodaySession> =
-    sortSessions(sessions.map { it.copy(kind = classify(it.status, it.start, it.end, now)) })
+fun arrange(sessions: List<TodaySession>, now: Instant, pendingIds: Set<String> = emptySet()): List<TodaySession> =
+    sortSessions(mergePending(sessions.map { it.copy(kind = classify(it.status, it.start, it.end, now)) }, pendingIds))
+
+/** Buổi có lô chờ đồng bộ (trừ buổi đã hủy trên server) thành thẻ Taught + [TodaySession.pending]. */
+fun mergePending(sessions: List<TodaySession>, pendingIds: Set<String>): List<TodaySession> =
+    sessions.map {
+        if (it.id in pendingIds && it.kind != SessionKind.Cancelled) it.copy(kind = SessionKind.Taught, pending = true)
+        else it.copy(pending = false)
+    }
 
 /** Đang dạy → Chưa điểm danh → Sắp tới → Đã điểm danh → Đã hủy; cùng nhóm thì theo giờ bắt đầu. */
 fun sortSessions(sessions: List<TodaySession>): List<TodaySession> =
@@ -79,6 +89,9 @@ private fun weekdayShort(d: DayOfWeek) = if (d == DayOfWeek.SUNDAY) "CN" else "T
 
 /** "Thứ Hai, 09/11/2026". */
 fun formatDateLine(date: LocalDate) = "${weekdayLong(date.dayOfWeek)}, ${DMY.format(date)}"
+
+/** "Thứ Hai 09/11" cho dòng ngày của sheet Chi tiết buổi. */
+fun formatSheetDay(date: LocalDate) = "${weekdayLong(date.dayOfWeek)} ${DM.format(date)}"
 
 /** "T2 16/11" cho dòng "Buổi tiếp theo". */
 fun formatShortDay(date: LocalDate) = "${weekdayShort(date.dayOfWeek)} ${DM.format(date)}"

@@ -31,12 +31,17 @@ import vn.dayhoc.app.BuildConfig
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
+import vn.dayhoc.app.core.network.ApiError
 import vn.dayhoc.app.core.network.apiCall
 import vn.dayhoc.app.core.session.MembershipStore
 import vn.dayhoc.app.core.session.RoleSpaceScaffold
 import vn.dayhoc.app.core.session.Roles
 import vn.dayhoc.app.core.session.isVersionBelow
+import java.time.ZoneId
 import vn.dayhoc.app.teacher.TeacherSpace
+import vn.dayhoc.app.teacher.attendance.AttendanceScreen
+import vn.dayhoc.app.teacher.attendance.AttendanceViewModel
+import vn.dayhoc.app.teacher.attendance.repeatLabel
 import vn.dayhoc.app.teacher.onboarding.OnboardingScreen
 import vn.dayhoc.app.teacher.onboarding.OnboardingStep
 import vn.dayhoc.app.teacher.today.TodayViewModel
@@ -57,6 +62,10 @@ data object CenterWaitlistRoute
 
 @Serializable
 data object TeacherRoute
+
+/** [endsAt] = giờ kết thúc buổi (ISO) từ thẻ ở T03, chỉ để hiện "17:30–19:00" ở tiêu đề; API T04 không trả giờ kết thúc. */
+@Serializable
+data class AttendanceRoute(val sessionId: String, val endsAt: String)
 
 /** [startStep] = mở lại đúng bước đã bỏ qua (banner ở T03); `null` = bước đang dở theo server. */
 @Serializable
@@ -150,12 +159,38 @@ fun AppRoot(container: AppContainer) {
             TeacherSpace(
                 store = container.membershipStore,
                 onboardingApi = container.onboardingApi,
-                today = viewModel { TodayViewModel(container.todayApi) },
+                today = viewModel { TodayViewModel(container.todayApi, pendingSessions = container.pendingSessions) },
+                attendanceNotice = container.attendanceNotice,
+                syncEvents = container.syncEngine.events,
+                loadRepeat = { classId ->
+                    try {
+                        repeatLabel(apiCall { container.attendanceApi.classDetail(classId) }.scheduleRules.map { it.weekday })
+                    } catch (e: ApiError) {
+                        null
+                    }
+                },
+                onOpenAttendance = { id, endsAt -> nav.navigate(AttendanceRoute(id, endsAt)) { launchSingleTop = true } },
                 onOpenOnboarding = { step -> nav.navigate(OnboardingRoute(step?.wire)) { launchSingleTop = true } },
                 onSwitched = { m -> nav.resetTo(spaceRoute(m.role)) },
                 onAddRole = { nav.navigate(RolePickerRoute(adding = true)) },
                 onLogout = logout,
             )
+        }
+        composable<AttendanceRoute> { entry ->
+            val route = entry.toRoute<AttendanceRoute>()
+            val vm = viewModel {
+                AttendanceViewModel(
+                    sessionId = route.sessionId,
+                    api = container.attendanceApi,
+                    outbox = container.localStore,
+                    roster = container.localStore,
+                    device = container.localStore,
+                    connectivity = container.connectivity,
+                    notify = { container.attendanceNotice.value = it },
+                    onEnqueued = container::onOutboxEnqueued,
+                )
+            }
+            AttendanceScreen(vm, route.endsAt, ZoneId.systemDefault(), onClose = { nav.popBackStack() })
         }
         composable<OnboardingRoute> { entry ->
             val start = OnboardingStep.fromWire(entry.toRoute<OnboardingRoute>().startStep)

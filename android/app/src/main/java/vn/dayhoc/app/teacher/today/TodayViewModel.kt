@@ -8,6 +8,8 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +44,8 @@ data class TodayUiState(
     val failed: Boolean = false,
     /** Tải lại lỗi do mạng khi đang có dữ liệu cũ: giữ dữ liệu, hiện banner ngoại tuyến. */
     val offline: Boolean = false,
+    /** Mã buổi có lô điểm danh chờ đồng bộ (đọc từ outbox, không đợi mạng). */
+    val pending: Set<String> = emptySet(),
 ) {
     val syncing get() = loading || refreshing
 }
@@ -53,9 +57,14 @@ data class TodayUiState(
 class TodayViewModel(
     private val api: TodayApi,
     private val clock: Clock = Clock.systemDefaultZone(),
+    pendingSessions: Flow<Set<String>> = flowOf(emptySet()),
 ) : ViewModel() {
     private val _state = MutableStateFlow(TodayUiState())
     val state: StateFlow<TodayUiState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch { pendingSessions.collect { ids -> _state.update { it.copy(pending = ids) } } }
+    }
 
     private var job: Job? = null
 
@@ -67,7 +76,7 @@ class TodayViewModel(
         job = viewModelScope.launch {
             try {
                 val data = fetch()
-                _state.value = TodayUiState(data = data, loading = false)
+                _state.update { TodayUiState(data = data, loading = false, pending = it.pending) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -75,7 +84,7 @@ class TodayViewModel(
                 val network = e == ApiError.Network || e == ApiError.Timeout
                 _state.update { s ->
                     when {
-                        s.data == null -> TodayUiState(loading = false, failed = true)
+                        s.data == null -> TodayUiState(loading = false, failed = true, pending = s.pending)
                         network -> s.copy(refreshing = false, offline = true)
                         else -> s.copy(refreshing = false, refreshError = true)
                     }
@@ -111,6 +120,7 @@ class TodayViewModel(
             val att = attendance[dto.id]?.await()
             TodaySession(
                 id = dto.id,
+                classId = dto.classId,
                 className = dto.className,
                 start = start,
                 end = end,
