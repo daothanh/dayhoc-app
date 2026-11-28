@@ -54,7 +54,12 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -63,6 +68,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -80,6 +86,7 @@ import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.DhRadio
 import vn.dayhoc.app.core.designsystem.DhSecondaryButton
 import vn.dayhoc.app.core.designsystem.DhTextField
+import vn.dayhoc.app.core.designsystem.LocalButtonBorderColor
 import vn.dayhoc.app.core.designsystem.TeachHubText
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
@@ -115,7 +122,12 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
                     // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
                     if (step != null && !state.loading && step.skippable) {
                         TextButton(onClick = viewModel::skip, enabled = !state.saving) {
-                            Text(stringResource(R.string.onboarding_skip))
+                            // Figma: text/link (lime/800 ở Light); màu mặc định của TextButton là primary lime, không đọc được trên nền trắng.
+                            Text(
+                                stringResource(R.string.onboarding_skip),
+                                style = TeachHubText.buttonSmall,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
                         }
                     }
                 },
@@ -347,13 +359,26 @@ private fun ColumnScope.AddStudentsStep(state: OnboardingUiState, vm: Onboarding
                 Icon(painterResource(R.drawable.ic_address_book), stringResource(R.string.contacts_pick_phone))
             }
         }
-        DhSecondaryButton(
-            text = stringResource(if (form.busy) R.string.onboarding_saving else R.string.onboarding_add_student),
-            onClick = { vm.addStudent(guardian) },
-            enabled = !form.busy && !form.enrollFailed,
-            icon = painterResource(R.drawable.ic_add),
-            modifier = Modifier.fillMaxWidth(),
+        // Đã nhập tên: viền đậm dần và nút nảy nhẹ một lần để báo đây là bước tiếp theo.
+        val ready = form.name.isNotBlank() && !form.busy && !form.enrollFailed
+        val addBorder by animateColorAsState(
+            if (ready) MaterialTheme.colorScheme.onSurface else LocalButtonBorderColor.current,
+            label = "addStudentBorder",
         )
+        val addScale by animateFloatAsState(
+            if (ready) 1f else 0.97f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+            label = "addStudentScale",
+        )
+        CompositionLocalProvider(LocalButtonBorderColor provides addBorder) {
+            DhSecondaryButton(
+                text = stringResource(if (form.busy) R.string.onboarding_saving else R.string.onboarding_add_student),
+                onClick = { vm.addStudent(guardian) },
+                enabled = !form.busy && !form.enrollFailed,
+                icon = painterResource(R.drawable.ic_add),
+                modifier = Modifier.fillMaxWidth().graphicsLayer { scaleX = addScale; scaleY = addScale },
+            )
+        }
         if (form.added.isNotEmpty()) {
             Text(
                 stringResource(R.string.onboarding_added_count, form.added.size),
