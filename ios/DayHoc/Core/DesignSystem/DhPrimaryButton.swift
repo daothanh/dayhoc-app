@@ -6,12 +6,15 @@ struct DhPrimaryButton: View {
     let title: LocalizedStringKey
     var loadingTitle: LocalizedStringKey?
     var isLoading = false
+    /// Primary Small của Figma: cao 40, nhãn Button S, đệm ngang 12.
+    var small = false
     /// Định danh cho UI test; `nil` thì không gắn.
     var identifier: String?
     let action: () -> Void
 
     /// Vùng chạm tối thiểu theo HIG; DS chưa có token chiều cao nút.
     private static let minHeight: CGFloat = 48
+    private static let smallHeight: CGFloat = 40
 
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.dhColors) private var colors
@@ -24,10 +27,10 @@ struct DhPrimaryButton: View {
                     ProgressView().tint(colors.onPrimary)
                 }
                 Text(isLoading ? loadingTitle ?? title : title)
-                    .dhText(TeachHubTokens.Typo.button)
+                    .dhText(small ? TeachHubTokens.Typo.buttonSmall : TeachHubTokens.Typo.button)
             }
-            .frame(maxWidth: .infinity, minHeight: Self.minHeight)
-            .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
+            .frame(maxWidth: .infinity, minHeight: small ? Self.smallHeight : Self.minHeight)
+            .padding(.horizontal, small ? TeachHubTokens.Dimens.spacingContent : TeachHubTokens.Dimens.spacingPage)
             .foregroundStyle(active ? colors.onPrimary : colors.onSurfaceVariant)
             .background(
                 active ? colors.primary : colors.surfaceContainerHighest,
