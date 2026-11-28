@@ -50,7 +50,8 @@ struct TodayView: View {
                     section(String(localized: "today.section.sessions \(sessions.count)"))
                     ForEach(sessions) { sessionCard($0) }
                 }
-                if !data.setupSteps.isEmpty { setupBanner(data.setupSteps) }
+                let setup = bannerSteps(data.setupSteps, sessionsEmpty: sessions.isEmpty, next: data.next)
+                if !setup.isEmpty { setupBanner(setup) }
                 if let overdue = data.overdue, overdue.count > 0 {
                     section(String(localized: "today.section.todo"))
                     DhListRow(

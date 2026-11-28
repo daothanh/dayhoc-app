@@ -161,3 +161,9 @@ func earliestPlanned(_ sessions: [SessionDTO]) -> SessionDTO? {
 enum TodayEmptyVariant: Equatable, Sendable { case nextSession, noSchedule }
 
 func todayEmptyVariant(next: NextSession?) -> TodayEmptyVariant { next == nil ? .noSchedule : .nextSession }
+
+/// Màn A35 đã có nút "Tạo lịch" cùng đích với bước `set_schedule`, nên banner bỏ bước đó (hết bước thì ẩn).
+func bannerSteps(_ steps: [OnboardingStep], sessionsEmpty: Bool, next: NextSession?) -> [OnboardingStep] {
+    guard sessionsEmpty, todayEmptyVariant(next: next) == .noSchedule else { return steps }
+    return steps.filter { $0 != .setSchedule }
+}

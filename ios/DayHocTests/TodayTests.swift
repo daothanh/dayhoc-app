@@ -22,6 +22,14 @@ struct TodayRulesTests {
         #expect(todayEmptyVariant(next: nil) == .noSchedule)
     }
 
+    @Test func bannerDropsSetScheduleOnNoScheduleEmpty() {
+        let next = NextSession(className: "Toán 9A", day: t0, time: "17:30")
+        #expect(bannerSteps([.setSchedule], sessionsEmpty: true, next: nil).isEmpty)
+        #expect(bannerSteps([.addStudents, .setSchedule], sessionsEmpty: true, next: nil) == [.addStudents])
+        #expect(bannerSteps([.setSchedule], sessionsEmpty: true, next: next) == [.setSchedule])
+        #expect(bannerSteps([.setSchedule], sessionsEmpty: false, next: nil) == [.setSchedule])
+    }
+
     private func session(_ id: String, _ kind: SessionKind, _ at: String) -> TodaySession {
         let start = ISO8601DateFormatter().date(from: at)!
         return TodaySession(id: id, className: id, start: start, end: start + 5400, kind: kind,
