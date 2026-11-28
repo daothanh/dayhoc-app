@@ -6,6 +6,8 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -150,7 +152,7 @@ class OnboardingScreenTest {
 
         compose.onNodeWithText("Họ tên học sinh *").performTextInput("Nguyễn Văn Nam")
         compose.onNodeWithText("Số điện thoại phụ huynh").performTextInput("0912345678")
-        compose.onNodeWithText("Thêm học sinh").performClick()
+        compose.onNode(hasText("Thêm học sinh") and hasClickAction()).performClick()
 
         waitForText("ĐÃ THÊM (1)")
         compose.onNodeWithText("Nguyễn Văn Nam").assertIsDisplayed()
@@ -166,7 +168,7 @@ class OnboardingScreenTest {
         waitForText("Thêm học sinh")
 
         compose.onNodeWithText("Họ tên học sinh *").performTextInput("Nguyễn Văn Nam")
-        compose.onNodeWithText("Thêm học sinh").performClick()
+        compose.onNode(hasText("Thêm học sinh") and hasClickAction()).performClick()
 
         waitForText("Có phải cùng một em?")
         compose.onNodeWithText("Đúng, là em này").assertIsDisplayed()
@@ -183,7 +185,7 @@ class OnboardingScreenTest {
         waitForText("Thêm học sinh")
 
         compose.onNodeWithText("Họ tên học sinh *").performTextInput("Nguyễn Văn Nam")
-        compose.onNodeWithText("Thêm học sinh").performClick()
+        compose.onNode(hasText("Thêm học sinh") and hasClickAction()).performClick()
         waitForText("Có phải cùng một em?")
 
         compose.onNodeWithText("Đúng, là em này").performClick()

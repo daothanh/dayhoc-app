@@ -69,6 +69,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -485,11 +486,12 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
             )
         }
         Text(stringResource(R.string.onboarding_rules_label) + " *", style = TeachHubText.label)
+        // Figma Schedule/Rule Row: Thứ 80 · Giờ bắt đầu co giãn · Thời lượng 112 · nút xóa 44 (ẩn khi chỉ 1 hàng).
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val style = TeachHubText.label
-            Text(stringResource(R.string.onboarding_rule_weekday) + " *", style = style, modifier = Modifier.weight(W_DAY))
-            Text(stringResource(R.string.onboarding_rule_start) + " *", style = style, modifier = Modifier.weight(W_TIME))
-            Text(stringResource(R.string.onboarding_rule_duration), style = style, modifier = Modifier.weight(W_DURATION))
+            Text(stringResource(R.string.onboarding_rule_weekday) + " *", style = style, modifier = Modifier.width(RULE_DAY_WIDTH))
+            Text(stringResource(R.string.onboarding_rule_start) + " *", style = style, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.onboarding_rule_duration), style = style, modifier = Modifier.width(RULE_DURATION_WIDTH))
             if (rows.size > 1) Spacer(Modifier.width(44.dp))
         }
         rows.forEachIndexed { i, row ->
@@ -502,14 +504,19 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
                             placeholder = row.weekday == null,
                             options = days.toList(),
                             onSelect = { d -> vm.updateRow(i) { it.copy(weekday = d + 1) } },
-                            modifier = Modifier.weight(W_DAY),
+                            modifier = Modifier.width(RULE_DAY_WIDTH),
                         )
-                        CompactField(row.start, onClick = { timeRow = i }, modifier = Modifier.weight(W_TIME))
+                        CompactField(
+                            row.start,
+                            onClick = { timeRow = i },
+                            modifier = Modifier.weight(1f),
+                            leadingIcon = painterResource(R.drawable.ic_clock),
+                        )
                         MenuField(
                             text = stringResource(R.string.onboarding_rule_duration_value, row.duration),
                             options = durationLabels,
                             onSelect = { k -> vm.updateRow(i) { it.copy(duration = DURATIONS[k]) } },
-                            modifier = Modifier.weight(W_DURATION),
+                            modifier = Modifier.width(RULE_DURATION_WIDTH),
                         )
                         if (rows.size > 1) {
                             IconButton(onClick = { vm.removeRow(i) }, modifier = Modifier.size(44.dp)) {
@@ -568,9 +575,8 @@ private fun ColumnScope.ScheduleStep(state: OnboardingUiState, vm: OnboardingVie
 }
 
 // Độ rộng cột Thứ · Giờ · Thời lượng: "90 phút" cần chỗ hơn "T2".
-private const val W_DAY = 8f
-private const val W_TIME = 9f
-private const val W_DURATION = 10f
+private val RULE_DAY_WIDTH = 80.dp
+private val RULE_DURATION_WIDTH = 112.dp
 
 @Composable
 private fun ColumnScope.ChooseClass(step: OnboardingStep, classes: List<ClassDto>, onChoose: (ClassDto) -> Unit) {
@@ -678,14 +684,27 @@ private fun PickerField(value: String, label: String, placeholder: String?, onCl
 
 /** Ô gọn cho hàng lịch (cao 44, viền outline). */
 @Composable
-private fun CompactField(text: String, onClick: () -> Unit, modifier: Modifier, placeholder: Boolean = false) {
+private fun CompactField(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    placeholder: Boolean = false,
+    leadingIcon: Painter? = null,
+) {
     val shape = RoundedCornerShape(Dimens.fieldRadius)
     Surface(
         shape = shape,
         border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
         modifier = modifier.height(44.dp).clip(shape).clickable(role = Role.Button, onClick = onClick),
     ) {
-        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (leadingIcon != null) {
+                Icon(leadingIcon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(
                 text,
                 maxLines = 1,
