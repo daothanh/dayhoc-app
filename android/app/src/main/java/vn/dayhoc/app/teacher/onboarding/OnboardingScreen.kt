@@ -50,7 +50,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
@@ -86,6 +85,7 @@ import vn.dayhoc.app.core.designsystem.DhInfoBanner
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.DhRadio
 import vn.dayhoc.app.core.designsystem.DhSecondaryButton
+import vn.dayhoc.app.core.designsystem.DhTextButton
 import vn.dayhoc.app.core.designsystem.DhTextField
 import vn.dayhoc.app.core.designsystem.LocalButtonBorderColor
 import vn.dayhoc.app.core.designsystem.TeachHubText
@@ -122,14 +122,7 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
                     val step = state.step
                     // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
                     if (step != null && !state.loading && step.skippable) {
-                        TextButton(onClick = viewModel::skip, enabled = !state.saving) {
-                            // Figma: text/link (lime/800 ở Light); màu mặc định của TextButton là primary lime, không đọc được trên nền trắng.
-                            Text(
-                                stringResource(R.string.onboarding_skip),
-                                style = TeachHubText.buttonSmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                            )
-                        }
+                        DhTextButton(stringResource(R.string.onboarding_skip), viewModel::skip, enabled = !state.saving)
                     }
                 },
             )
@@ -459,10 +452,10 @@ private fun DuplicateDialog(candidates: List<StudentCandidate>, vm: OnboardingVi
             }
         },
         confirmButton = {
-            TextButton(onClick = vm::confirmNewStudent) { Text(stringResource(R.string.students_duplicate_new)) }
+            DhTextButton(stringResource(R.string.students_duplicate_new), vm::confirmNewStudent)
         },
         dismissButton = {
-            TextButton(onClick = vm::dismissDuplicates) { Text(stringResource(R.string.students_duplicate_cancel)) }
+            DhTextButton(stringResource(R.string.students_duplicate_cancel), vm::dismissDuplicates)
         },
     )
 }
@@ -763,12 +756,12 @@ private fun DateDialog(initial: LocalDate?, onDismiss: () -> Unit, onPick: (Loca
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
+            DhTextButton(stringResource(R.string.ok), {
                 st.selectedDateMillis?.let { onPick(LocalDate.ofEpochDay(it / DAY_MS)) }
                 onDismiss()
-            }) { Text(stringResource(R.string.ok)) }
+            })
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { DhTextButton(stringResource(R.string.cancel), onDismiss) },
     ) {
         DatePicker(st)
     }
@@ -782,12 +775,12 @@ private fun TimeDialog(initial: String, onDismiss: () -> Unit, onPick: (String) 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
+            DhTextButton(stringResource(R.string.ok), {
                 onPick(hhmm(st.hour * 60 + st.minute))
                 onDismiss()
-            }) { Text(stringResource(R.string.ok)) }
+            })
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = { DhTextButton(stringResource(R.string.cancel), onDismiss) },
         text = { TimePicker(st) },
     )
 }
