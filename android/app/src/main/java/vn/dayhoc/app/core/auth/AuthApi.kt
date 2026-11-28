@@ -15,8 +15,11 @@ interface AuthApi {
     @POST("auth/sso/google")
     suspend fun ssoGoogle(@Body body: GoogleSsoRequest): LoginResponse
 
-    @POST("auth/sso/apple")
-    suspend fun ssoApple(@Body body: AppleSsoRequest): LoginResponse
+    @POST("auth/sso/apple/android/start")
+    suspend fun appleAndroidStart(@Body body: AppleAndroidStartRequest): AppleAndroidStartResponse
+
+    @POST("auth/sso/apple/android/redeem")
+    suspend fun appleAndroidRedeem(@Body body: AppleAndroidRedeemRequest): AppleAndroidRedeemResponse
 
     /** Gọi đồng bộ từ [vn.dayhoc.app.core.network.TokenAuthenticator], không qua hàng đợi của OkHttp. */
     @POST("auth/refresh")

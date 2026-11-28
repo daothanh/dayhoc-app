@@ -1,10 +1,11 @@
 package vn.dayhoc.app.shell
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.text.BreakIterator
+import java.util.Base64
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -25,6 +26,9 @@ sealed interface LoginFailure {
     data object Generic : LoginFailure
     data object EmailRequiresOtp : LoginFailure
     data object GoogleFailed : LoginFailure
+    data object AppleFailed : LoginFailure
+    /** Server chưa bật Apple cho Android (404). */
+    data object AppleUnsupported : LoginFailure
 }
 
 data class LoginUiState(
@@ -37,6 +41,8 @@ data class LoginUiState(
     val verifying: Boolean = false,
     val googleSigningIn: Boolean = false,
     val appleSigningIn: Boolean = false,
+    /** URL trang Apple chờ màn hình mở trong Custom Tab; màn hình gọi [LoginViewModel.appleBrowserOpened] sau khi mở. */
+    val appleAuthUrl: String? = null,
     val resendIn: Int = 0,
     val lockedFor: Int = 0,
     val failure: LoginFailure? = null,
@@ -50,12 +56,17 @@ data class LoginUiState(
 }
 
 /** [T01] Đăng nhập + [T01a] Nhập mã OTP. */
-class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
+class LoginViewModel(
+    private val auth: AuthRepository,
+    // Giữ code_verifier qua lúc hệ thống tắt app khi người dùng đang ở trang Apple.
+    private val saved: SavedStateHandle,
+) : ViewModel() {
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
     private var resendJob: Job? = null
     private var lockJob: Job? = null
+    private var appleReturnJob: Job? = null
 
     fun onEmailChange(email: String) = _state.update { it.copy(email = email, showEmailError = false) }
 
@@ -151,46 +162,77 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
         }
     }
 
-    /**
-     * Trả nonce thô cho lần đăng nhập này, hoặc `null` nếu đang có luồng đăng nhập khác.
-     * Gửi [appleNonceHash] của nó cho Apple, còn nonce thô đưa lại vào [signInWithApple].
-     */
-    fun startAppleSignIn(): String? {
+    /** Xin URL trang Apple (S256); màn hình mở URL đó trong Custom Tab khi [LoginUiState.appleAuthUrl] khác `null`. */
+    fun startAppleSignIn() {
         val s = _state.value
-        if (s.appleSigningIn || s.googleSigningIn || s.sending || s.verifying || s.sentTo != null || s.loggedIn) return null
+        if (s.appleSigningIn || s.googleSigningIn || s.sending || s.verifying || s.sentTo != null || s.loggedIn) return
         _state.update { it.copy(appleSigningIn = true, failure = null) }
-        return newAppleNonce()
-    }
-
-    /** Xác thực với Apple kết thúc mà không có token: người dùng hủy thì không báo lỗi. */
-    fun finishAppleSignIn(failed: Boolean) {
-        _state.update { it.copy(appleSigningIn = false, failure = if (failed) LoginFailure.Generic else null) }
-    }
-
-    /** Mỗi token Apple chỉ dùng được một lần: lỗi mạng thì xin token mới, không gửi lại token cũ. */
-    fun signInWithApple(idToken: String, nonce: String, email: String?, fullName: String?) {
+        val verifier = newCodeVerifier()
+        saved[KEY_APPLE_VERIFIER] = verifier
         viewModelScope.launch {
             try {
-                auth.loginWithApple(idToken, nonce, appleFullName(fullName))
-                _state.update { it.copy(loggedIn = true) }
-            } catch (e: ApiError) {
-                if (e is ApiError.Http && e.httpStatus == 401 && e.code == ApiError.UNAUTHENTICATED &&
-                    e.detailString("reason") == "EMAIL_REQUIRES_OTP"
-                ) {
-                    _state.update {
-                        it.copy(
-                            email = email?.takeIf(String::isNotEmpty) ?: it.email,
-                            showEmailError = false,
-                            failure = LoginFailure.EmailRequiresOtp,
-                        )
-                    }
-                } else {
-                    _state.update { it.copy(failure = e.toFailure()) }
-                }
+                val url = auth.startAppleAndroid(codeChallenge(verifier))
+                _state.update { it.copy(appleAuthUrl = url) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.update { it.copy(failure = LoginFailure.Generic) }
+                saved.remove<String>(KEY_APPLE_VERIFIER)
+                val failure = (e as? ApiError)?.toAppleFailure() ?: LoginFailure.AppleFailed
+                _state.update { it.copy(appleSigningIn = false, failure = failure) }
+            }
+        }
+    }
+
+    fun appleBrowserOpened() {
+        _state.update { it.copy(appleAuthUrl = null) }
+        saved[KEY_APPLE_IN_BROWSER] = true
+    }
+
+    /** Không mở được trình duyệt: bỏ lượt này. */
+    fun appleBrowserFailed() {
+        saved.remove<String>(KEY_APPLE_VERIFIER)
+        _state.update { it.copy(appleAuthUrl = null, appleSigningIn = false, failure = LoginFailure.AppleFailed) }
+    }
+
+    /**
+     * Màn hình quay lại sau Custom Tab. Có kết quả thì deep link tới trước đó (activity singleTask nhận onNewIntent
+     * trước onResume); chờ thêm một nhịp rồi coi như người dùng đóng tab, không báo lỗi.
+     */
+    fun onReturnedFromBrowser() {
+        if (saved.get<Boolean>(KEY_APPLE_IN_BROWSER) != true) return
+        appleReturnJob?.cancel()
+        appleReturnJob = viewModelScope.launch {
+            delay(APPLE_RETURN_GRACE_MS)
+            saved.remove<Boolean>(KEY_APPLE_IN_BROWSER)
+            saved.remove<String>(KEY_APPLE_VERIFIER)
+            _state.update { it.copy(appleSigningIn = false) }
+        }
+    }
+
+    /** Mã một lần từ deep link `dayhoc://auth/apple/callback?code=…`. */
+    fun onAppleCallback(code: String) {
+        appleReturnJob?.cancel()
+        saved.remove<Boolean>(KEY_APPLE_IN_BROWSER)
+        val verifier = saved.get<String>(KEY_APPLE_VERIFIER)
+        saved.remove<String>(KEY_APPLE_VERIFIER)
+        if (verifier == null || _state.value.loggedIn) {
+            // Deep link cũ hoặc không do lượt này mở: bỏ qua.
+            _state.update { it.copy(appleSigningIn = false) }
+            return
+        }
+        _state.update { it.copy(appleSigningIn = true, failure = null) }
+        viewModelScope.launch {
+            try {
+                val user = auth.redeemAppleAndroid(code, verifier)
+                if (user != null) _state.update { it.copy(loggedIn = true) }
+            } catch (e: ApiError) {
+                val requiresOtp = e is ApiError.Http && e.httpStatus == 401 && e.code == ApiError.UNAUTHENTICATED &&
+                    e.detailString("reason") == "EMAIL_REQUIRES_OTP"
+                _state.update { it.copy(failure = if (requiresOtp) LoginFailure.EmailRequiresOtp else e.toAppleFailure()) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(failure = LoginFailure.AppleFailed) }
             } finally {
                 _state.update { it.copy(appleSigningIn = false) }
             }
@@ -242,25 +284,22 @@ class LoginViewModel(private val auth: AuthRepository) : ViewModel() {
     }
 }
 
-private const val APPLE_FULL_NAME_MAX = 120
+private const val KEY_APPLE_VERIFIER = "apple_code_verifier"
+private const val KEY_APPLE_IN_BROWSER = "apple_in_browser"
+private const val APPLE_RETURN_GRACE_MS = 1_500L
 
-private fun newAppleNonce(): String = ByteArray(32).also(SecureRandom()::nextBytes).toHexString()
+private val base64Url = Base64.getUrlEncoder().withoutPadding()
 
-/** Giá trị `nonce` gửi cho Apple: SHA-256 của nonce thô, hex chữ thường. */
-internal fun appleNonceHash(nonce: String): String =
-    MessageDigest.getInstance("SHA-256").digest(nonce.toByteArray()).toHexString()
+/** code_verifier RFC 7636: 32 byte ngẫu nhiên, base64url không đệm (43 ký tự). */
+internal fun newCodeVerifier(): String = base64Url.encodeToString(ByteArray(32).also(SecureRandom()::nextBytes))
 
-/** Backend nhận `fullName` tối đa 120 đơn vị UTF-16; cắt theo ranh giới ký tự để không vỡ dấu hay emoji. */
-internal fun appleFullName(value: String?): String? {
-    val trimmed = value?.trim() ?: return null
-    val boundaries = BreakIterator.getCharacterInstance().apply { setText(trimmed) }
-    var end = 0
-    while (true) {
-        val next = boundaries.next()
-        if (next == BreakIterator.DONE || next > APPLE_FULL_NAME_MAX) break
-        end = next
-    }
-    return trimmed.substring(0, end).trim().ifEmpty { null }
+/** code_challenge S256 = base64url(SHA-256(verifier)), không đệm. */
+internal fun codeChallenge(verifier: String): String =
+    base64Url.encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
+
+private fun ApiError.toAppleFailure(): LoginFailure = when {
+    this is ApiError.Http && httpStatus == 404 -> LoginFailure.AppleUnsupported
+    else -> toFailure().let { if (it == LoginFailure.Generic) LoginFailure.AppleFailed else it }
 }
 
 private fun ApiError.toFailure(): LoginFailure = when (this) {

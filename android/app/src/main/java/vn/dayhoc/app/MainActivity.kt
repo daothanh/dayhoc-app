@@ -1,5 +1,6 @@
 package vn.dayhoc.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,10 +16,23 @@ class MainActivity : ComponentActivity() {
         setTheme(R.style.Theme_DayHoc)
         enableEdgeToEdge()
         val container = (application as DayHocApp).container
+        if (savedInstanceState == null) handleDeepLink(intent)
         setContent {
             TeachHubTheme {
                 AppRoot(container)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent) {
+        val uri = intent.data ?: return
+        if (uri.scheme != "dayhoc" || uri.host != "auth" || uri.path != "/apple/callback") return
+        val code = uri.getQueryParameter("code") ?: return
+        (application as DayHocApp).container.appleCallbackCode.value = code
     }
 }
