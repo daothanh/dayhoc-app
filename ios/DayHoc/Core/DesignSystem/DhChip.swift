@@ -30,6 +30,8 @@ struct DhChip: View {
         .padding(.leading, style == .success ? TeachHubTokens.Dimens.spacingInline : TeachHubTokens.Dimens.spacingControl)
         .padding(.trailing, TeachHubTokens.Dimens.spacingControl)
         .frame(minWidth: 24, minHeight: 24)
+        // Chip không co: thiếu chỗ thì phần khác (tiêu đề App Bar) co trước.
+        .fixedSize()
         .background(container, in: Capsule())
         .overlay {
             switch style {

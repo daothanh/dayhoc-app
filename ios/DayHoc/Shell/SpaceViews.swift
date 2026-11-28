@@ -15,7 +15,11 @@ struct RoleSpace<Content: View, Trailing: View>: View {
         HStack(spacing: TeachHubTokens.Dimens.spacingControl) {
             RoleChip(store: app.memberships) { switcher = true }
                 .fixedSize()
-            Text(title).dhText(TeachHubTokens.Typo.h2).lineLimit(1)
+            Text(title)
+                .dhText(TeachHubTokens.Typo.h2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .layoutPriority(-1)
             Spacer(minLength: 0)
             trailing()
         }
