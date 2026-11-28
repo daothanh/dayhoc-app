@@ -36,12 +36,13 @@ fun DhPrimaryButton(
     enabled: Boolean = true,
     loading: Boolean = false,
     loadingText: String = text,
+    fullWidth: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
-        modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 48.dp),
+        modifier = modifier.then(if (fullWidth) Modifier.fillMaxWidth() else Modifier).defaultMinSize(minHeight = 48.dp),
         shape = RoundedCornerShape(Dimens.buttonRadius),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = Dimens.buttonElevation),
         colors = ButtonDefaults.buttonColors(

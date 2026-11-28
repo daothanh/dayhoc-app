@@ -140,11 +140,17 @@ private val TeachHubTypography = Typography(
 /** Màu viền nút phụ theo chế độ (token `buttonBorder`). DS đọc qua composition local. */
 val LocalButtonBorderColor = staticCompositionLocalOf { Light.buttonBorder }
 
+/** Màu trạng thái thành công, cảnh báo theo chế độ (token `successColor`, `warningColor`). */
+val LocalSuccessColor = staticCompositionLocalOf { Light.successColor }
+val LocalWarningColor = staticCompositionLocalOf { Light.warningColor }
+
 /** Theme DayHoc dựng hoàn toàn từ [TeachHubTokens]. */
 @Composable
 fun TeachHubTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalButtonBorderColor provides if (darkTheme) Dark.buttonBorder else Light.buttonBorder,
+        LocalSuccessColor provides if (darkTheme) Dark.successColor else Light.successColor,
+        LocalWarningColor provides if (darkTheme) Dark.warningColor else Light.warningColor,
     ) {
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColors else LightColors,
