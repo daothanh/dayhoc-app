@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +20,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.time.ZoneId
 import kotlinx.coroutines.launch
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.DhBottomNav
@@ -31,6 +37,9 @@ import vn.dayhoc.app.core.session.MembershipDto
 import vn.dayhoc.app.core.session.MembershipStore
 import vn.dayhoc.app.core.session.RoleSpaceScaffold
 import vn.dayhoc.app.teacher.onboarding.OnboardingApi
+import vn.dayhoc.app.teacher.onboarding.OnboardingStep
+import vn.dayhoc.app.teacher.today.TodayContent
+import vn.dayhoc.app.teacher.today.TodayViewModel
 
 /**
  * Không gian giáo viên: 5 tab Hôm nay · Lịch · Lớp · Học phí · Thêm (Figma C02 `Teacher`).
@@ -41,7 +50,8 @@ import vn.dayhoc.app.teacher.onboarding.OnboardingApi
 fun TeacherSpace(
     store: MembershipStore,
     onboardingApi: OnboardingApi,
-    onOpenOnboarding: () -> Unit,
+    today: TodayViewModel,
+    onOpenOnboarding: (OnboardingStep?) -> Unit,
     onSwitched: (MembershipDto) -> Unit,
     onAddRole: () -> Unit,
     onLogout: suspend () -> Unit,
@@ -53,7 +63,7 @@ fun TeacherSpace(
         } catch (e: ApiError) {
             false
         }
-        if (pending) onOpenOnboarding()
+        if (pending) onOpenOnboarding(null)
     }
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -71,12 +81,47 @@ fun TeacherSpace(
         DhNavItem(stringResource(R.string.nav_more), R.drawable.ic_nav_widget, R.drawable.ic_nav_widget_bold),
     )
 
-    RoleSpaceScaffold(store, onSwitched, onAddRole) {
-        Column(
+    val todayState by today.state.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (tab == 0) today.refresh() }
+    LaunchedEffect(tab) { if (tab == 0) today.refresh() }
+    val snackbar = remember { SnackbarHostState() }
+    val comingSoon = stringResource(R.string.coming_soon)
+    val showComingSoon: () -> Unit = {
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            snackbar.showSnackbar(comingSoon)
+        }
+    }
+
+    val refreshFailed = stringResource(R.string.today_refresh_failed)
+    LaunchedEffect(todayState.refreshError) {
+        if (todayState.refreshError) {
+            snackbar.currentSnackbarData?.dismiss()
+            today.refreshErrorShown()
+            snackbar.showSnackbar(refreshFailed)
+        }
+    }
+
+    RoleSpaceScaffold(
+        store,
+        onSwitched,
+        onAddRole,
+        title = items[tab].label,
+        actions = { TeacherAppBarActions(todayState, showComingSoon) },
+    ) {
+        if (tab == 0) {
+            TodayContent(
+                state = todayState,
+                zone = ZoneId.systemDefault(),
+                onRefresh = today::refresh,
+                onComingSoon = showComingSoon,
+                onOpenSchedule = { tab = 1 },
+                onContinueSetup = onOpenOnboarding,
+            )
+        } else Column(
             Modifier.fillMaxSize().padding(Dimens.spacingPage).padding(bottom = DhBottomNavHeight),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
         ) {
-            Text(items[tab].label, style = MaterialTheme.typography.headlineMedium)
             Text(
                 stringResource(R.string.space_coming),
                 style = MaterialTheme.typography.bodyMedium,
@@ -93,6 +138,7 @@ fun TeacherSpace(
                 )
             }
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = DhBottomNavHeight))
         DhBottomNav(items, tab, { tab = it }, Modifier.align(Alignment.BottomCenter))
     }
 }

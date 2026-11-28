@@ -36,37 +36,24 @@ struct OnboardingView: View {
         .onChange(of: model.finished) { _, done in if done { onFinished() } }
     }
 
-    /// App Bar (Figma `Navigation/App Bar`, B07–B09): nền `surface`, tiêu đề 17 SemiBold căn trái,
-    /// "Bỏ qua" chữ link bên phải, kẻ dưới 1.5px. Thanh điều hướng hệ thống căn giữa và bọc nút trong kính nên không dùng.
+    /// App Bar dùng chung `DhAppBar` (Figma `Navigation/App Bar`, B07–B09): tiêu đề, "Bỏ qua" chữ link bên phải.
     private var appBar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                Text("onboarding.title")
-                    .dhText(TeachHubTokens.Typo.h2)
-                    .foregroundStyle(colors.onSurface)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
-                if let step = model.step, !model.loading, step.skippable {
-                    Button { Task { await model.skip() } } label: {
-                        Text("onboarding.skip")
-                            .dhText(TeachHubTokens.Typo.buttonSmall)
-                            .foregroundStyle(model.saving ? colors.onSurfaceVariant : colors.secondary)
-                            .frame(minHeight: 44)
-                            .padding(.horizontal, 8)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(model.saving)
+        DhAppBar(title: "onboarding.title") {
+            // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
+            if let step = model.step, !model.loading, step.skippable {
+                Button { Task { await model.skip() } } label: {
+                    Text("onboarding.skip")
+                        .dhText(TeachHubTokens.Typo.buttonSmall)
+                        .foregroundStyle(model.saving ? colors.onSurfaceVariant : colors.secondary)
+                        .frame(minHeight: 44)
+                        .padding(.horizontal, 8)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .disabled(model.saving)
             }
-            .padding(.leading, TeachHubTokens.Dimens.spacingPage)
-            .padding(.trailing, 8)
-            .frame(height: 56)
-            .background(colors.surface)
-            Rectangle().fill(colors.outlineVariant).frame(height: 1.5)
         }
+        .accessibilityAddTraits(.isHeader)
     }
 }
 

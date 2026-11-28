@@ -1,21 +1,22 @@
 import SwiftUI
 
 /// Khung chung của mỗi không gian vai trò: App Bar `Root` có C20 Chip vai trò mở [T00] Chuyển vai trò.
-struct RoleSpace<Content: View>: View {
+struct RoleSpace<Content: View, Trailing: View>: View {
     let app: AppModel
+    /// Tiêu đề cạnh chip vai trò (Figma `Root`); `nil` thì chỉ có chip.
+    var title: LocalizedStringKey?
+    @ViewBuilder let trailing: () -> Trailing
     @ViewBuilder let content: () -> Content
 
     @State private var switcher = false
-
     var body: some View {
         NavigationStack {
-            content()
-                .dhScreen()
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        RoleChip(store: app.memberships) { switcher = true }
-                    }
-                }
+            VStack(spacing: 0) {
+                DhAppBar(title: title, leading: { RoleChip(store: app.memberships) { switcher = true } }, trailing: trailing)
+                content()
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .dhScreen()
         }
         .sheet(isPresented: $switcher) {
             RoleSwitcher(store: app.memberships) { m in
@@ -27,6 +28,12 @@ struct RoleSpace<Content: View>: View {
             }
             .presentationDetents([.medium, .large])
         }
+    }
+}
+
+extension RoleSpace where Trailing == EmptyView {
+    init(app: AppModel, @ViewBuilder content: @escaping () -> Content) {
+        self.init(app: app, title: nil, trailing: { EmptyView() }, content: content)
     }
 }
 
@@ -48,6 +55,7 @@ private struct RoleChip: View {
             .padding(.leading, 4)
             .padding(.trailing, 10)
             .frame(height: 32)
+            .fixedSize()
             .overlay(Capsule().stroke(colors.outlineVariant, lineWidth: 1.5))
             .foregroundStyle(colors.onSurface)
             if multi {
@@ -132,7 +140,14 @@ struct TeacherSpaceView: View {
 
     @State private var tab = 0
     @State private var loggingOut = false
+    @State private var today: TodayModel
     @Environment(\.dhColors) private var colors
+    @Environment(\.scenePhase) private var scenePhase
+
+    init(app: AppModel) {
+        self.app = app
+        _today = State(initialValue: TodayModel(source: TodayAPI(api: app.api)))
+    }
 
     private let items = [
         DhNavItem(id: 0, label: "nav.today", icon: "home-2"),
@@ -143,24 +158,46 @@ struct TeacherSpaceView: View {
     ]
 
     var body: some View {
-        RoleSpace(app: app) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: TeachHubTokens.Dimens.spacingContent) {
-                    Text(items[tab].label).font(.title.bold())
-                    Text("space.coming").foregroundStyle(colors.onSurfaceVariant)
-                    if tab == items.count - 1 {
-                        DhPrimaryButton(title: "logout", isLoading: loggingOut) {
-                            loggingOut = true
-                            Task { await app.logout() }
+        RoleSpace(
+            app: app,
+            title: items[tab].label,
+            trailing: { TeacherAppBarActions(model: today, onBell: comingSoon) },
+            content: {
+                Group {
+                    if tab == 0 {
+                        TodayView(
+                            model: today,
+                            onComingSoon: comingSoon,
+                            onOpenSchedule: { tab = 1 },
+                            onContinueSetup: { app.openOnboarding(startingAt: $0) }
+                        )
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: TeachHubTokens.Dimens.spacingContent) {
+                                Text("space.coming").foregroundStyle(colors.onSurfaceVariant)
+                                if tab == items.count - 1 {
+                                    DhPrimaryButton(title: "logout", isLoading: loggingOut) {
+                                        loggingOut = true
+                                        Task { await app.logout() }
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(TeachHubTokens.Dimens.spacingPage)
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(TeachHubTokens.Dimens.spacingPage)
+                .task(id: tab) { if tab == 0 { await today.refresh() } }
+                .onChange(of: today.refreshFailures) { app.toast = String(localized: "today.refreshFailed") }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active, tab == 0 { Task { await today.refresh() } }
+                }
+                .safeAreaInset(edge: .bottom) { DhBottomNav(items: items, selected: $tab) }
             }
-            .safeAreaInset(edge: .bottom) { DhBottomNav(items: items, selected: $tab) }
-        }
+        )
     }
+
+    private func comingSoon() { app.toast = String(localized: "coming.soon") }
 }
 
 /// Không gian phụ huynh, học sinh ở trạng thái chưa có lời mời (US-0.10 AC3).

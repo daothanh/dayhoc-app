@@ -1,5 +1,6 @@
 package vn.dayhoc.app.core.designsystem
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,10 +29,16 @@ import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
 /**
  * Banner thông tin của DS (Figma B09): viền nét đứt màu mực, icon info, tiêu đề đậm, mô tả nhạt.
- * Dùng cho ghi chú trong nội dung, không phải cảnh báo lỗi.
+ * Dùng cho ghi chú trong nội dung, không phải cảnh báo lỗi. [actionText] thêm nút phụ nhỏ bên phải (Figma A01 F).
  */
 @Composable
-fun DhInfoBanner(title: String, description: String, modifier: Modifier = Modifier) {
+fun DhInfoBanner(
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+    actionText: String? = null,
+    onAction: () -> Unit = {},
+) {
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(Dimens.cardRadius)
     Row(
@@ -59,6 +66,40 @@ fun DhInfoBanner(title: String, description: String, modifier: Modifier = Modifi
         Column(Modifier.weight(1f)) {
             Text(title, style = TeachHubText.bodyBold, color = colors.onSurface)
             Text(description, style = TeachHubText.caption, color = colors.onSurfaceVariant)
+        }
+        if (actionText != null) {
+            Spacer(Modifier.width(Dimens.spacingContent))
+            DhSecondaryButton(actionText, onAction, small = true)
+        }
+    }
+}
+
+/** C12 Banner Offline (Figma A25): full-width dưới App Bar, nền cảnh báo nhạt, đường đứt phía dưới. */
+@Composable
+fun DhOfflineBanner(title: String, description: String, modifier: Modifier = Modifier) {
+    val warning = LocalWarningColor.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(warning.copy(alpha = 0.12f))
+            .drawBehind {
+                val stroke = 1.5.dp.toPx()
+                drawLine(
+                    color = warning,
+                    start = Offset(0f, size.height - stroke / 2f),
+                    end = Offset(size.width, size.height - stroke / 2f),
+                    strokeWidth = stroke,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+                )
+            }
+            .padding(Dimens.spacingContent),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Icon(painterResource(R.drawable.ic_wifi_off), null, Modifier.size(20.dp), tint = warning)
+        Spacer(Modifier.width(Dimens.spacingContent))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = TeachHubText.bodyBold, color = MaterialTheme.colorScheme.onSurface)
+            Text(description, style = TeachHubText.caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

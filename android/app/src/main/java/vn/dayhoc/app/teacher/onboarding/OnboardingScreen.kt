@@ -82,6 +82,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import vn.dayhoc.app.R
+import vn.dayhoc.app.core.designsystem.DhAppBar
 import vn.dayhoc.app.core.designsystem.DhInfoBanner
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.DhRadio
@@ -117,20 +118,16 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, onFinished: () -> Unit) {
 
     Scaffold(
         topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.onboarding_title)) },
-                    actions = {
-                        val step = state.step
-                        // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
-                        if (step != null && !state.loading && step.skippable) {
-                            DhTextButton(stringResource(R.string.onboarding_skip), viewModel::skip, enabled = !state.saving)
-                        }
-                    },
-                )
-                // Figma Navigation/App Bar: kẻ dưới 1.5px border/default.
-                HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-            }
+            DhAppBar(
+                title = stringResource(R.string.onboarding_title),
+                trailing = {
+                    val step = state.step
+                    // Bước 1 bắt buộc (US-0.2 AC2) nên không có nút bỏ qua; bước 2, 3 mới có (Figma B08, B09).
+                    if (step != null && !state.loading && step.skippable) {
+                        DhTextButton(stringResource(R.string.onboarding_skip), viewModel::skip, enabled = !state.saving)
+                    }
+                },
+            )
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->

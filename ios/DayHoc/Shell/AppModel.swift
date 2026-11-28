@@ -70,6 +70,12 @@ final class AppModel {
         }
     }
 
+    /// Banner ở T03: mở lại onboarding đúng bước đã bỏ qua.
+    func openOnboarding(startingAt step: OnboardingStep) {
+        guard case .teacher = route else { return }
+        route = .onboarding(OnboardingModel(api: OnboardingAPI(api: env.api), startStep: step))
+    }
+
     func finishOnboarding() {
         // Phiên có thể vừa hết (route đã về Đăng nhập): callback đến muộn không được mở lại không gian.
         guard case .onboarding = route else { return }
