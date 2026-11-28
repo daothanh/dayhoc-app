@@ -6,22 +6,47 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import vn.dayhoc.app.core.network.ConnectivityMonitor
 
+val OWNER = OutboxOwner("u1", "t1")
+
 class InMemoryOutbox(initial: List<OutboxBatch> = emptyList()) : OutboxStore {
     private val state = MutableStateFlow(initial)
+    var failOnAll = false
     override val batches: Flow<List<OutboxBatch>> = state
-    override suspend fun enqueue(batch: OutboxBatch) { state.value = state.value + batch }
-    override suspend fun all() = state.value
+    override suspend fun enqueue(batch: OutboxBatch) { state.value = state.value.filter { it.idempotencyKey != batch.idempotencyKey } + batch }
+    override suspend fun all(): List<OutboxBatch> { if (failOnAll) error("outbox hỏng"); return state.value }
     override suspend fun remove(idempotencyKey: String) { state.value = state.value.filter { it.idempotencyKey != idempotencyKey } }
-    override suspend fun addAttempt(idempotencyKey: String) {
-        state.value = state.value.map { if (it.idempotencyKey == idempotencyKey) it.copy(attempts = it.attempts + 1) else it }
+    override suspend fun addAttempt(idempotencyKey: String) = update(idempotencyKey) { it.copy(attempts = it.attempts + 1) }
+    override suspend fun markFailed(idempotencyKey: String, code: String) =
+        update(idempotencyKey) { it.copy(state = OutboxState.Failed, errorCode = code) }
+    override suspend fun retryFailed(sessionId: String) {
+        state.value = state.value.map {
+            if (it.sessionId == sessionId && it.state == OutboxState.Failed) it.copy(state = OutboxState.Pending, errorCode = null, attempts = 0) else it
+        }
+    }
+
+    private fun update(key: String, f: (OutboxBatch) -> OutboxBatch) {
+        state.value = state.value.map { if (it.idempotencyKey == key) f(it) else it }
     }
 }
 
 class InMemoryRoster : RosterCache {
     val map = mutableMapOf<String, String>()
-    override suspend fun get(sessionId: String) = map[sessionId]
-    override suspend fun put(sessionId: String, json: String) { map[sessionId] = json }
+    override suspend fun get(sessionId: String, owner: OutboxOwner) = map[sessionId]
+    override suspend fun put(sessionId: String, owner: OutboxOwner, json: String) { map[sessionId] = json }
+    override suspend fun removeRoster(sessionId: String) { map.remove(sessionId) }
 }
+
+fun batch(
+    key: String,
+    session: String = "sess-1",
+    attempts: Int = 0,
+    owner: OutboxOwner = OWNER,
+    state: OutboxState = OutboxState.Pending,
+    errorCode: String? = null,
+) = OutboxBatch(
+    key, session, owner, "device-1", "2026-11-09T17:40:00.000+07:00",
+    listOf(OutboxMutation("m-$key", "s1", "unexcused", null, "2026-11-09T17:40:00.000+07:00")), true, 1, attempts, state, errorCode,
+)
 
 class FixedDevice(private val id: String = "device-1") : DeviceIdProvider {
     override suspend fun get() = id

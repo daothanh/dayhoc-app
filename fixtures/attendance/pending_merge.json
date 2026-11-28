@@ -1,5 +1,5 @@
 {
-  "_doc": "Gộp lô chờ đồng bộ vào thẻ buổi ở T03. kind là trạng thái thẻ trước khi gộp (Teaching | Missed | Upcoming | Taught | Cancelled). Buổi có lô chờ (trừ Cancelled) thành Taught + pending=true; còn lại pending=false.",
+  "_doc": "Gộp lô chờ đồng bộ vào thẻ buổi ở T03. kind là trạng thái thẻ trước khi gộp (Teaching | Missed | Upcoming | Taught | Cancelled). Buổi có lô chờ (trừ Cancelled) thành Taught + pending=true; còn lại pending=false. failedIds (tùy chọn, tập con của pendingIds): buổi có lô failed thì syncFailed=true; chip \"Đồng bộ lỗi\" thay chip chờ đồng bộ. Cả pendingIds lẫn failedIds đã lọc theo chủ hiện tại.",
   "cases": [
     {
       "name": "buổi đang dạy có lô chờ thành đã điểm danh chờ đồng bộ",
@@ -81,6 +81,40 @@
           "id": "a",
           "kind": "Taught",
           "pending": false
+        }
+      ]
+    },
+    {
+      "name": "lô lỗi: thẻ vẫn Taught + pending, đánh dấu syncFailed",
+      "sessions": [
+        {
+          "id": "a",
+          "kind": "Missed"
+        },
+        {
+          "id": "b",
+          "kind": "Upcoming"
+        }
+      ],
+      "pendingIds": [
+        "a",
+        "b"
+      ],
+      "failedIds": [
+        "a"
+      ],
+      "expected": [
+        {
+          "id": "a",
+          "kind": "Taught",
+          "pending": true,
+          "syncFailed": true
+        },
+        {
+          "id": "b",
+          "kind": "Taught",
+          "pending": true,
+          "syncFailed": false
         }
       ]
     }

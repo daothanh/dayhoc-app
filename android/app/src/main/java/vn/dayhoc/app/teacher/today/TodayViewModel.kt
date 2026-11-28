@@ -19,6 +19,9 @@ import vn.dayhoc.app.core.network.ApiError
 import vn.dayhoc.app.core.network.apiCall
 import vn.dayhoc.app.teacher.onboarding.OnboardingStep
 
+/** Buổi có lô điểm danh trong outbox: [pending] = mọi lô (chờ và lỗi), [failed] = buổi có lô bị từ chối vĩnh viễn. */
+data class OutboxSessions(val pending: Set<String> = emptySet(), val failed: Set<String> = emptySet())
+
 /** Buổi gần nhất sau hôm nay, dùng cho mô tả Empty. */
 data class NextSession(val className: String, val day: LocalDate, val time: String)
 
@@ -44,8 +47,10 @@ data class TodayUiState(
     val failed: Boolean = false,
     /** Tải lại lỗi do mạng khi đang có dữ liệu cũ: giữ dữ liệu, hiện banner ngoại tuyến. */
     val offline: Boolean = false,
-    /** Mã buổi có lô điểm danh chờ đồng bộ (đọc từ outbox, không đợi mạng). */
+    /** Mã buổi có lô điểm danh trong outbox, chờ hoặc lỗi (đọc từ outbox, không đợi mạng). */
     val pending: Set<String> = emptySet(),
+    /** Trong [pending]: buổi có lô bị server từ chối vĩnh viễn. */
+    val syncFailed: Set<String> = emptySet(),
 ) {
     val syncing get() = loading || refreshing
 }
@@ -57,13 +62,13 @@ data class TodayUiState(
 class TodayViewModel(
     private val api: TodayApi,
     private val clock: Clock = Clock.systemDefaultZone(),
-    pendingSessions: Flow<Set<String>> = flowOf(emptySet()),
+    outboxSessions: Flow<OutboxSessions> = flowOf(OutboxSessions()),
 ) : ViewModel() {
     private val _state = MutableStateFlow(TodayUiState())
     val state: StateFlow<TodayUiState> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch { pendingSessions.collect { ids -> _state.update { it.copy(pending = ids) } } }
+        viewModelScope.launch { outboxSessions.collect { o -> _state.update { it.copy(pending = o.pending, syncFailed = o.failed) } } }
     }
 
     private var job: Job? = null
@@ -76,7 +81,7 @@ class TodayViewModel(
         job = viewModelScope.launch {
             try {
                 val data = fetch()
-                _state.update { TodayUiState(data = data, loading = false, pending = it.pending) }
+                _state.update { TodayUiState(data = data, loading = false, pending = it.pending, syncFailed = it.syncFailed) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -84,7 +89,7 @@ class TodayViewModel(
                 val network = e == ApiError.Network || e == ApiError.Timeout
                 _state.update { s ->
                     when {
-                        s.data == null -> TodayUiState(loading = false, failed = true, pending = s.pending)
+                        s.data == null -> TodayUiState(loading = false, failed = true, pending = s.pending, syncFailed = s.syncFailed)
                         network -> s.copy(refreshing = false, offline = true)
                         else -> s.copy(refreshing = false, refreshError = true)
                     }

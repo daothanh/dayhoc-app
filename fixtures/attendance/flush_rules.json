@@ -1,0 +1,521 @@
+{
+  "_doc": "Gửi outbox (SyncEngine). owner hiện tại: u1/t1; chỉ gửi lô của owner đó theo thứ tự tạo (thứ tự mảng batches). script[key]: ok | network | http:<status>:<code> | rejected:<errorCode> (HTTP 200 có phần tử rejected); không khai thì ok. expected.sent: khóa đã gọi API theo thứ tự (kể cả lần lỗi); remaining: lô còn trong outbox sau flush; result: done | retry; rosterRemoved: buổi bị xóa bản chụp danh sách. Xóa lô: thành công, NOT_FOUND/HTTP_404, SESSION_CANCELLED, ATTENDANCE_EDIT_WINDOW_CLOSED. Giữ lô trạng thái failed (kèm errorCode): 4xx khác, MAX_ATTEMPTS. Lô failed chặn các lô sau của CÙNG buổi, không chặn buổi khác. Mất mạng dừng cả lần flush. 5xx giữ lô (pending, attempts+1) và chặn buổi đó. owner trong từng ca (tùy chọn) ghi đè owner chung; null = chưa gắn chủ. events (tùy chọn): synced:<sessionId>:rejected=<n> | dropped:<sessionId>:<code>. 404 không kèm mã lỗi viết là http:404: (mã rỗng).",
+  "owner": {
+    "userId": "u1",
+    "tenantId": "t1"
+  },
+  "cases": [
+    {
+      "name": "thành công thì xóa lô và bản chụp danh sách",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {},
+      "expected": {
+        "sent": [
+          "k1"
+        ],
+        "remaining": [],
+        "result": "done",
+        "rosterRemoved": [
+          "s1"
+        ]
+      }
+    },
+    {
+      "name": "422 giữ lô ở trạng thái failed, chặn lô sau cùng buổi, buổi khác vẫn gửi",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k2",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k3",
+          "sessionId": "s2",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "http:422:VALIDATION_FAILED"
+      },
+      "expected": {
+        "sent": [
+          "k1",
+          "k3"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "failed",
+            "errorCode": "VALIDATION_FAILED"
+          },
+          {
+            "key": "k2",
+            "state": "pending",
+            "errorCode": null
+          }
+        ],
+        "result": "done",
+        "rosterRemoved": [
+          "s2"
+        ]
+      }
+    },
+    {
+      "name": "403 cũng là failed, không xóa",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "http:403:FORBIDDEN"
+      },
+      "expected": {
+        "sent": [
+          "k1"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "failed",
+            "errorCode": "FORBIDDEN"
+          }
+        ],
+        "result": "done",
+        "rosterRemoved": []
+      }
+    },
+    {
+      "name": "NOT_FOUND và buổi đã hủy thì xóa lô",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k2",
+          "sessionId": "s2",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "http:404:NOT_FOUND",
+        "k2": "http:409:SESSION_CANCELLED"
+      },
+      "expected": {
+        "sent": [
+          "k1",
+          "k2"
+        ],
+        "remaining": [],
+        "result": "done",
+        "rosterRemoved": [
+          "s1",
+          "s2"
+        ]
+      }
+    },
+    {
+      "name": "cửa sổ sửa đóng (200 kèm rejected) thì xóa lô",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "rejected:ATTENDANCE_EDIT_WINDOW_CLOSED"
+      },
+      "expected": {
+        "sent": [
+          "k1"
+        ],
+        "remaining": [],
+        "result": "done",
+        "rosterRemoved": [
+          "s1"
+        ]
+      }
+    },
+    {
+      "name": "5xx giữ lô pending, tính lần thử, chặn buổi đó, buổi khác vẫn gửi, hẹn thử lại",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k2",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k3",
+          "sessionId": "s2",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "http:503:SERVICE_UNAVAILABLE"
+      },
+      "expected": {
+        "sent": [
+          "k1",
+          "k3"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "pending",
+            "errorCode": null
+          },
+          {
+            "key": "k2",
+            "state": "pending",
+            "errorCode": null
+          }
+        ],
+        "attemptsAdded": [
+          "k1"
+        ],
+        "result": "retry",
+        "rosterRemoved": [
+          "s2"
+        ]
+      }
+    },
+    {
+      "name": "5xx lần thứ 10 thì failed MAX_ATTEMPTS",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 9,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "http:500:INTERNAL_ERROR"
+      },
+      "expected": {
+        "sent": [
+          "k1"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "failed",
+            "errorCode": "MAX_ATTEMPTS"
+          }
+        ],
+        "result": "done",
+        "rosterRemoved": []
+      }
+    },
+    {
+      "name": "mất mạng dừng cả lần flush, không tính lần thử",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k2",
+          "sessionId": "s2",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "network"
+      },
+      "expected": {
+        "sent": [
+          "k1"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "pending",
+            "errorCode": null
+          },
+          {
+            "key": "k2",
+            "state": "pending",
+            "errorCode": null
+          }
+        ],
+        "result": "retry",
+        "rosterRemoved": []
+      }
+    },
+    {
+      "name": "lô của chủ khác không bị gửi và không bị xóa",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u2",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k2",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t2",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k3",
+          "sessionId": "s2",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {},
+      "expected": {
+        "sent": [
+          "k3"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "pending",
+            "errorCode": null
+          },
+          {
+            "key": "k2",
+            "state": "pending",
+            "errorCode": null
+          }
+        ],
+        "result": "done",
+        "rosterRemoved": [
+          "s2"
+        ]
+      }
+    },
+    {
+      "name": "lô failed có sẵn chặn lô pending sau của cùng buổi",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "failed",
+          "attempts": 0,
+          "errorCode": "VALIDATION_FAILED"
+        },
+        {
+          "key": "k2",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        },
+        {
+          "key": "k3",
+          "sessionId": "s2",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {},
+      "expected": {
+        "sent": [
+          "k3"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "failed",
+            "errorCode": "VALIDATION_FAILED"
+          },
+          {
+            "key": "k2",
+            "state": "pending",
+            "errorCode": null
+          }
+        ],
+        "result": "done",
+        "rosterRemoved": [
+          "s2"
+        ]
+      }
+    },
+    {
+      "name": "404 không kèm mã lỗi (HTTP_404) thì failed, không xóa",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "http:404:"
+      },
+      "expected": {
+        "sent": [
+          "k1"
+        ],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "failed",
+            "errorCode": "HTTP_404"
+          }
+        ],
+        "result": "done",
+        "rosterRemoved": []
+      }
+    },
+    {
+      "name": "200 có phần tử rejected mã khác thì lô vẫn xong và bị xóa",
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {
+        "k1": "rejected:NOT_FOUND"
+      },
+      "expected": {
+        "sent": [
+          "k1"
+        ],
+        "remaining": [],
+        "result": "done",
+        "rosterRemoved": [
+          "s1"
+        ],
+        "events": [
+          "synced:s1:rejected=1"
+        ]
+      }
+    },
+    {
+      "name": "chưa có chủ (owner null) thì không gửi gì, không đụng outbox",
+      "owner": null,
+      "batches": [
+        {
+          "key": "k1",
+          "sessionId": "s1",
+          "userId": "u1",
+          "tenantId": "t1",
+          "state": "pending",
+          "attempts": 0,
+          "errorCode": null
+        }
+      ],
+      "script": {},
+      "expected": {
+        "sent": [],
+        "remaining": [
+          {
+            "key": "k1",
+            "state": "pending",
+            "errorCode": null
+          }
+        ],
+        "result": "done",
+        "rosterRemoved": []
+      }
+    }
+  ]
+}

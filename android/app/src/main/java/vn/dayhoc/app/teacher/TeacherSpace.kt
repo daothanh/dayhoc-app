@@ -113,7 +113,15 @@ fun TeacherSpace(
     val dropped = stringResource(R.string.attendance_dropped)
     val windowClosed = stringResource(R.string.attendance_error_window_closed)
     val cancelled = stringResource(R.string.attendance_error_cancelled)
-    val savedNotified = notice.let { n -> if (n is AttendanceNotice.Saved && n.parentsToNotify > 0) stringResource(R.string.attendance_saved_notified, n.parentsToNotify) else saved }
+    val savedNotified = notice.let { n ->
+        when {
+            n is AttendanceNotice.Saved && n.rejected.isNotEmpty() ->
+                stringResource(R.string.attendance_saved_rejected, n.rejected.joinToString(", "))
+            n is AttendanceNotice.Saved && n.parentsToNotify > 0 -> stringResource(R.string.attendance_saved_notified, n.parentsToNotify)
+            else -> saved
+        }
+    }
+    val partlyRejected = (notice as? AttendanceNotice.PartlyRejected)?.let { stringResource(R.string.attendance_partly_rejected, it.count) }
     LaunchedEffect(notice) {
         val n = notice ?: return@LaunchedEffect
         attendanceNotice.value = null
@@ -122,6 +130,7 @@ fun TeacherSpace(
             when (n) {
                 is AttendanceNotice.Saved -> savedNotified
                 AttendanceNotice.SavedLocal -> savedLocal
+                is AttendanceNotice.PartlyRejected -> partlyRejected.orEmpty()
                 is AttendanceNotice.Dropped -> when (n.code) {
                     "ATTENDANCE_EDIT_WINDOW_CLOSED" -> windowClosed
                     "SESSION_CANCELLED" -> cancelled
@@ -175,7 +184,11 @@ fun TeacherSpace(
                     loading = loggingOut,
                     onClick = {
                         loggingOut = true
-                        scope.launch { onLogout() }
+                        scope.launch {
+                            onLogout()
+                            // Có hộp thoại "còn buổi chưa đồng bộ" thì chưa đăng xuất: trả nút về trạng thái bình thường.
+                            loggingOut = false
+                        }
                     },
                 )
             }

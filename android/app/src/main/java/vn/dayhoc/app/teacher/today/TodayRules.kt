@@ -39,17 +39,28 @@ data class TodaySession(
     val classId: String = "",
     /** Có lô điểm danh chờ đồng bộ trong outbox: thẻ hiện như đã điểm danh nhưng phụ huynh chưa được báo. */
     val pending: Boolean = false,
+    /** Lô của buổi bị server từ chối vĩnh viễn (nằm trong outbox, chờ giáo viên gửi lại): chip "Đồng bộ lỗi". */
+    val syncFailed: Boolean = false,
 )
 
 /** Tính lại [TodaySession.kind] theo `now` rồi xếp lại: thẻ tự chuyển Sắp tới → Đang dạy → Chưa điểm danh theo giờ. */
-fun arrange(sessions: List<TodaySession>, now: Instant, pendingIds: Set<String> = emptySet()): List<TodaySession> =
-    sortSessions(mergePending(sessions.map { it.copy(kind = classify(it.status, it.start, it.end, now)) }, pendingIds))
+fun arrange(
+    sessions: List<TodaySession>,
+    now: Instant,
+    pendingIds: Set<String> = emptySet(),
+    failedIds: Set<String> = emptySet(),
+): List<TodaySession> = sortSessions(
+    mergePending(sessions.map { it.copy(kind = classify(it.status, it.start, it.end, now)) }, pendingIds, failedIds),
+)
 
-/** Buổi có lô chờ đồng bộ (trừ buổi đã hủy trên server) thành thẻ Taught + [TodaySession.pending]. */
-fun mergePending(sessions: List<TodaySession>, pendingIds: Set<String>): List<TodaySession> =
+/** Buổi có lô trong outbox (chờ hoặc lỗi; trừ buổi đã hủy trên server) thành thẻ Taught + [TodaySession.pending]. */
+fun mergePending(sessions: List<TodaySession>, pendingIds: Set<String>, failedIds: Set<String> = emptySet()): List<TodaySession> =
     sessions.map {
-        if (it.id in pendingIds && it.kind != SessionKind.Cancelled) it.copy(kind = SessionKind.Taught, pending = true)
-        else it.copy(pending = false)
+        if (it.id in pendingIds && it.kind != SessionKind.Cancelled) {
+            it.copy(kind = SessionKind.Taught, pending = true, syncFailed = it.id in failedIds)
+        } else {
+            it.copy(pending = false, syncFailed = false)
+        }
     }
 
 /** Đang dạy → Chưa điểm danh → Sắp tới → Đã điểm danh → Đã hủy; cùng nhóm thì theo giờ bắt đầu. */

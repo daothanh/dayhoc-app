@@ -282,4 +282,18 @@
     <string name="attendance_saved_notified">Đã lưu điểm danh · đã báo %1$d phụ huynh</string>
     <string name="attendance_saved_local">Đã lưu trên máy · sẽ đồng bộ khi có mạng</string>
     <string name="attendance_dropped">Không đồng bộ được điểm danh của một buổi, lô này đã bị bỏ.</string>
+    <string name="today_chip_sync_failed">Đồng bộ lỗi</string>
+    <string name="attendance_sync_failed_title">Điểm danh trước chưa đồng bộ được</string>
+    <string name="attendance_sync_failed_resend">Gửi lại</string>
+    <string name="attendance_error_corrupt">Dữ liệu điểm danh lưu trên máy bị lỗi. Hãy điểm danh lại.</string>
+    <string name="attendance_time_range">%1$s–%2$s</string>
+    <string name="attendance_subtitle">%1$s · %2$s</string>
+    <string name="logout_unsynced_title">Còn %1$d buổi chưa đồng bộ</string>
+    <string name="logout_unsynced_body">Đăng xuất sẽ xóa điểm danh chưa gửi trên máy này.</string>
+    <string name="logout_unsynced_stay">Ở lại</string>
+    <string name="logout_unsynced_confirm">Vẫn đăng xuất</string>
+    <string name="attendance_error_owner">Chưa xác định được tài khoản đang dùng. Hãy thử lại.</string>
+    <string name="attendance_error_discard">Không bỏ được điểm danh đã lưu trên máy. Hãy thử lại.</string>
+    <string name="attendance_saved_rejected">Đã lưu điểm danh, trừ %1$s (không ghi được)</string>
+    <string name="attendance_partly_rejected">Đã đồng bộ điểm danh, nhưng %1$d học sinh không ghi được</string>
 </resources>

@@ -117,7 +117,7 @@ fun TodayContent(
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
                 ) {
                     item { Caption(formatDateLine(data.date)) }
-                    val sessions = arrange(data.sessions, now, state.pending)
+                    val sessions = arrange(data.sessions, now, state.pending, state.syncFailed)
                     if (sessions.isEmpty()) {
                         item { EmptyToday(data.next, onOpenSchedule) }
                     } else {
@@ -199,7 +199,8 @@ private fun SessionCard(s: TodaySession, zone: ZoneId, onSession: (TodaySession)
             }
         }
         // Lô chờ đồng bộ: phụ huynh chưa được báo (US-3.5), đọc từ outbox nên không cần mạng.
-        if (s.pending) DhChip(stringResource(R.string.today_chip_pending), style = DhChipStyle.Dashed)
+        if (s.syncFailed) DhChip(stringResource(R.string.today_chip_sync_failed), style = DhChipStyle.Danger)
+        else if (s.pending) DhChip(stringResource(R.string.today_chip_pending), style = DhChipStyle.Dashed)
         if (style == DhCardStyle.Emphasis) DhPrimaryButton(stringResource(R.string.today_attendance), { onAttendance(s) })
     }
 }

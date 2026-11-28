@@ -2,29 +2,22 @@ package vn.dayhoc.app.teacher.attendance
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,11 +25,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.Instant
 import java.time.ZoneId
@@ -44,9 +34,11 @@ import java.time.format.DateTimeFormatter
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.DhAppBar
 import vn.dayhoc.app.core.designsystem.DhAvatar
+import vn.dayhoc.app.core.designsystem.DhBottomActionBar
 import vn.dayhoc.app.core.designsystem.DhChip
 import vn.dayhoc.app.core.designsystem.DhChipStyle
 import vn.dayhoc.app.core.designsystem.DhEmptyState
+import vn.dayhoc.app.core.designsystem.DhExpandableRow
 import vn.dayhoc.app.core.designsystem.DhInfoBanner
 import vn.dayhoc.app.core.designsystem.DhOfflineBanner
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
@@ -68,8 +60,9 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, endsAt: String?, zone: Zone
     val s by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val canLeaveFreely = !s.dirty || s.readOnly != null
-    val back = { if (canLeaveFreely) onClose() else viewModel.askDiscard() }
-    BackHandler(enabled = !canLeaveFreely) { viewModel.askDiscard() }
+    // Đang lưu/bỏ: không rời màn (lô đang gửi hoặc đang xóa phải xong trước).
+    val back = { if (s.saving) Unit else if (canLeaveFreely) onClose() else viewModel.askDiscard() }
+    BackHandler(enabled = s.saving || !canLeaveFreely) { back() }
     LaunchedEffect(s.done) { if (s.done) onClose() }
 
     val staleText = stringResource(R.string.attendance_stale)
@@ -80,16 +73,7 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, endsAt: String?, zone: Zone
         }
     }
     val error = s.error
-    val errorText = error?.let {
-        stringResource(
-            when (it.code) {
-                "ATTENDANCE_EDIT_WINDOW_CLOSED" -> R.string.attendance_error_window_closed
-                "SESSION_CANCELLED" -> R.string.attendance_error_cancelled
-                "NOT_FOUND" -> R.string.attendance_error_not_found
-                else -> R.string.attendance_error_generic
-            },
-        )
-    }
+    val errorText = error?.let { stringResource(errorRes(it.code)) }
     val retryText = stringResource(R.string.today_retry)
     LaunchedEffect(error) {
         if (error != null && errorText != null) {
@@ -126,11 +110,12 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, endsAt: String?, zone: Zone
     if (s.confirmDiscard) DiscardDialog(viewModel::stay, viewModel::discard)
 }
 
+@Composable
 private fun subtitle(start: Instant?, end: String?, zone: ZoneId): String? {
     start ?: return null
     val endAt = end?.let(::toInstantOrNull)
-    val range = formatTime(start, zone) + (endAt?.let { "–" + formatTime(it, zone) } ?: "")
-    return "${formatShortDay(start.atZone(zone).toLocalDate())} · $range"
+    val range = if (endAt != null) stringResource(R.string.attendance_time_range, formatTime(start, zone), formatTime(endAt, zone)) else formatTime(start, zone)
+    return stringResource(R.string.attendance_subtitle, formatShortDay(start.atZone(zone).toLocalDate()), range)
 }
 
 @Composable
@@ -148,6 +133,17 @@ private fun Body(s: AttendanceUiState, zone: ZoneId, vm: AttendanceViewModel) {
                     style = TeachHubText.body,
                     color = colors.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = Dimens.spacingControl),
+                )
+            }
+        }
+        s.failedCode?.let { code ->
+            item {
+                DhInfoBanner(
+                    title = stringResource(R.string.attendance_sync_failed_title),
+                    description = stringResource(errorRes(code)),
+                    modifier = Modifier.padding(bottom = Dimens.spacingControl),
+                    actionText = stringResource(R.string.attendance_sync_failed_resend),
+                    onAction = vm::resend,
                 )
             }
         }
@@ -196,53 +192,39 @@ private fun Body(s: AttendanceUiState, zone: ZoneId, vm: AttendanceViewModel) {
 @Composable
 private fun StudentRow(row: AttRow, expanded: Boolean, enabled: Boolean, onToggle: () -> Unit, onSelect: (AttStatus) -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(if (expanded || row.changed) 12.dp else 0.dp)
     val subtitle = when {
         row.parentReported -> stringResource(R.string.attendance_row_parent_reported)
         row.changed -> stringResource(R.string.attendance_row_changed)
         else -> null
     }
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(if (expanded) colors.surfaceContainerLow else colors.surface)
-            .then(if (row.changed && !expanded) Modifier.border(1.5.dp, colors.primary, shape) else Modifier),
-    ) {
-        Column(Modifier.padding(Dimens.spacingControl), verticalArrangement = Arrangement.spacedBy(Dimens.spacingControl)) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 40.dp)
-                    .then(if (enabled) Modifier.clickable(role = Role.Button, onClick = onToggle) else Modifier),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
-            ) {
-                DhAvatar(row.name)
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        row.name,
-                        style = if (expanded) TeachHubText.bodyBold else TeachHubText.body,
-                        color = colors.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (subtitle != null) {
-                        Text(subtitle, style = TeachHubText.caption, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                StatusChip(row.status)
-            }
-            if (expanded) {
-                DhSegmented(
-                    options = SEGMENTS.map { stringResource(statusLabel(it)) },
-                    selectedIndex = SEGMENTS.indexOf(row.status),
-                    onSelect = { onSelect(SEGMENTS[it]) },
+    DhExpandableRow(
+        expanded = expanded,
+        highlighted = row.changed,
+        onClick = if (enabled) onToggle else null,
+        main = {
+            DhAvatar(row.name)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    row.name,
+                    style = if (expanded) TeachHubText.bodyBold else TeachHubText.body,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                if (subtitle != null) {
+                    Text(subtitle, style = TeachHubText.caption, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-        }
-        if (!expanded && !row.changed) HorizontalDivider(color = colors.surfaceContainerLow)
-    }
+            StatusChip(row.status)
+        },
+        expandedContent = {
+            DhSegmented(
+                options = SEGMENTS.map { stringResource(statusLabel(it)) },
+                selectedIndex = SEGMENTS.indexOf(row.status),
+                onSelect = { onSelect(SEGMENTS[it]) },
+            )
+        },
+    )
 }
 
 private fun statusLabel(s: AttStatus) = when (s) {
@@ -250,6 +232,16 @@ private fun statusLabel(s: AttStatus) = when (s) {
     AttStatus.Late -> R.string.attendance_status_late
     AttStatus.Excused -> R.string.attendance_status_excused
     AttStatus.Unexcused -> R.string.attendance_status_unexcused
+}
+
+private fun errorRes(code: String?) = when (code) {
+    "ATTENDANCE_EDIT_WINDOW_CLOSED" -> R.string.attendance_error_window_closed
+    "SESSION_CANCELLED" -> R.string.attendance_error_cancelled
+    "NOT_FOUND" -> R.string.attendance_error_not_found
+    "CORRUPT" -> R.string.attendance_error_corrupt
+    AttendanceViewModel.OWNER_MISSING -> R.string.attendance_error_owner
+    AttendanceViewModel.DISCARD_FAILED -> R.string.attendance_error_discard
+    else -> R.string.attendance_error_generic
 }
 
 @Composable
@@ -272,18 +264,14 @@ private fun ActionBar(s: AttendanceUiState, onSave: () -> Unit) {
         SaveLabel.SaveChanges -> stringResource(R.string.attendance_save_changes)
         SaveLabel.SaveLocal -> stringResource(R.string.attendance_save_local)
     }
-    Surface(color = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.navigationBarsPadding()) {
-            HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-            DhPrimaryButton(
-                text = text,
-                onClick = onSave,
-                enabled = !s.editMode || s.dirty,
-                loading = s.saving,
-                loadingText = stringResource(R.string.attendance_saving),
-                modifier = Modifier.padding(start = Dimens.spacingPage, end = Dimens.spacingPage, top = Dimens.spacingContent, bottom = Dimens.spacingPage),
-            )
-        }
+    DhBottomActionBar {
+        DhPrimaryButton(
+            text = text,
+            onClick = onSave,
+            enabled = s.canSave || s.saving,
+            loading = s.saving,
+            loadingText = stringResource(R.string.attendance_saving),
+        )
     }
 }
 

@@ -23,7 +23,13 @@ import vn.dayhoc.app.core.network.ApiError
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AttendanceViewModelTest {
-    private val clock = Clock.fixed(Instant.parse("2026-11-09T10:45:00Z"), ZoneId.of("Asia/Ho_Chi_Minh"))
+    private val vnZone: ZoneId = ZoneId.of("Asia/Ho_Chi_Minh")
+    private var now = Instant.parse("2026-11-09T10:45:00.123Z")
+    private val clock = object : Clock() {
+        override fun getZone(): ZoneId = vnZone
+        override fun withZone(z: ZoneId?): Clock = this
+        override fun instant(): Instant = now
+    }
     private val api = FakeAttendanceApi()
     private val outbox = InMemoryOutbox()
     private val roster = InMemoryRoster()
@@ -31,6 +37,8 @@ class AttendanceViewModelTest {
     private val notices = mutableListOf<AttendanceNotice>()
     private var enqueued = 0
     private var seq = 0
+    private var owner: OutboxOwner? = OWNER
+    private val engine: AttendanceSyncEngine = AttendanceSyncEngine(api, outbox, roster) { OWNER }
 
     private val students = listOf(item("s1", "Nguyễn An"), item("s2", "Lê Chi"), item("s3", "Phạm Dũng"))
 
@@ -43,7 +51,7 @@ class AttendanceViewModelTest {
     private fun TestScope.vm(dto: SessionAttendanceDto = attendanceDto(students)): AttendanceViewModel {
         api.attendance = { dto }
         return AttendanceViewModel(
-            "sess-1", api, outbox, roster, FixedDevice(), net, { notices += it }, { enqueued++ }, clock, { "id-${++seq}" },
+            "sess-1", api, outbox, roster, FixedDevice(), engine, net, { owner }, { notices += it }, { enqueued++ }, clock, { "id-${++seq}" },
         ).also { advanceUntilIdle() }
     }
 
@@ -103,7 +111,7 @@ class AttendanceViewModelTest {
         assertEquals("device-1", req.deviceId)
         assertEquals("sess-1", req.sessionId)
         assertTrue(req.markSessionTaught)
-        assertEquals("2026-11-09T17:45:00+07:00", req.deviceTime)
+        assertEquals("2026-11-09T17:45:00.123+07:00", req.deviceTime)
         assertEquals(listOf("s1", "s2", "s3"), req.mutations.map { it.studentId })
         assertEquals(listOf("present", "excused", "present"), req.mutations.map { it.status })
         assertEquals(3, req.mutations.map { it.clientMutationId }.toSet().size)
@@ -158,20 +166,70 @@ class AttendanceViewModelTest {
     }
 
     @Test
-    fun `cua so sua dong va buoi da huy co thong bao rieng, khong thu lai`() = runTest {
+    fun `cua so sua dong thi chi xem, ap cac muc da applied, lo bi xoa`() = runTest {
         val vm = vm()
+        vm.select("s1", AttStatus.Late)
+        vm.select("s2", AttStatus.Excused)
         api.syncHandler = { _, req ->
-            FakeAttendanceApi.okResult(req, results = req.mutations.map { MutationResultDto(it.clientMutationId, it.studentId, "rejected", "ATTENDANCE_EDIT_WINDOW_CLOSED") })
+            FakeAttendanceApi.okResult(req, results = req.mutations.map {
+                if (it.studentId == "s2") MutationResultDto(it.clientMutationId, it.studentId, "rejected", "ATTENDANCE_EDIT_WINDOW_CLOSED")
+                else MutationResultDto(it.clientMutationId, it.studentId, "applied")
+            })
         }
         vm.save()
         advanceUntilIdle()
-        assertEquals(SaveError("ATTENDANCE_EDIT_WINDOW_CLOSED", retry = false), vm.state.value.error)
+        val s = vm.state.value
+        assertEquals(SaveError("ATTENDANCE_EDIT_WINDOW_CLOSED", retry = false), s.error)
+        assertEquals(ReadOnly.Expired, s.readOnly)
+        assertEquals(AttStatus.Late, s.rows.first { it.studentId == "s1" }.original)
+        assertFalse(s.canSave)
+        assertTrue(outbox.all().isEmpty())
+    }
 
+    @Test
+    fun `buoi da huy thi chi xem va khong thu lai`() = runTest {
+        val vm = vm()
         api.syncHandler = { _, _ -> throw ApiError.Http("SESSION_CANCELLED", 409) }
         vm.save()
         advanceUntilIdle()
         assertEquals(SaveError("SESSION_CANCELLED", retry = false), vm.state.value.error)
+        assertEquals(ReadOnly.Cancelled, vm.state.value.readOnly)
         assertTrue(outbox.all().isEmpty())
+    }
+
+    @Test
+    fun `loi 422 giu lo failed trong outbox, hien loi, Gui lai la gui lai cung lo`() = runTest {
+        val vm = vm()
+        vm.select("s1", AttStatus.Late)
+        api.syncHandler = { _, _ -> throw ApiError.Http("VALIDATION_FAILED", 422) }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals("VALIDATION_FAILED", vm.state.value.failedCode)
+        assertEquals(OutboxState.Failed, outbox.all().single().state)
+        assertTrue(vm.state.value.canSave)
+
+        api.syncHandler = { _, req -> FakeAttendanceApi.okResult(req) }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(api.syncCalls[0].first, api.syncCalls[1].first)
+        assertEquals(api.syncCalls[0].second, api.syncCalls[1].second)
+        assertTrue(vm.state.value.done)
+    }
+
+    @Test
+    fun `mo lai buoi co lo failed - hien gia tri lo, original giu cua server, nut Gui lai`() = runTest {
+        outbox.enqueue(batch("kf", "sess-1", state = OutboxState.Failed, errorCode = "FORBIDDEN"))
+        val vm = vm()
+        val s = vm.state.value
+        assertEquals("FORBIDDEN", s.failedCode)
+        assertEquals(AttStatus.Unexcused, s.rows.first { it.studentId == "s1" }.status)
+        assertEquals(null, s.rows.first { it.studentId == "s1" }.original)
+        assertFalse(s.editMode)
+        api.syncHandler = { _, req -> FakeAttendanceApi.okResult(req) }
+        vm.resend()
+        advanceUntilIdle()
+        assertEquals("kf", api.syncCalls.single().first)
+        assertTrue(vm.state.value.done)
     }
 
     @Test
@@ -241,6 +299,139 @@ class AttendanceViewModelTest {
     }
 
     @Test
+    fun `phat lai khi dong ho da doi thi body giong het, ke ca deviceTime va clientUpdatedAt`() = runTest {
+        val vm = vm()
+        vm.select("s1", AttStatus.Late)
+        api.syncHandler = { _, _ -> throw ApiError.Http("SERVICE_UNAVAILABLE", 503) }
+        vm.save()
+        advanceUntilIdle()
+        now = now.plusSeconds(120)
+        api.syncHandler = { _, req -> FakeAttendanceApi.okResult(req) }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(api.syncCalls[0].first, api.syncCalls[1].first)
+        assertEquals(api.syncCalls[0].second, api.syncCalls[1].second)
+        assertEquals("2026-11-09T17:45:00.123+07:00", api.syncCalls[1].second.deviceTime)
+    }
+
+    @Test
+    fun `chua xac dinh chu thi khong luu, bao loi co Thu lai, co chu roi luu duoc`() = runTest {
+        owner = null
+        val vm = vm()
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(SaveError(AttendanceViewModel.OWNER_MISSING, retry = true), vm.state.value.error)
+        assertTrue(api.syncCalls.isEmpty())
+        assertTrue(outbox.all().isEmpty())
+        owner = OWNER
+        vm.save()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.done)
+    }
+
+    @Test
+    fun `lop khong co hoc sinh thi khong luu`() = runTest {
+        assertFalse(vm(attendanceDto(emptyList())).state.value.canSave)
+    }
+
+    @Test
+    fun `phan tu rejected ma khac thi lo van xong va bao ten hoc sinh`() = runTest {
+        val vm = vm()
+        api.syncHandler = { _, req ->
+            FakeAttendanceApi.okResult(req, results = req.mutations.map {
+                if (it.studentId == "s3") MutationResultDto(it.clientMutationId, it.studentId, "rejected", "NOT_FOUND") else MutationResultDto(it.clientMutationId, it.studentId, "applied")
+            })
+        }
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(listOf<AttendanceNotice>(AttendanceNotice.Saved(0, listOf("Phạm Dũng"))), notices)
+        assertTrue(vm.state.value.done)
+        assertTrue(outbox.all().isEmpty())
+    }
+
+    @Test
+    fun `luu xong ma engine khong tra ket qua cho lo - lo mat thi coi la da dong bo`() = runTest {
+        val vm = vm()
+        // Chủ trong engine khác chủ của T04: engine không gửi gì, lô vẫn nằm trong outbox -> lưu trên máy.
+        val other = AttendanceSyncEngine(api, outbox, roster) { OutboxOwner("u2", "t1") }
+        val vm2 = AttendanceViewModel("sess-1", api, outbox, roster, FixedDevice(), other, net, { OWNER }, { notices += it }, { enqueued++ }, clock, { "x-${++seq}" })
+        advanceUntilIdle()
+        vm2.save()
+        advanceUntilIdle()
+        assertEquals(listOf<AttendanceNotice>(AttendanceNotice.SavedLocal), notices)
+        assertEquals(1, outbox.all().size)
+    }
+
+    @Test
+    fun `doc outbox loi luc tai thi loadFailed, khong cho luu`() = runTest {
+        outbox.failOnAll = true
+        val vm = vm()
+        assertTrue(vm.state.value.loadFailed)
+        assertFalse(vm.state.value.canSave)
+    }
+
+    @Test
+    fun `mo tu ban chup da qua han sua thi chi xem`() = runTest {
+        vm()
+        val dto = attendanceDto(students).copy(editableUntil = "2026-11-09T23:59:59+07:00")
+        roster.map["sess-1"] = kotlinx.serialization.json.Json.encodeToString(SessionAttendanceDto.serializer(), dto)
+        api.attendance = { throw ApiError.Network }
+        now = Instant.parse("2026-11-10T01:00:00Z")
+        val vm2 = AttendanceViewModel("sess-1", api, outbox, roster, FixedDevice(), engine, net, { OWNER }, {}, {}, clock)
+        advanceUntilIdle()
+        assertEquals(ReadOnly.Expired, vm2.state.value.readOnly)
+    }
+
+    @Test
+    fun `bo thay doi xoa moi lo cua man ke ca lo bi thay, loi xoa thi o lai va bao`() = runTest {
+        val vm = vm()
+        vm.select("s1", AttStatus.Late)
+        api.syncHandler = { _, _ -> throw ApiError.Http("SERVICE_UNAVAILABLE", 503) }
+        vm.save()
+        advanceUntilIdle()
+        vm.select("s2", AttStatus.Late) // lô cũ bị thay
+        assertEquals(1, outbox.all().size)
+        vm.askDiscard()
+        vm.discard()
+        advanceUntilIdle()
+        assertTrue(outbox.all().isEmpty())
+        assertTrue(vm.state.value.done)
+
+        val failing = object : OutboxStore by outbox {
+            override suspend fun remove(idempotencyKey: String) = error("lỗi đĩa")
+        }
+        val vm3 = AttendanceViewModel("sess-1", api, failing, roster, FixedDevice(), engine, net, { OWNER }, {}, {}, clock, { "z-${++seq}" })
+        advanceUntilIdle()
+        vm3.select("s1", AttStatus.Late)
+        api.syncHandler = { _, _ -> throw ApiError.Http("SERVICE_UNAVAILABLE", 503) }
+        vm3.save()
+        advanceUntilIdle()
+        vm3.askDiscard()
+        vm3.discard()
+        advanceUntilIdle()
+        assertEquals(SaveError(AttendanceViewModel.DISCARD_FAILED, retry = false), vm3.state.value.error)
+        assertFalse(vm3.state.value.done)
+    }
+
+    @Test
+    fun `dang luu thi khong hoi bo thay doi va khong bo`() = runTest {
+        val vm = vm()
+        vm.select("s1", AttStatus.Late)
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        api.syncHandler = { _, req -> gate.await(); FakeAttendanceApi.okResult(req) }
+        vm.save()
+        advanceUntilIdle()
+        assertTrue(vm.state.value.saving)
+        vm.askDiscard()
+        vm.discard()
+        assertFalse(vm.state.value.confirmDiscard)
+        assertFalse(vm.state.value.done)
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.done)
+    }
+
+    @Test
     fun `back khi co thay doi hoi bo thay doi, o lai hoac bo`() = runTest {
         val vm = vm()
         assertFalse(vm.state.value.dirty)
@@ -253,6 +444,7 @@ class AttendanceViewModelTest {
         assertFalse(vm.state.value.done)
         vm.askDiscard()
         vm.discard()
+        advanceUntilIdle()
         assertTrue(vm.state.value.done)
         assertTrue(api.syncCalls.isEmpty())
     }
@@ -276,21 +468,25 @@ class AttendanceViewModelTest {
         assertFalse(first.state.value.loadFailed)
 
         api.attendance = { throw ApiError.Network }
-        val offline = AttendanceViewModel("sess-1", api, outbox, roster, FixedDevice(), net, {}, {}, clock)
+        val offline = AttendanceViewModel("sess-1", api, outbox, roster, FixedDevice(), engine, net, { OWNER }, {}, {}, clock)
         advanceUntilIdle()
         assertEquals(3, offline.state.value.rows.size)
         assertFalse(offline.state.value.loadFailed)
 
         roster.map.clear()
-        val none = AttendanceViewModel("sess-1", api, outbox, roster, FixedDevice(), net, {}, {}, clock)
+        val none = AttendanceViewModel("sess-1", api, outbox, roster, FixedDevice(), engine, net, { OWNER }, {}, {}, clock)
         advanceUntilIdle()
         assertTrue(none.state.value.loadFailed)
     }
 
     @Test
-    fun `lo dang cho trong outbox duoc chong len danh sach khi mo lai`() = runTest {
-        outbox.enqueue(OutboxBatch("k", "sess-1", listOf(OutboxMutation("m", "s2", "unexcused", null, "t")), true, 0))
+    fun `lo dang cho trong outbox - original la gia tri lo, editMode, khong dirty`() = runTest {
+        outbox.enqueue(batch("k", "sess-1"))
         val vm = vm()
-        assertEquals(AttStatus.Unexcused, vm.state.value.rows.first { it.studentId == "s2" }.status)
+        val row = vm.state.value.rows.first { it.studentId == "s1" }
+        assertEquals(AttStatus.Unexcused, row.status)
+        assertEquals(AttStatus.Unexcused, row.original)
+        assertTrue(vm.state.value.editMode)
+        assertFalse(vm.state.value.dirty)
     }
 }

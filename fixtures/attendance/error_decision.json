@@ -1,5 +1,5 @@
 {
-  "_doc": "Giữ hay bỏ lô khi gọi sync lỗi. error.type: network | timeout | invalid | http (httpStatus, code). decision: keep (countAttempt: lỗi từ server mới tính vào số lần thử) | drop (code). MAX_ATTEMPTS = 10. batch_verdict: phản hồi 200 có phần tử rejected thì bỏ lô.",
+  "_doc": "Giữ hay bỏ lô khi gọi sync lỗi. error.type: network | timeout | invalid | http (httpStatus, code). decision: keep (countAttempt: lỗi từ server mới tính vào số lần thử) | drop (code). MAX_ATTEMPTS = 10. batch_verdict: phản hồi 200 có phần tử rejected thì bỏ lô. deletable: mã lỗi cuối cùng của lô có bị XÓA (true) hay giữ ở trạng thái failed (false). 404 không kèm mã lỗi = HTTP_404: KHÔNG xóa lô (failed, gửi lại được). batch_verdict: chỉ ATTENDANCE_EDIT_WINDOW_CLOSED làm cả lô bị từ chối (rejected); phần tử rejected khác thì verdict done, kèm rejectedStudentIds (studentId của phần tử rejected; trong ca này mutation thứ i có studentId s<i>) để báo riêng theo học sinh.",
   "cases": [
     {
       "name": "mất mạng giữ lô, không tính lần thử",
@@ -174,6 +174,81 @@
         "verdict": "rejected",
         "code": "ATTENDANCE_EDIT_WINDOW_CLOSED"
       }
+    },
+    {
+      "name": "phần tử rejected mã khác (học sinh không thuộc lớp) thì lô vẫn xong, báo riêng học sinh",
+      "results": [
+        {
+          "result": "applied"
+        },
+        {
+          "result": "rejected",
+          "errorCode": "NOT_FOUND"
+        }
+      ],
+      "expected": {
+        "verdict": "done",
+        "rejectedStudentIds": [
+          "s1"
+        ]
+      }
+    },
+    {
+      "name": "gói chỉ đọc từng phần tử cũng không làm hỏng lô",
+      "results": [
+        {
+          "result": "rejected",
+          "errorCode": "READONLY_PLAN_LIMIT"
+        }
+      ],
+      "expected": {
+        "verdict": "done",
+        "rejectedStudentIds": [
+          "s0"
+        ]
+      }
+    }
+  ],
+  "deletable": [
+    {
+      "code": "SESSION_CANCELLED",
+      "expected": true
+    },
+    {
+      "code": "ATTENDANCE_EDIT_WINDOW_CLOSED",
+      "expected": true
+    },
+    {
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "code": "HTTP_404",
+      "expected": false
+    },
+    {
+      "code": "VALIDATION_FAILED",
+      "expected": false
+    },
+    {
+      "code": "FORBIDDEN",
+      "expected": false
+    },
+    {
+      "code": "HTTP_403",
+      "expected": false
+    },
+    {
+      "code": "MAX_ATTEMPTS",
+      "expected": false
+    },
+    {
+      "code": "IDEMPOTENCY_KEY_REUSED",
+      "expected": false
+    },
+    {
+      "code": "READONLY_PLAN_LIMIT",
+      "expected": false
     }
   ]
 }

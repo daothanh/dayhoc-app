@@ -3,17 +3,17 @@ package vn.dayhoc.app.teacher.attendance
 import java.io.File
 import java.time.Instant
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import vn.dayhoc.app.core.network.ApiError
@@ -79,7 +79,8 @@ class AttendanceFixturesTest {
         val results = c.getValue("results").jsonArray.mapIndexed { i, r ->
             val o = r.jsonObject
             val cur = o["current"]?.jsonObject?.let { CurrentDto(it.str("status")!!, it.str("note")) }
-            MutationResultDto("m$i", mutations[i].studentId, o.str("result")!!, current = cur)
+            val target = o["forMutation"]?.jsonPrimitive?.int ?: i
+            MutationResultDto("m$target", mutations[target].studentId, o.str("result")!!, current = cur)
         }
         val got = applyResults(rows(c.getValue("rows")), mutations, results)
         val want = c.obj("expected")
@@ -98,8 +99,12 @@ class AttendanceFixturesTest {
             TodaySession(it.jsonObject.str("id")!!, "Lớp", t, t, SessionKind.valueOf(it.jsonObject.str("kind")!!), null, null, null, null)
         }
         val pending = c.getValue("pendingIds").jsonArray.map { it.jsonPrimitive.content }.toSet()
-        val got = mergePending(sessions, pending).map { Triple(it.id, it.kind.name, it.pending) }
-        val want = c.getValue("expected").jsonArray.map { Triple(it.jsonObject.str("id")!!, it.jsonObject.str("kind")!!, it.jsonObject.getValue("pending").jsonPrimitive.boolean) }
+        val failed = c["failedIds"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty()
+        val got = mergePending(sessions, pending, failed).map { listOf(it.id, it.kind.name, it.pending, it.syncFailed) }
+        val want = c.getValue("expected").jsonArray.map {
+            val o = it.jsonObject
+            listOf(o.str("id")!!, o.str("kind")!!, o.getValue("pending").jsonPrimitive.boolean, o["syncFailed"]?.jsonPrimitive?.boolean ?: false)
+        }
         assertEquals(c.str("name"), want, got)
     }
 
@@ -119,12 +124,76 @@ class AttendanceFixturesTest {
             else ErrorDecision.Drop(want.str("code")!!)
             assertEquals(c.str("name"), expected, decideOnError(error, c.getValue("attempts").jsonPrimitive.int))
         }
+        f.cases("deletable").forEach { c -> assertEquals(c.str("code"), c.getValue("expected").jsonPrimitive.boolean, isDeletableError(c.str("code")!!)) }
         f.cases("batch_verdict").forEach { c ->
             val results = c.getValue("results").jsonArray.mapIndexed { i, r -> MutationResultDto("m$i", "s$i", r.jsonObject.str("result")!!, r.jsonObject.str("errorCode")) }
             val want = c.obj("expected")
             val expected = if (want.str("verdict") == "done") BatchVerdict.Done else BatchVerdict.Rejected(want.str("code")!!)
             assertEquals(c.str("name"), expected, verdictOf(results))
+            want["rejectedStudentIds"]?.let { ids ->
+                assertEquals(c.str("name"), ids.jsonArray.map { it.jsonPrimitive.content }, rejectedStudentIds(results))
+            }
         }
+    }
+
+    @Test
+    fun `gui outbox theo luat flush`() = fixture("flush_rules.json").let { f ->
+        val shared = f.obj("owner").let { OutboxOwner(it.str("userId")!!, it.str("tenantId")!!) }
+        f.cases().forEach { c -> runFlushCase(c, if (c.containsKey("owner")) c["owner"]?.takeIf { it !is JsonNull }?.jsonObject?.let { OutboxOwner(it.str("userId")!!, it.str("tenantId")!!) } else shared) }
+    }
+
+    private fun runFlushCase(c: JsonObject, owner: OutboxOwner?) = kotlinx.coroutines.test.runTest {
+        val name = c.str("name")
+        val outbox = InMemoryOutbox(c.getValue("batches").jsonArray.map { it.jsonObject }.map {
+            batch(
+                it.str("key")!!, it.str("sessionId")!!, it.getValue("attempts").jsonPrimitive.int, OutboxOwner(it.str("userId")!!, it.str("tenantId")!!),
+                OutboxState.fromWire(it.str("state")), it.str("errorCode"),
+            )
+        })
+        val roster = InMemoryRoster().also { r -> outbox.all().forEach { r.map[it.sessionId] = "{}" } }
+        val script = c.obj("script")
+        val api = FakeAttendanceApi()
+        api.syncHandler = { key, req ->
+            when (val step = script.str(key) ?: "ok") {
+                "ok" -> FakeAttendanceApi.okResult(req)
+                "network" -> throw ApiError.Network
+                else -> {
+                    val parts = step.split(":", limit = 3)
+                    if (parts[0] == "http") throw ApiError.Http(parts[2], parts[1].toInt())
+                    FakeAttendanceApi.okResult(req, results = req.mutations.mapIndexed { i, m ->
+                        if (i == 0) MutationResultDto(m.clientMutationId, m.studentId, "rejected", parts[1]) else MutationResultDto(m.clientMutationId, m.studentId, "applied")
+                    })
+                }
+            }
+        }
+        val events = mutableListOf<SyncEvent>()
+        val engine = AttendanceSyncEngine(api, outbox, roster) { owner }
+        val job = launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) { engine.events.toList(events) }
+        val before = outbox.all().associate { it.idempotencyKey to it.attempts }
+        val sessions = outbox.all().map { it.sessionId }.toSet()
+        val result = engine.flush().result
+        val want = c.obj("expected")
+
+        assertEquals(name, want.getValue("sent").jsonArray.map { it.jsonPrimitive.content }, api.syncCalls.map { it.first })
+        assertEquals(name, want.getValue("result").jsonPrimitive.content.replaceFirstChar { it.uppercase() }, result.name)
+        val remaining = outbox.all()
+        assertEquals(name, want.getValue("remaining").jsonArray.map { it.jsonObject.str("key") }, remaining.map { it.idempotencyKey })
+        assertEquals(name, want.getValue("remaining").jsonArray.map { it.jsonObject.str("state") }, remaining.map { it.state.wire })
+        assertEquals(name, want.getValue("remaining").jsonArray.map { it.jsonObject.str("errorCode") }, remaining.map { it.errorCode })
+        want["attemptsAdded"]?.jsonArray?.map { it.jsonPrimitive.content }?.forEach { k ->
+            assertEquals(name, before.getValue(k) + 1, remaining.first { it.idempotencyKey == k }.attempts)
+        }
+        val removed = want.getValue("rosterRemoved").jsonArray.map { it.jsonPrimitive.content }
+        assertEquals(name, removed.sorted(), sessions.filter { it !in roster.map.keys }.sorted())
+        want["events"]?.jsonArray?.map { it.jsonPrimitive.content }?.let { expected ->
+            assertEquals(name, expected, events.map { e ->
+                when (e) {
+                    is SyncEvent.Synced -> "synced:${e.sessionId}:rejected=${e.rejected}"
+                    is SyncEvent.Dropped -> "dropped:${e.sessionId}:${e.code}"
+                }
+            })
+        }
+        job.cancel()
     }
 
     @Test

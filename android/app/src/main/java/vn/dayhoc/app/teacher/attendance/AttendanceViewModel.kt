@@ -21,7 +21,11 @@ import vn.dayhoc.app.teacher.today.toInstantOrNull
 
 /** Thông báo T03 hiện sau khi T04 đóng hoặc khi đồng bộ nền bỏ lô. */
 sealed interface AttendanceNotice {
-    data class Saved(val parentsToNotify: Int) : AttendanceNotice
+    /** [rejected]: tên học sinh server không ghi được (vd. không còn trong lớp); lô vẫn xong. */
+    data class Saved(val parentsToNotify: Int, val rejected: List<String> = emptyList()) : AttendanceNotice
+
+    /** Đồng bộ nền xong nhưng [count] học sinh server không ghi được. */
+    data class PartlyRejected(val count: Int) : AttendanceNotice
     data object SavedLocal : AttendanceNotice
     data class Dropped(val code: String) : AttendanceNotice
 }
@@ -38,7 +42,7 @@ data class AttendanceUiState(
     val startsAt: Instant? = null,
     val rows: List<AttRow> = emptyList(),
     val expandedId: String? = null,
-    /** Buổi đã điểm danh: chỉ gửi học sinh đổi, nút "Lưu thay đổi". */
+    /** Buổi đã điểm danh (hoặc đã có lô chờ): chỉ gửi học sinh đổi, nút "Lưu thay đổi". */
     val editMode: Boolean = false,
     val readOnly: ReadOnly? = null,
     val lastEditedAt: Instant? = null,
@@ -46,6 +50,8 @@ data class AttendanceUiState(
     val offline: Boolean = false,
     val confirmDiscard: Boolean = false,
     val error: SaveError? = null,
+    /** Mã lỗi của lô đã bị server từ chối vĩnh viễn (đang nằm trong outbox với trạng thái `failed`). */
+    val failedCode: String? = null,
     val staleNotice: Boolean = false,
     /** T04 xong việc: màn đóng lại về T03. */
     val done: Boolean = false,
@@ -54,13 +60,13 @@ data class AttendanceUiState(
     val dirty get() = rows.any { it.changed }
     val label get() = saveLabel(rows, editMode, offline)
 
-    /** Lần đầu luôn lưu được (kể cả đủ mặt); chế độ sửa cần có thay đổi. */
-    val canSave get() = readOnly == null && !saving && (!editMode || dirty)
+    /** Lần đầu luôn lưu được (kể cả đủ mặt); chế độ sửa cần có thay đổi; lớp không có học sinh thì không lưu. */
+    val canSave get() = readOnly == null && !saving && rows.isNotEmpty() && (!editMode || dirty || failedCode != null)
 }
 
 /**
- * [T04] Điểm danh. Tải danh sách (có bản chụp khi mất mạng), đổi trạng thái, lưu online qua `POST /attendance/sync`
- * hoặc vào outbox khi mất mạng. Lô đang gửi giữ nguyên `Idempotency-Key` khi thử lại; đổi trạng thái thì lô mới.
+ * [T04] Điểm danh. Một đường gửi duy nhất: lập lô (khóa, body, mốc giờ), ghi outbox trước, rồi nhờ [AttendanceSyncEngine]
+ * gửi và chờ kết quả của lô đó. Lô giữ nguyên `Idempotency-Key` và body khi thử lại; đổi trạng thái thì lô mới.
  */
 class AttendanceViewModel(
     private val sessionId: String,
@@ -68,7 +74,10 @@ class AttendanceViewModel(
     private val outbox: OutboxStore,
     private val roster: RosterCache,
     private val device: DeviceIdProvider,
+    private val engine: AttendanceSyncEngine,
     private val connectivity: ConnectivityMonitor,
+    /** Chủ dữ liệu (người dùng + tenant); `null` = chưa xác định: không cho lưu (đóng kín). */
+    private val ownerProvider: suspend () -> OutboxOwner?,
     private val notify: (AttendanceNotice) -> Unit,
     private val onEnqueued: () -> Unit,
     private val clock: Clock = Clock.systemDefaultZone(),
@@ -78,7 +87,11 @@ class AttendanceViewModel(
     private val _state = MutableStateFlow(AttendanceUiState())
     val state: StateFlow<AttendanceUiState> = _state.asStateFlow()
 
-    private var inFlight: OutboxBatch? = null
+    /** Lô vừa lưu vào outbox của lần bấm Lưu hiện tại (giữ khóa khi thử lại). */
+    private var enqueued: OutboxBatch? = null
+
+    /** Lô đã lập nhưng giáo viên đổi trạng thái sau đó: xóa khi lưu lại. */
+    private val superseded = mutableListOf<String>()
     private var collapseJob: Job? = null
 
     init {
@@ -89,34 +102,51 @@ class AttendanceViewModel(
     fun load() {
         _state.update { it.copy(loading = true, loadFailed = false) }
         viewModelScope.launch {
+            var fromCache = false
+            val owner = ownerProvider()
             val dto = try {
-                apiCall { api.get(sessionId) }.also { roster.put(sessionId, Json.encodeToString(SessionAttendanceDto.serializer(), it)) }
+                apiCall { api.get(sessionId) }.also {
+                    if (owner != null) roster.put(sessionId, owner, Json.encodeToString(SessionAttendanceDto.serializer(), it))
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 // Mất mạng: mở bằng bản chụp lần mở trước (nếu có) để vẫn điểm danh được.
                 val offline = e == ApiError.Network || e == ApiError.Timeout
-                val cached = if (offline) roster.get(sessionId)?.let { runCatching { Json.decodeFromString(SessionAttendanceDto.serializer(), it) }.getOrNull() } else null
+                val cached = if (offline && owner != null) roster.get(sessionId, owner)?.let { runCatching { Json.decodeFromString(SessionAttendanceDto.serializer(), it) }.getOrNull() } else null
                 if (cached == null) {
                     _state.update { it.copy(loading = false, loadFailed = true) }
                     return@launch
                 }
+                fromCache = true
                 cached
             }
-            val pending = outbox.all().filter { it.sessionId == sessionId }
+            // Đọc outbox lỗi: không biết còn lô nào của buổi này, nên không cho điểm danh (tránh ghi đè mù).
+            val batches = try {
+                outbox.all().filter { it.owner == owner && it.sessionId == sessionId }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(loading = false, loadFailed = true) }
+                return@launch
+            }
+            // Bản chụp có thể đã cũ: tính lại hạn sửa theo giờ hiện tại.
+            val expired = fromCache && dto.editableUntil?.let(::toInstantOrNull)?.let { clock.instant() > it } == true
             _state.update {
                 it.copy(
                     loading = false,
                     className = dto.className,
                     startsAt = toInstantOrNull(dto.startsAt),
-                    rows = overlayPending(rowsOf(dto.items), pending),
-                    editMode = dto.sessionStatus == "taught",
+                    rows = overlayPending(rowsOf(dto.items), batches),
+                    editMode = dto.sessionStatus == "taught" || batches.any { b -> b.state == OutboxState.Pending } ||
+                        (fromCache && dto.items.any { i -> i.status != null }),
                     readOnly = when {
                         dto.sessionStatus == "cancelled" -> ReadOnly.Cancelled
-                        !dto.canEdit -> ReadOnly.Expired
+                        !dto.canEdit || expired -> ReadOnly.Expired
                         else -> null
                     },
                     lastEditedAt = lastEditedAt(dto.items),
+                    failedCode = batches.firstOrNull { b -> b.state == OutboxState.Failed }?.errorCode,
                 )
             }
         }
@@ -128,8 +158,12 @@ class AttendanceViewModel(
     }
 
     fun select(studentId: String, status: AttStatus) {
-        inFlight = null
-        _state.update { s -> s.copy(rows = s.rows.map { if (it.studentId == studentId) it.copy(status = status) else it }, error = null) }
+        // Nội dung đổi: lô đã lập (đang chờ hoặc lỗi) không còn đúng, lần lưu sau lập lô mới.
+        enqueued?.let { superseded += it.idempotencyKey }
+        enqueued = null
+        _state.update { s ->
+            s.copy(rows = s.rows.map { if (it.studentId == studentId) it.copy(status = status) else it }, error = null, failedCode = null)
+        }
         collapseJob?.cancel()
         collapseJob = viewModelScope.launch {
             delay(collapseDelayMs)
@@ -140,74 +174,169 @@ class AttendanceViewModel(
     fun save() {
         val s = _state.value
         if (!s.canSave) return
-        val batch = inFlight ?: buildBatch(s).also { inFlight = it }
         _state.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
-            if (s.offline) return@launch enqueueLocal(batch)
             try {
-                val request = SyncRequestDto(
-                    device.get(), formatIso(clock.instant(), clock.zone), sessionId, batch.markSessionTaught,
-                    batch.mutations.map { MutationDto(it.clientMutationId, it.studentId, it.status, it.note, it.clientUpdatedAt) },
-                )
-                onResult(batch, apiCall { api.sync(batch.idempotencyKey, request) })
+                val owner = ownerProvider() ?: return@launch fail(SaveError(OWNER_MISSING, retry = true))
+                val existing = enqueued
+                if (s.failedCode != null && existing != null) {
+                    outbox.retryFailed(sessionId)
+                    _state.update { it.copy(failedCode = null) }
+                    return@launch submit(existing, fresh = false)
+                }
+                val batch = existing ?: run {
+                    discardSuperseded(owner)
+                    buildBatch(owner, s)
+                }
+                when {
+                    s.offline -> {
+                        engine.enqueue(batch)
+                        enqueued = batch
+                        finishLocal()
+                    }
+                    else -> submit(batch, fresh = existing == null)
+                }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: ApiError) {
-                if (e == ApiError.Network || e == ApiError.Timeout) enqueueLocal(batch)
-                else _state.update { it.copy(saving = false, error = errorFor(e)) }
+            } catch (e: Exception) {
+                fail(SaveError(null, retry = true))
             }
         }
     }
 
-    private fun buildBatch(s: AttendanceUiState): OutboxBatch {
+    /** "Gửi lại" lô lỗi đang có trong outbox khi mở T04. */
+    fun resend() {
+        if (_state.value.failedCode == null || _state.value.saving) return
+        _state.update { it.copy(saving = true, error = null) }
+        viewModelScope.launch {
+            try {
+                val owner = ownerProvider() ?: return@launch fail(SaveError(OWNER_MISSING, retry = true))
+                engine.exclusive { outbox.retryFailed(sessionId) }
+                val batch = outbox.all().lastOrNull { it.owner == owner && it.sessionId == sessionId && it.state == OutboxState.Pending }
+                _state.update { it.copy(failedCode = null) }
+                if (batch == null) {
+                    _state.update { it.copy(saving = false) }
+                    return@launch
+                }
+                enqueued = batch
+                submit(batch, fresh = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                fail(SaveError(null, retry = true))
+            }
+        }
+    }
+
+    private fun fail(e: SaveError) = _state.update { it.copy(saving = false, error = e) }
+
+    /** [fresh]: lô chưa có trong outbox, ghi và gửi trong cùng một lần giữ khóa của engine. */
+    private suspend fun submit(batch: OutboxBatch, fresh: Boolean) {
+        val key = batch.idempotencyKey
+        val report = if (fresh) engine.enqueueAndFlush(batch) else engine.flush(own = key)
+        enqueued = batch
+        when (val o = report.outcomes[key]) {
+            is BatchOutcome.Synced -> {
+                val applied = applyResults(_state.value.rows, batch.mutations, o.result.results)
+                if (applied.staleCount == 0) {
+                    enqueued = null
+                    val rejected = rejectedStudentIds(o.result.results).toSet()
+                    val names = _state.value.rows.filter { it.studentId in rejected }.map { it.name }
+                    notify(AttendanceNotice.Saved(o.result.parentsToNotify, names))
+                    _state.update { it.copy(saving = false, done = true) }
+                } else {
+                    // Server có bản mới hơn cho một số học sinh: hiện bản của server, ở lại để giáo viên xem.
+                    enqueued = null
+                    _state.update { it.copy(saving = false, rows = applied.rows, editMode = true, staleNotice = true) }
+                }
+            }
+            is BatchOutcome.Kept -> if (o.network) finishLocal() else fail(SaveError(null, retry = true))
+            is BatchOutcome.Failed -> _state.update { it.copy(saving = false, failedCode = o.code, error = SaveError(o.code, retry = false)) }
+            is BatchOutcome.Deleted -> {
+                enqueued = null
+                _state.update { s ->
+                    // Chỉ xem: buổi đã hủy hoặc quá hạn sửa; các mục server đã nhận trước khi từ chối vẫn được áp.
+                    val rows = o.result?.let { applyResults(s.rows, batch.mutations, it.results).rows } ?: s.rows
+                    s.copy(
+                        saving = false, rows = rows, expandedId = null,
+                        readOnly = when (o.code) {
+                            EDIT_WINDOW_CLOSED -> ReadOnly.Expired
+                            "SESSION_CANCELLED" -> ReadOnly.Cancelled
+                            else -> s.readOnly
+                        },
+                        error = SaveError(o.code, retry = false),
+                    )
+                }
+            }
+            // Engine không báo gì cho lô này (chủ đổi, lô bị bỏ…): đọc lại outbox để biết lô đang ở đâu.
+            null -> when (val now = outbox.all().firstOrNull { it.idempotencyKey == key }) {
+                null -> {
+                    enqueued = null
+                    notify(AttendanceNotice.Saved(0))
+                    _state.update { it.copy(saving = false, done = true) }
+                }
+                else -> if (now.state == OutboxState.Failed) {
+                    _state.update { it.copy(saving = false, failedCode = now.errorCode, error = SaveError(now.errorCode, retry = false)) }
+                } else {
+                    finishLocal()
+                }
+            }
+        }
+    }
+
+    private fun finishLocal() {
+        onEnqueued()
+        notify(AttendanceNotice.SavedLocal)
+        _state.update { it.copy(saving = false, done = true) }
+    }
+
+    private suspend fun buildBatch(owner: OutboxOwner, s: AttendanceUiState): OutboxBatch {
         val now = formatIso(clock.instant(), clock.zone)
         return OutboxBatch(
             idempotencyKey = newId(),
             sessionId = sessionId,
+            owner = owner,
+            deviceId = device.get(),
+            deviceTime = now,
             mutations = buildMutations(s.rows, s.editMode, newId, now),
             markSessionTaught = true,
             createdAt = clock.millis(),
         )
     }
 
-    private suspend fun enqueueLocal(batch: OutboxBatch) {
-        outbox.enqueue(batch)
-        onEnqueued()
-        notify(AttendanceNotice.SavedLocal)
-        _state.update { it.copy(saving = false, done = true) }
+    /** Lô cũ bị thay (đổi trạng thái sau lỗi) và lô lỗi của buổi này: bỏ để không gửi lại nội dung cũ. */
+    private suspend fun discardSuperseded(owner: OutboxOwner) {
+        val failed = outbox.all().filter { it.owner == owner && it.sessionId == sessionId && it.state == OutboxState.Failed }
+        engine.exclusive { (superseded + failed.map { it.idempotencyKey }).forEach { outbox.remove(it) } }
+        superseded.clear()
     }
 
-    private fun onResult(batch: OutboxBatch, result: SyncResultDto) {
-        when (val v = verdictOf(result.results)) {
-            is BatchVerdict.Rejected -> {
-                inFlight = null
-                _state.update { it.copy(saving = false, error = SaveError(v.code, retry = false)) }
-            }
-            BatchVerdict.Done -> {
-                val applied = applyResults(_state.value.rows, batch.mutations, result.results)
-                inFlight = null
-                if (applied.staleCount == 0) {
-                    notify(AttendanceNotice.Saved(result.parentsToNotify))
-                    _state.update { it.copy(saving = false, done = true) }
-                } else {
-                    // Server có bản mới hơn cho một số học sinh: hiện bản của server, ở lại để giáo viên xem.
-                    _state.update { it.copy(saving = false, rows = applied.rows, editMode = true, staleNotice = true) }
-                }
+    fun staleNoticeShown() = _state.update { it.copy(staleNotice = false) }
+    fun errorShown() = _state.update { it.copy(error = null) }
+    fun askDiscard() = _state.update { if (it.saving) it else it.copy(confirmDiscard = true) }
+    fun stay() = _state.update { it.copy(confirmDiscard = false) }
+
+    /** Bỏ mọi lô của màn (lô vừa lưu và lô bị thay khi đổi trạng thái); xóa lỗi thì ở lại và báo, không nuốt. */
+    fun discard() {
+        if (_state.value.saving) return
+        _state.update { it.copy(confirmDiscard = false, saving = true) }
+        viewModelScope.launch {
+            try {
+                val keys = superseded + listOfNotNull(enqueued?.idempotencyKey)
+                engine.exclusive { keys.forEach { outbox.remove(it) } }
+                superseded.clear()
+                enqueued = null
+                _state.update { it.copy(saving = false, done = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                fail(SaveError(DISCARD_FAILED, retry = false))
             }
         }
     }
 
-    /** Lỗi từ server theo mã: [ApiError.Http.code] có thông báo riêng thì không thử lại được. */
-    private fun errorFor(e: ApiError): SaveError =
-        if (e is ApiError.Http && e.code in NO_RETRY_CODES) SaveError(e.code, retry = false) else SaveError(null, retry = true)
-
-    fun staleNoticeShown() = _state.update { it.copy(staleNotice = false) }
-    fun errorShown() = _state.update { it.copy(error = null) }
-    fun askDiscard() = _state.update { it.copy(confirmDiscard = true) }
-    fun stay() = _state.update { it.copy(confirmDiscard = false) }
-    fun discard() = _state.update { it.copy(confirmDiscard = false, done = true) }
-
-    private companion object {
-        val NO_RETRY_CODES = setOf("ATTENDANCE_EDIT_WINDOW_CLOSED", "SESSION_CANCELLED", "NOT_FOUND")
+    companion object {
+        const val OWNER_MISSING = "OWNER_MISSING"
+        const val DISCARD_FAILED = "DISCARD_FAILED"
     }
 }

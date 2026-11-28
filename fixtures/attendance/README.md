@@ -7,9 +7,10 @@ Test Android đọc trực tiếp các file này (`android/app/src/test/.../Atte
 |---|---|---|
 | `mutations.json` | `buildMutations` | `rows` + `editMode` + `ids` (cấp tuần tự cho `clientMutationId`) + `now` → danh sách mutation |
 | `notify_count.json` | `countsOf`, `notifyCount`, `saveLabel` | `rows` + `editMode` + `offline` → bộ đếm, số phụ huynh được báo, nhãn nút |
-| `apply_results.json` | `applyResults` | `rows` + `mutations` + `results` của server → `rows` mới và `staleCount` |
+| `apply_results.json` | `applyResults` (ghép theo `clientMutationId`) | `rows` + `mutations` + `results` của server → `rows` mới và `staleCount` |
 | `pending_merge.json` | `mergePending` | thẻ buổi (`id`, `kind`) + `pendingIds` → `kind`, `pending` sau khi gộp |
-| `error_decision.json` | `decideOnError`, `verdictOf` | lỗi gọi API + số lần thử → giữ/bỏ lô; kết quả 200 → xong/bị từ chối |
+| `error_decision.json` | `decideOnError`, `verdictOf`, `rejectedStudentIds`, `isDeletableError` | lỗi gọi API + số lần thử → giữ/bỏ lô; kết quả 200 → xong/bị từ chối |
+| `flush_rules.json` | `AttendanceSyncEngine.flush` | lô trong outbox + kịch bản API + chủ → lô đã gửi, lô còn lại (pending/failed), kết quả, bản chụp danh sách bị xóa |
 | `sheet.json` | `sheetAction`, `repeatLabel` | trạng thái buổi → hành động chính của sheet; thứ ISO → "T2-T4-T6" |
 
 ## Định dạng chung
@@ -21,4 +22,5 @@ Test Android đọc trực tiếp các file này (`android/app/src/test/.../Atte
 - Mutation: `clientMutationId`, `studentId`, `status`, `note`, `clientUpdatedAt` (ISO 8601 có offset, luôn có giây).
 - `kind` của thẻ buổi: `Teaching` | `Missed` | `Upcoming` | `Taught` | `Cancelled`.
 - Đếm: "Có mặt" chỉ gồm `present` (không gồm `late`); "Vắng" = `excused` + `unexcused`; "Muộn" = `late`.
+- Xóa hay failed: chỉ xóa lô với `NOT_FOUND`, `SESSION_CANCELLED`, `ATTENDANCE_EDIT_WINDOW_CLOSED`; mọi lỗi 4xx khác (kể cả 404 không mã = `HTTP_404`) và `MAX_ATTEMPTS` giữ lô ở trạng thái `failed` kèm `errorCode`, chặn các lô sau của cùng buổi. Phần tử `rejected` mã khác `ATTENDANCE_EDIT_WINDOW_CLOSED` không làm hỏng lô (lô xong, báo riêng học sinh).
 - Quyết định lỗi: `network`/`timeout`/429/401 giữ lô và không tính lần thử; 5xx, `IDEMPOTENCY_IN_PROGRESS`, body sai định dạng giữ lô và tính lần thử, đủ `MAX_ATTEMPTS` = 10 thì bỏ (`MAX_ATTEMPTS`); lỗi 4xx còn lại bỏ lô kèm mã lỗi.

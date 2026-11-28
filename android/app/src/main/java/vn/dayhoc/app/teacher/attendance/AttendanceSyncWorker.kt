@@ -18,20 +18,20 @@ class AttendanceSyncWorker(context: Context, params: WorkerParameters) : Corouti
         val container = (applicationContext as DayHocApp).container
         return when (container.syncNow()) {
             FlushResult.Retry -> Result.retry()
-            else -> Result.success()
+            FlushResult.Done -> Result.success()
         }
     }
 
     companion object {
         private const val NAME = "attendance-sync"
 
-        /** Hẹn một lần chạy có ràng buộc mạng; đã có lần hẹn thì giữ nguyên. */
+        /** Hẹn một lần chạy có ràng buộc mạng; lần hẹn mới thay lần cũ (lần cũ có thể đang chờ backoff). */
         fun schedule(context: Context) {
             val request = OneTimeWorkRequestBuilder<AttendanceSyncWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
                 .build()
-            WorkManager.getInstance(context).enqueueUniqueWork(NAME, ExistingWorkPolicy.KEEP, request)
+            WorkManager.getInstance(context).enqueueUniqueWork(NAME, ExistingWorkPolicy.REPLACE, request)
         }
 
         fun cancel(context: Context) = WorkManager.getInstance(context).cancelUniqueWork(NAME)

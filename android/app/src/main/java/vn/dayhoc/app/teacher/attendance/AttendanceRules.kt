@@ -74,23 +74,36 @@ fun buildMutations(rows: List<AttRow>, editMode: Boolean, newId: () -> String, n
     rows.filter { !editMode || it.changed }
         .map { OutboxMutation(newId(), it.studentId, it.status.wire, it.note, now) }
 
-/** Chồng các lô đang chờ trong outbox lên danh sách server để giáo viên thấy điều mình đã lưu. */
+/**
+ * Chồng các lô của buổi lên danh sách server để giáo viên thấy điều mình đã lưu. Lô đang chờ: giá trị trong lô coi như
+ * đã lưu ([AttRow.original]), nên chỉ phần đổi thêm mới được gửi. Lô lỗi: chỉ hiện giá trị, `original` giữ của server
+ * để gửi lại đủ.
+ */
 fun overlayPending(rows: List<AttRow>, batches: List<OutboxBatch>): List<AttRow> {
-    val latest = batches.flatMap { it.mutations }.associateBy { it.studentId }
-    return rows.map { r -> latest[r.studentId]?.let { m -> AttStatus.fromWire(m.status)?.let { s -> r.copy(status = s, note = m.note) } } ?: r }
+    val pending = HashMap<String, OutboxMutation>()
+    val failed = HashMap<String, OutboxMutation>()
+    for (b in batches) for (m in b.mutations) (if (b.state == OutboxState.Pending) pending else failed)[m.studentId] = m
+    return rows.map { r ->
+        var row = r
+        failed[r.studentId]?.let { m -> AttStatus.fromWire(m.status)?.let { row = row.copy(status = it, note = m.note) } }
+        pending[r.studentId]?.let { m -> AttStatus.fromWire(m.status)?.let { row = row.copy(status = it, original = it, note = m.note) } }
+        row
+    }
 }
 
 /** Kết quả áp phản hồi của server vào danh sách. */
 data class Applied(val rows: List<AttRow>, val staleCount: Int)
 
 /**
- * Áp kết quả từng mutation: `applied`/`duplicate` thì giá trị gửi đi thành giá trị đang lưu;
- * `stale` thì lấy `current` của server (bản mới hơn thắng). [results] cùng thứ tự với [mutations].
+ * Áp kết quả từng mutation, ghép theo `clientMutationId` (không theo thứ tự): `applied`/`duplicate` thì giá trị gửi đi
+ * thành giá trị đang lưu; `stale` thì lấy `current` của server (bản mới hơn thắng); `rejected` thì giữ nguyên hàng.
  */
 fun applyResults(rows: List<AttRow>, mutations: List<OutboxMutation>, results: List<MutationResultDto>): Applied {
     val byStudent = rows.associateBy { it.studentId }.toMutableMap()
+    val byId = results.associateBy { it.clientMutationId }
     var stale = 0
-    mutations.zip(results).forEach { (m, r) ->
+    mutations.forEach { m ->
+        val r = byId[m.clientMutationId] ?: return@forEach
         val row = byStudent[m.studentId] ?: return@forEach
         when (r.result) {
             "applied", "duplicate" -> AttStatus.fromWire(m.status)?.let { byStudent[m.studentId] = row.copy(original = it) }
@@ -105,14 +118,24 @@ fun applyResults(rows: List<AttRow>, mutations: List<OutboxMutation>, results: L
     return Applied(rows.map { byStudent.getValue(it.studentId) }, stale)
 }
 
-/** Phản hồi 200 của một lô: xong, hoặc có phần tử bị từ chối vĩnh viễn (cửa sổ sửa đóng, không còn học sinh…). */
+/**
+ * Phản hồi 200 của một lô. Kết quả theo từng phần tử: chỉ "cửa sổ sửa đóng" (`ATTENDANCE_EDIT_WINDOW_CLOSED`) làm cả buổi
+ * không sửa được nữa ([Rejected]); phần tử `rejected` mã khác (học sinh không còn trong lớp, gói chỉ đọc…) không làm hỏng
+ * lô: lô vẫn xong ([Done]) và các học sinh đó được báo riêng ([rejectedStudentIds]).
+ */
 sealed interface BatchVerdict {
     data object Done : BatchVerdict
     data class Rejected(val code: String) : BatchVerdict
 }
 
 fun verdictOf(results: List<MutationResultDto>): BatchVerdict =
-    results.firstOrNull { it.result == "rejected" }?.let { BatchVerdict.Rejected(it.errorCode ?: "REJECTED") } ?: BatchVerdict.Done
+    results.firstOrNull { it.result == "rejected" && it.errorCode == EDIT_WINDOW_CLOSED }?.let { BatchVerdict.Rejected(EDIT_WINDOW_CLOSED) }
+        ?: BatchVerdict.Done
+
+/** Học sinh có phần tử bị `rejected` (không ghi được) trong phản hồi. */
+fun rejectedStudentIds(results: List<MutationResultDto>): List<String> = results.filter { it.result == "rejected" }.map { it.studentId }
+
+const val EDIT_WINDOW_CLOSED = "ATTENDANCE_EDIT_WINDOW_CLOSED"
 
 /** Quyết định với lô khi gọi API lỗi: giữ lại thử sau, hoặc bỏ (lỗi không thử lại được). */
 sealed interface ErrorDecision {
@@ -133,10 +156,19 @@ fun decideOnError(e: ApiError, attempts: Int): ErrorDecision = when {
     else -> ErrorDecision.Keep(countAttempt = true)
 }
 
-private val ISO = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+/**
+ * Lỗi vĩnh viễn mà lô không còn ý nghĩa nữa (buổi đã hủy, quá hạn sửa, `NOT_FOUND`): xóa lô. 404 không kèm mã lỗi
+ * (`HTTP_404`, vd. proxy trả) thì không xóa: giữ `failed` để giáo viên gửi lại.
+ * Các lỗi khác (403, 422…, đủ [MAX_ATTEMPTS] lần lỗi server) giữ lô ở trạng thái `failed` để giáo viên gửi lại.
+ */
+fun isDeletableError(code: String): Boolean = code in DELETABLE
 
-/** `2026-11-09T17:45:00+07:00`: giây luôn có mặt, đúng mẫu `date-time` của hợp đồng. */
-fun formatIso(at: Instant, zone: ZoneId): String = ISO.format(at.truncatedTo(ChronoUnit.SECONDS).atZone(zone))
+private val DELETABLE = setOf("SESSION_CANCELLED", EDIT_WINDOW_CLOSED, "NOT_FOUND")
+
+private val ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+
+/** `2026-11-09T17:45:00.123+07:00`: có mili giây (mốc LWW của server so sánh `>`), đúng mẫu `date-time` của hợp đồng. */
+fun formatIso(at: Instant, zone: ZoneId): String = ISO.format(at.truncatedTo(ChronoUnit.MILLIS).atZone(zone))
 
 /** Hành động chính của sheet Chi tiết buổi (T05a). */
 enum class SheetAction { Attend, Edit, None }

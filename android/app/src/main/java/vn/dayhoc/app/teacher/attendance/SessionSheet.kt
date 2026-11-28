@@ -5,10 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -17,11 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import java.time.ZoneId
 import vn.dayhoc.app.R
+import vn.dayhoc.app.core.designsystem.DhChevron
+import vn.dayhoc.app.core.designsystem.DhIconButton
 import vn.dayhoc.app.core.designsystem.DhListRow
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.TeachHubText
@@ -46,7 +43,11 @@ fun SessionSheet(
 ) {
     val colors = MaterialTheme.colorScheme
     val repeat by produceState<String?>(null, session.classId) { value = loadRepeat(session.classId) }
-    val day = formatSheetDay(session.start.atZone(zone).toLocalDate()) + " · " + formatTimeRange(session.start, session.end, zone)
+    val day = stringResource(
+        R.string.attendance_subtitle,
+        formatSheetDay(session.start.atZone(zone).toLocalDate()),
+        formatTimeRange(session.start, session.end, zone),
+    )
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier.navigationBarsPadding().padding(horizontal = Dimens.spacingPage).padding(bottom = Dimens.spacingSection),
@@ -54,9 +55,7 @@ fun SessionSheet(
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(session.className, style = TeachHubText.h2, color = colors.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
-                IconButton(onDismiss, Modifier.size(44.dp)) {
-                    Icon(painterResource(R.drawable.ic_close), stringResource(R.string.session_sheet_close), tint = colors.onSurface)
-                }
+                DhIconButton(R.drawable.ic_close, stringResource(R.string.session_sheet_close), onDismiss)
             }
             Text(
                 repeat?.let { stringResource(R.string.session_sheet_repeat, day, it) } ?: day,
@@ -78,7 +77,5 @@ fun SessionSheet(
 
 @Composable
 private fun Chevron(title: String, subtitle: String?, onClick: () -> Unit) {
-    DhListRow(title, subtitle = subtitle, onClick = onClick, trailing = {
-        Icon(painterResource(R.drawable.ic_arrow_right), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
-    })
+    DhListRow(title, subtitle = subtitle, onClick = onClick, trailing = { DhChevron() })
 }
