@@ -161,7 +161,7 @@ struct TeacherSpaceView: View {
         RoleSpace(
             app: app,
             title: items[tab].label,
-            trailing: { if tab == 0 { TodayAppBarActions(model: today, onBell: comingSoon) } },
+            trailing: { TeacherAppBarActions(model: today, onBell: comingSoon) },
             content: {
                 Group {
                     if tab == 0 {

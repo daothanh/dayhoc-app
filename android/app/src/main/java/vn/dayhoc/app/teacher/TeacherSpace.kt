@@ -38,7 +38,6 @@ import vn.dayhoc.app.core.session.MembershipStore
 import vn.dayhoc.app.core.session.RoleSpaceScaffold
 import vn.dayhoc.app.teacher.onboarding.OnboardingApi
 import vn.dayhoc.app.teacher.onboarding.OnboardingStep
-import vn.dayhoc.app.teacher.today.TodayAppBarActions
 import vn.dayhoc.app.teacher.today.TodayContent
 import vn.dayhoc.app.teacher.today.TodayViewModel
 
@@ -108,7 +107,7 @@ fun TeacherSpace(
         onSwitched,
         onAddRole,
         title = items[tab].label,
-        actions = { if (tab == 0) TodayAppBarActions(todayState, showComingSoon) },
+        actions = { TeacherAppBarActions(todayState, showComingSoon) },
     ) {
         if (tab == 0) {
             TodayContent(

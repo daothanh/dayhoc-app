@@ -219,19 +219,3 @@ private fun EmptyToday(next: NextSession?, onOpenSchedule: () -> Unit) {
     }
     DhEmptyState(stringResource(R.string.today_empty_title), description, stringResource(R.string.today_empty_action), onOpenSchedule)
 }
-
-/** Chip đồng bộ nét đứt + chuông có chấm khi còn thông báo chưa đọc (App Bar `Root`). */
-@Composable
-fun RowScope.TodayAppBarActions(state: TodayUiState, onBell: () -> Unit) {
-    DhChip(
-        stringResource(
-            when {
-                state.offline -> R.string.today_sync_offline
-                state.syncing -> R.string.today_sync_busy
-                else -> R.string.today_sync_done
-            },
-        ),
-        style = DhChipStyle.Dashed,
-    )
-    DhBellButton(state.data?.unread ?: 0, stringResource(R.string.today_notifications), onBell)
-}
