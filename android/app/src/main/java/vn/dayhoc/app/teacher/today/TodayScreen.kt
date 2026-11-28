@@ -59,6 +59,7 @@ import vn.dayhoc.app.core.designsystem.DhCardStyle
 import vn.dayhoc.app.core.designsystem.DhChip
 import vn.dayhoc.app.core.designsystem.DhChipStyle
 import vn.dayhoc.app.core.designsystem.DhEmptyState
+import vn.dayhoc.app.core.designsystem.DhIllustrationType
 import vn.dayhoc.app.core.designsystem.DhInfoBanner
 import vn.dayhoc.app.core.designsystem.DhListRow
 import vn.dayhoc.app.core.designsystem.DhOfflineBanner
@@ -70,7 +71,10 @@ import vn.dayhoc.app.core.designsystem.TeachHubText
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 import vn.dayhoc.app.teacher.onboarding.OnboardingStep
 
-/** Nội dung dưới App Bar của [T03] Hôm nay. Các màn đích chưa có nên [onComingSoon] báo "đang hoàn thiện". */
+/**
+ * Nội dung dưới App Bar của [T03] Hôm nay. Chạm thẻ → [onSession] (sheet T05a), nút "Điểm danh" và thẻ đã điểm danh → [onAttendance] (T04).
+ * Các màn đích còn lại chưa có nên [onComingSoon] báo "đang hoàn thiện".
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodayContent(
@@ -78,6 +82,8 @@ fun TodayContent(
     zone: ZoneId,
     onRefresh: () -> Unit,
     onComingSoon: () -> Unit,
+    onSession: (TodaySession) -> Unit,
+    onAttendance: (TodaySession) -> Unit,
     onOpenSchedule: () -> Unit,
     onContinueSetup: (OnboardingStep) -> Unit,
 ) {
@@ -112,14 +118,15 @@ fun TodayContent(
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
                 ) {
                     item { Caption(formatDateLine(data.date)) }
-                    val sessions = arrange(data.sessions, now)
+                    val sessions = arrange(data.sessions, now, state.pending, state.syncFailed)
                     if (sessions.isEmpty()) {
-                        item { EmptyToday(data.next, onOpenSchedule) }
+                        item { EmptyToday(data.next, onOpenSchedule) { onContinueSetup(OnboardingStep.SetSchedule) } }
                     } else {
                         item { Section(stringResource(R.string.today_section_sessions, sessions.size)) }
-                        items(sessions, key = { it.id }) { SessionCard(it, zone, onComingSoon) }
+                        items(sessions, key = { it.id }) { SessionCard(it, zone, onSession, onAttendance) }
                     }
-                    if (data.setupSteps.isNotEmpty()) item { SetupBanner(data.setupSteps, onContinueSetup) }
+                    val setup = bannerSteps(data.setupSteps, sessions.isEmpty(), data.next)
+                    if (setup.isNotEmpty()) item { SetupBanner(setup, onContinueSetup) }
                     val overdue = data.overdue
                     if (overdue != null && overdue.count > 0) {
                         item { Section(stringResource(R.string.today_section_todo)) }
@@ -160,7 +167,7 @@ private fun Skeleton() {
 }
 
 @Composable
-private fun SessionCard(s: TodaySession, zone: ZoneId, onClick: () -> Unit) {
+private fun SessionCard(s: TodaySession, zone: ZoneId, onSession: (TodaySession) -> Unit, onAttendance: (TodaySession) -> Unit) {
     val colors = MaterialTheme.colorScheme
     val style = when (s.kind) {
         SessionKind.Teaching, SessionKind.Missed -> DhCardStyle.Emphasis
@@ -172,7 +179,7 @@ private fun SessionCard(s: TodaySession, zone: ZoneId, onClick: () -> Unit) {
         s.enrolled?.let { add(stringResource(R.string.today_students, it)) }
         s.location?.let { add(it) }
     }.joinToString(" · ")
-    DhCard(style = style, onClick = onClick) {
+    DhCard(style = style, onClick = { if (s.kind == SessionKind.Taught) onAttendance(s) else onSession(s) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.spacingControl)) {
             Column(Modifier.weight(1f)) {
                 Text(s.className, style = TeachHubText.bodyBold, color = colors.onSurface, maxLines = 1)
@@ -183,7 +190,7 @@ private fun SessionCard(s: TodaySession, zone: ZoneId, onClick: () -> Unit) {
                 SessionKind.Missed -> DhChip(stringResource(R.string.today_chip_missed), style = DhChipStyle.Filled)
                 SessionKind.Upcoming -> DhChip(stringResource(R.string.today_chip_upcoming))
                 SessionKind.Cancelled -> DhChip(stringResource(R.string.today_chip_cancelled))
-                SessionKind.Taught -> DhChip(
+                SessionKind.Taught -> if (!s.pending) DhChip(
                     if (s.attended != null && s.total != null) {
                         stringResource(R.string.today_chip_taught_count, s.attended, s.total)
                     } else {
@@ -193,7 +200,10 @@ private fun SessionCard(s: TodaySession, zone: ZoneId, onClick: () -> Unit) {
                 )
             }
         }
-        if (style == DhCardStyle.Emphasis) DhPrimaryButton(stringResource(R.string.today_attendance), onClick)
+        // Lô chờ đồng bộ: phụ huynh chưa được báo (US-3.5), đọc từ outbox nên không cần mạng.
+        if (s.syncFailed) DhChip(stringResource(R.string.today_chip_sync_failed), style = DhChipStyle.Danger)
+        else if (s.pending) DhChip(stringResource(R.string.today_chip_pending), style = DhChipStyle.Dashed)
+        if (style == DhCardStyle.Emphasis) DhPrimaryButton(stringResource(R.string.today_attendance), { onAttendance(s) })
     }
 }
 
@@ -211,11 +221,21 @@ private fun SetupBanner(steps: List<OnboardingStep>, onContinue: (OnboardingStep
 }
 
 @Composable
-private fun EmptyToday(next: NextSession?, onOpenSchedule: () -> Unit) {
-    val description = if (next != null) {
-        stringResource(R.string.today_empty_next, next.className, formatShortDay(next.day), next.time)
-    } else {
-        stringResource(R.string.today_empty_none)
+private fun EmptyToday(next: NextSession?, onOpenSchedule: () -> Unit, onCreateSchedule: () -> Unit) {
+    val title = stringResource(R.string.today_empty_title)
+    when (emptyVariant(next)) {
+        EmptyVariant.NextSession -> DhEmptyState(
+            title,
+            stringResource(R.string.today_empty_next, next!!.className, formatShortDay(next.day), next.time),
+            stringResource(R.string.today_empty_action),
+            onOpenSchedule,
+        )
+        EmptyVariant.NoSchedule -> DhEmptyState(
+            title,
+            stringResource(R.string.today_empty_none),
+            stringResource(R.string.today_empty_create),
+            onCreateSchedule,
+            illustration = DhIllustrationType.CalendarPlus,
+        )
     }
-    DhEmptyState(stringResource(R.string.today_empty_title), description, stringResource(R.string.today_empty_action), onOpenSchedule)
 }

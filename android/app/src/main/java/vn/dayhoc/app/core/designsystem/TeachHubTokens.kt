@@ -105,6 +105,7 @@ object TeachHubTokens {
 
         val h1 = Spec(20f, 28f, 600, -0.3f)
         val h2 = Spec(17f, 24f, 600, -0.17f)
+        val h3 = Spec(15f, 22f, 600, -0.075f)
         val body = Spec(14f, 20f, 400, 0f)
         val bodyBold = Spec(14f, 20f, 600, 0f)
         val label = Spec(12f, 16f, 500, 0f)

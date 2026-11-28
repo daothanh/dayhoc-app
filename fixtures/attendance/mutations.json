@@ -1,0 +1,158 @@
+{
+  "_doc": "Dựng mutations từ danh sách hàng. editMode=false: mutation cho mọi học sinh; editMode=true: chỉ học sinh có status khác original (original=null nghĩa là mặc định present). ids cấp tuần tự cho clientMutationId.",
+  "cases": [
+    {
+      "name": "lần đầu, mọi học sinh có mutation",
+      "editMode": false,
+      "now": "2026-11-09T17:45:00+07:00",
+      "ids": [
+        "m1",
+        "m2",
+        "m3"
+      ],
+      "rows": [
+        {
+          "studentId": "s1",
+          "name": "Nguyễn An",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s2",
+          "name": "Lê Chi",
+          "status": "unexcused",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s3",
+          "name": "Phạm Dũng",
+          "status": "excused",
+          "original": null,
+          "note": "Ốm",
+          "parentReported": true
+        }
+      ],
+      "expected": [
+        {
+          "clientMutationId": "m1",
+          "studentId": "s1",
+          "status": "present",
+          "note": null,
+          "clientUpdatedAt": "2026-11-09T17:45:00+07:00"
+        },
+        {
+          "clientMutationId": "m2",
+          "studentId": "s2",
+          "status": "unexcused",
+          "note": null,
+          "clientUpdatedAt": "2026-11-09T17:45:00+07:00"
+        },
+        {
+          "clientMutationId": "m3",
+          "studentId": "s3",
+          "status": "excused",
+          "note": "Ốm",
+          "clientUpdatedAt": "2026-11-09T17:45:00+07:00"
+        }
+      ]
+    },
+    {
+      "name": "chế độ sửa, chỉ học sinh đổi",
+      "editMode": true,
+      "now": "2026-11-09T17:45:00+07:00",
+      "ids": [
+        "m1",
+        "m2"
+      ],
+      "rows": [
+        {
+          "studentId": "s1",
+          "name": "Nguyễn An",
+          "status": "present",
+          "original": "present",
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s2",
+          "name": "Lê Chi",
+          "status": "present",
+          "original": "unexcused",
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s3",
+          "name": "Phạm Dũng",
+          "status": "excused",
+          "original": "excused",
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s4",
+          "name": "Hoàng Em",
+          "status": "late",
+          "original": "present",
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": [
+        {
+          "clientMutationId": "m1",
+          "studentId": "s2",
+          "status": "present",
+          "note": null,
+          "clientUpdatedAt": "2026-11-09T17:45:00+07:00"
+        },
+        {
+          "clientMutationId": "m2",
+          "studentId": "s4",
+          "status": "late",
+          "note": null,
+          "clientUpdatedAt": "2026-11-09T17:45:00+07:00"
+        }
+      ]
+    },
+    {
+      "name": "chế độ sửa, hàng chưa có dòng server mà đổi khỏi present thì có mutation",
+      "editMode": true,
+      "now": "2026-11-09T17:45:00+07:00",
+      "ids": [
+        "m1"
+      ],
+      "rows": [
+        {
+          "studentId": "s1",
+          "name": "Nguyễn An",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "s2",
+          "name": "Lê Chi",
+          "status": "unexcused",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": [
+        {
+          "clientMutationId": "m1",
+          "studentId": "s2",
+          "status": "unexcused",
+          "note": null,
+          "clientUpdatedAt": "2026-11-09T17:45:00+07:00"
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,7 @@ import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
 /**
  * Nút chính: nền primary (lime), chữ onPrimary. Khi [loading] giữ nền lime, hiện spinner
- * và [loadingText] (Figma B03, B32); không bấm được khi loading hoặc [enabled] = false.
+ * và [loadingText] (Figma B03, B32); [small] = cao 40, nhãn Button S (Figma Primary Small); không bấm được khi loading hoặc [enabled] = false.
  */
 @Composable
 fun DhPrimaryButton(
@@ -37,13 +37,15 @@ fun DhPrimaryButton(
     loading: Boolean = false,
     loadingText: String = text,
     fullWidth: Boolean = true,
+    small: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
-        modifier = modifier.then(if (fullWidth) Modifier.fillMaxWidth() else Modifier).defaultMinSize(minHeight = 48.dp),
+        modifier = modifier.then(if (fullWidth) Modifier.fillMaxWidth() else Modifier).defaultMinSize(minHeight = if (small) 40.dp else 48.dp),
         shape = RoundedCornerShape(Dimens.buttonRadius),
+        contentPadding = if (small) PaddingValues(horizontal = Dimens.spacingContent) else ButtonDefaults.ContentPadding,
         elevation = ButtonDefaults.buttonElevation(defaultElevation = Dimens.buttonElevation),
         colors = ButtonDefaults.buttonColors(
             containerColor = colors.primary,
@@ -63,7 +65,7 @@ fun DhPrimaryButton(
                 Text(loadingText, style = TeachHubText.button)
             }
         } else {
-            Text(text, style = TeachHubText.button)
+            Text(text, style = if (small) TeachHubText.buttonSmall else TeachHubText.button)
         }
     }
 }

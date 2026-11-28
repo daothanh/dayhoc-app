@@ -16,6 +16,8 @@ class AuthRepository(
     private val api: AuthApi,
     private val tokenStore: TokenStore,
     private val sessionMutex: Mutex = Mutex(),
+    /** Nhận mã người dùng sau mỗi lần đăng nhập thành công (dùng gắn chủ dữ liệu ngoại tuyến, lưu bền). */
+    private val onUser: (userId: String) -> Unit = {},
 ) {
     suspend fun sendOtp(email: String) = apiCall { api.sendOtp(SendOtpRequest(email)) }
 
@@ -46,6 +48,7 @@ class AuthRepository(
 
     private suspend fun saveSession(access: String, refresh: String, user: UserDto): UserDto {
         sessionMutex.withLock { tokenStore.save(Tokens(access, refresh)) }
+        onUser(user.id)
         return user
     }
 

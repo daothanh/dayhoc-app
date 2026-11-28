@@ -6,11 +6,14 @@ struct AppEnvironment: Sendable {
     let auth: AuthRepository
     /// Luồng Google Sign-In; `nil` ở test và UI test vì không dựng SDK/UI.
     let google: (any GoogleIdTokenProvider)?
+    /// CSDL ngoại tuyến, SyncEngine và tác vụ nền của điểm danh; CSDL chỉ mở khi dùng lần đầu.
+    let attendance: AttendanceServices
 
     init(api: APIClient, tokenStore: any TokenStore, google: (any GoogleIdTokenProvider)? = nil) {
         self.api = api
         auth = AuthRepository(api: api, tokenStore: tokenStore)
         self.google = google
+        attendance = AttendanceServices(api: api, tokenStore: tokenStore)
     }
 
     /// Bản chạy thật: `API_URL` lấy từ Info.plist (giá trị đặt trong `Config/*.xcconfig`).

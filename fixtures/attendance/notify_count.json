@@ -1,0 +1,219 @@
+{
+  "_doc": "Bộ đếm, số phụ huynh được báo, nhãn nút lưu. label.kind: Save | Notify(n) | SaveChanges | SaveLocal. Vắng = excused + unexcused; present không gồm late; parentReported không tính vào số báo.",
+  "cases": [
+    {
+      "name": "đủ mặt",
+      "editMode": false,
+      "offline": false,
+      "rows": [
+        {
+          "studentId": "a",
+          "name": "A",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "b",
+          "name": "B",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": {
+        "notifyCount": 0,
+        "counts": {
+          "present": 2,
+          "absent": 0,
+          "late": 0
+        },
+        "label": {
+          "kind": "Save"
+        }
+      }
+    },
+    {
+      "name": "có vắng, đi muộn không phải vắng",
+      "editMode": false,
+      "offline": false,
+      "rows": [
+        {
+          "studentId": "a",
+          "name": "A",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "b",
+          "name": "B",
+          "status": "excused",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "c",
+          "name": "C",
+          "status": "unexcused",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "d",
+          "name": "D",
+          "status": "late",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": {
+        "notifyCount": 2,
+        "counts": {
+          "present": 1,
+          "absent": 2,
+          "late": 1
+        },
+        "label": {
+          "kind": "Notify",
+          "n": 2
+        }
+      }
+    },
+    {
+      "name": "phụ huynh đã báo vắng trước không tính vào số báo",
+      "editMode": false,
+      "offline": false,
+      "rows": [
+        {
+          "studentId": "a",
+          "name": "A",
+          "status": "excused",
+          "original": null,
+          "note": null,
+          "parentReported": true
+        },
+        {
+          "studentId": "b",
+          "name": "B",
+          "status": "unexcused",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        },
+        {
+          "studentId": "c",
+          "name": "C",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": {
+        "notifyCount": 1,
+        "counts": {
+          "present": 1,
+          "absent": 2,
+          "late": 0
+        },
+        "label": {
+          "kind": "Notify",
+          "n": 1
+        }
+      }
+    },
+    {
+      "name": "chỉ có học sinh phụ huynh đã báo thì không báo thêm ai",
+      "editMode": false,
+      "offline": false,
+      "rows": [
+        {
+          "studentId": "a",
+          "name": "A",
+          "status": "excused",
+          "original": null,
+          "note": null,
+          "parentReported": true
+        },
+        {
+          "studentId": "b",
+          "name": "B",
+          "status": "present",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": {
+        "notifyCount": 0,
+        "counts": {
+          "present": 1,
+          "absent": 1,
+          "late": 0
+        },
+        "label": {
+          "kind": "Save"
+        }
+      }
+    },
+    {
+      "name": "chế độ sửa luôn là Lưu thay đổi",
+      "editMode": true,
+      "offline": false,
+      "rows": [
+        {
+          "studentId": "a",
+          "name": "A",
+          "status": "excused",
+          "original": "present",
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": {
+        "notifyCount": 1,
+        "counts": {
+          "present": 0,
+          "absent": 1,
+          "late": 0
+        },
+        "label": {
+          "kind": "SaveChanges"
+        }
+      }
+    },
+    {
+      "name": "ngoại tuyến luôn là Lưu trên máy",
+      "editMode": false,
+      "offline": true,
+      "rows": [
+        {
+          "studentId": "a",
+          "name": "A",
+          "status": "excused",
+          "original": null,
+          "note": null,
+          "parentReported": false
+        }
+      ],
+      "expected": {
+        "notifyCount": 1,
+        "counts": {
+          "present": 0,
+          "absent": 1,
+          "late": 0
+        },
+        "label": {
+          "kind": "SaveLocal"
+        }
+      }
+    }
+  ]
+}

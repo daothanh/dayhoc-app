@@ -1,0 +1,254 @@
+{
+  "_doc": "Giữ hay bỏ lô khi gọi sync lỗi. error.type: network | timeout | invalid | http (httpStatus, code). decision: keep (countAttempt: lỗi từ server mới tính vào số lần thử) | drop (code). MAX_ATTEMPTS = 10. batch_verdict: phản hồi 200 có phần tử rejected thì bỏ lô. deletable: mã lỗi cuối cùng của lô có bị XÓA (true) hay giữ ở trạng thái failed (false). 404 không kèm mã lỗi = HTTP_404: KHÔNG xóa lô (failed, gửi lại được). batch_verdict: chỉ ATTENDANCE_EDIT_WINDOW_CLOSED làm cả lô bị từ chối (rejected); phần tử rejected khác thì verdict done, kèm rejectedStudentIds (studentId của phần tử rejected; trong ca này mutation thứ i có studentId s<i>) để báo riêng theo học sinh.",
+  "cases": [
+    {
+      "name": "mất mạng giữ lô, không tính lần thử",
+      "error": {
+        "type": "network"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "keep",
+        "countAttempt": false
+      }
+    },
+    {
+      "name": "hết giờ giữ lô",
+      "error": {
+        "type": "timeout"
+      },
+      "attempts": 3,
+      "expected": {
+        "decision": "keep",
+        "countAttempt": false
+      }
+    },
+    {
+      "name": "5xx giữ lô, tính lần thử",
+      "error": {
+        "type": "http",
+        "httpStatus": 503,
+        "code": "SERVICE_UNAVAILABLE"
+      },
+      "attempts": 2,
+      "expected": {
+        "decision": "keep",
+        "countAttempt": true
+      }
+    },
+    {
+      "name": "5xx lần thứ 10 thì bỏ",
+      "error": {
+        "type": "http",
+        "httpStatus": 500,
+        "code": "INTERNAL_ERROR"
+      },
+      "attempts": 9,
+      "expected": {
+        "decision": "drop",
+        "code": "MAX_ATTEMPTS"
+      }
+    },
+    {
+      "name": "đang xử lý cùng khóa giữ lô",
+      "error": {
+        "type": "http",
+        "httpStatus": 409,
+        "code": "IDEMPOTENCY_IN_PROGRESS"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "keep",
+        "countAttempt": true
+      }
+    },
+    {
+      "name": "429 giữ lô, không tính lần thử",
+      "error": {
+        "type": "http",
+        "httpStatus": 429,
+        "code": "RATE_LIMITED"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "keep",
+        "countAttempt": false
+      }
+    },
+    {
+      "name": "401 giữ lô",
+      "error": {
+        "type": "http",
+        "httpStatus": 401,
+        "code": "UNAUTHENTICATED"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "keep",
+        "countAttempt": false
+      }
+    },
+    {
+      "name": "buổi đã hủy thì bỏ",
+      "error": {
+        "type": "http",
+        "httpStatus": 409,
+        "code": "SESSION_CANCELLED"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "drop",
+        "code": "SESSION_CANCELLED"
+      }
+    },
+    {
+      "name": "không tìm thấy buổi thì bỏ",
+      "error": {
+        "type": "http",
+        "httpStatus": 404,
+        "code": "NOT_FOUND"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "drop",
+        "code": "NOT_FOUND"
+      }
+    },
+    {
+      "name": "dữ liệu sai thì bỏ",
+      "error": {
+        "type": "http",
+        "httpStatus": 422,
+        "code": "VALIDATION_FAILED"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "drop",
+        "code": "VALIDATION_FAILED"
+      }
+    },
+    {
+      "name": "khóa idempotency dùng cho yêu cầu khác thì bỏ",
+      "error": {
+        "type": "http",
+        "httpStatus": 422,
+        "code": "IDEMPOTENCY_KEY_REUSED"
+      },
+      "attempts": 0,
+      "expected": {
+        "decision": "drop",
+        "code": "IDEMPOTENCY_KEY_REUSED"
+      }
+    }
+  ],
+  "batch_verdict": [
+    {
+      "name": "mọi phần tử applied/duplicate/stale thì xong",
+      "results": [
+        {
+          "result": "applied"
+        },
+        {
+          "result": "duplicate"
+        },
+        {
+          "result": "stale"
+        }
+      ],
+      "expected": {
+        "verdict": "done"
+      }
+    },
+    {
+      "name": "cửa sổ sửa đóng thì bỏ lô",
+      "results": [
+        {
+          "result": "applied"
+        },
+        {
+          "result": "rejected",
+          "errorCode": "ATTENDANCE_EDIT_WINDOW_CLOSED"
+        }
+      ],
+      "expected": {
+        "verdict": "rejected",
+        "code": "ATTENDANCE_EDIT_WINDOW_CLOSED"
+      }
+    },
+    {
+      "name": "phần tử rejected mã khác (học sinh không thuộc lớp) thì lô vẫn xong, báo riêng học sinh",
+      "results": [
+        {
+          "result": "applied"
+        },
+        {
+          "result": "rejected",
+          "errorCode": "NOT_FOUND"
+        }
+      ],
+      "expected": {
+        "verdict": "done",
+        "rejectedStudentIds": [
+          "s1"
+        ]
+      }
+    },
+    {
+      "name": "gói chỉ đọc từng phần tử cũng không làm hỏng lô",
+      "results": [
+        {
+          "result": "rejected",
+          "errorCode": "READONLY_PLAN_LIMIT"
+        }
+      ],
+      "expected": {
+        "verdict": "done",
+        "rejectedStudentIds": [
+          "s0"
+        ]
+      }
+    }
+  ],
+  "deletable": [
+    {
+      "code": "SESSION_CANCELLED",
+      "expected": true
+    },
+    {
+      "code": "ATTENDANCE_EDIT_WINDOW_CLOSED",
+      "expected": true
+    },
+    {
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "code": "HTTP_404",
+      "expected": false
+    },
+    {
+      "code": "VALIDATION_FAILED",
+      "expected": false
+    },
+    {
+      "code": "FORBIDDEN",
+      "expected": false
+    },
+    {
+      "code": "HTTP_403",
+      "expected": false
+    },
+    {
+      "code": "MAX_ATTEMPTS",
+      "expected": false
+    },
+    {
+      "code": "IDEMPOTENCY_KEY_REUSED",
+      "expected": false
+    },
+    {
+      "code": "READONLY_PLAN_LIMIT",
+      "expected": false
+    }
+  ]
+}

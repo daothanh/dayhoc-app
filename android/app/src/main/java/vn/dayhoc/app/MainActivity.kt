@@ -24,6 +24,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Mở app hoặc quay lại: gửi outbox điểm danh còn chờ (US-3.5). */
+    override fun onStart() {
+        super.onStart()
+        (application as DayHocApp).container.requestSync()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleDeepLink(intent)

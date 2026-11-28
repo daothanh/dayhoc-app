@@ -16,13 +16,18 @@ import vn.dayhoc.app.teacher.today.TodayUiState
 @Composable
 fun RowScope.TeacherAppBarActions(state: TodayUiState, onBell: () -> Unit) {
     DhChip(
-        stringResource(
-            when {
-                state.offline -> R.string.today_sync_offline
-                state.syncing -> R.string.today_sync_busy
-                else -> R.string.today_sync_done
-            },
-        ),
+        // Số buổi còn chờ đồng bộ đọc từ outbox (Figma A25): hiện cả khi mất mạng.
+        if (state.pending.isNotEmpty()) {
+            stringResource(R.string.today_sync_pending, state.pending.size)
+        } else {
+            stringResource(
+                when {
+                    state.offline -> R.string.today_sync_offline
+                    state.syncing -> R.string.today_sync_busy
+                    else -> R.string.today_sync_done
+                },
+            )
+        },
         style = DhChipStyle.Dashed,
     )
     DhBellButton(state.data?.unread ?: 0, stringResource(R.string.today_notifications), onBell)

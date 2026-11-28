@@ -35,18 +35,55 @@ final class TodayModel {
     /// Tải lại lỗi do mạng khi đang có dữ liệu cũ: giữ dữ liệu, hiện banner ngoại tuyến.
     private(set) var offline = false
 
+    /// Mã buổi có lô điểm danh chưa đồng bộ trong outbox (đọc cục bộ, không đợi mạng), và trong đó buổi có lô lỗi.
+    /// Chỉ tính lô của chủ hiện tại (T03 không hiện lô của người khác).
+    var pendingSessions: Set<String> { Set(ownBatches.map(\.sessionId)) }
+    var failedSessions: Set<String> { Set(ownBatches.filter { $0.state == .failed }.map(\.sessionId)) }
+    private var batches: [OutboxBatch] = []
+    private var owner: OutboxOwner?
+    private var ownBatches: [OutboxBatch] { owner.map { o in batches.filter { $0.owner == o } } ?? [] }
+
     var syncing: Bool { loading || refreshing }
 
     private let source: any TodayDataSource
     private let now: () -> Date
     private let tz: TimeZone
     @ObservationIgnored private var task: Task<Void, Never>?
+    @ObservationIgnored private var outboxTask: Task<Void, Never>?
+    @ObservationIgnored private var ownerTask: Task<Void, Never>?
 
     // shortcut: dùng múi giờ máy thay cho múi giờ tenant, đổi khi membership có timezone
-    init(source: any TodayDataSource, now: @escaping () -> Date = { .now }, timeZone: TimeZone = .autoupdatingCurrent) {
+    init(
+        source: any TodayDataSource,
+        now: @escaping () -> Date = { .now },
+        timeZone: TimeZone = .autoupdatingCurrent,
+        outbox: AsyncStream<[OutboxBatch]>? = nil,
+        owner: AsyncStream<OutboxOwner?>? = nil
+    ) {
         self.source = source
         self.now = now
         tz = timeZone
+        if let outbox {
+            outboxTask = Task { [weak self] in
+                for await list in outbox {
+                    guard let self else { return }
+                    self.batches = list
+                }
+            }
+        }
+        if let owner {
+            ownerTask = Task { [weak self] in
+                for await o in owner {
+                    guard let self else { return }
+                    self.owner = o
+                }
+            }
+        }
+    }
+
+    deinit {
+        outboxTask?.cancel()
+        ownerTask?.cancel()
     }
 
     var timeZone: TimeZone { tz }
@@ -121,7 +158,8 @@ final class TodayModel {
                 location: cls?.location.flatMap { $0.isEmpty ? nil : $0 },
                 attended: att.map { $0.summary.present + $0.summary.late },
                 total: att?.items.count,
-                status: dto.status
+                status: dto.status,
+                classId: dto.classId
             )
         }
         let next = list.isEmpty ? try await nextSession(after: current) : nil

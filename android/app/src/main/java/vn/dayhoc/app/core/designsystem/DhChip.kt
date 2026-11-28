@@ -30,8 +30,11 @@ import androidx.compose.ui.unit.dp
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
 
-/** C06 Chip trạng thái (Figma Display/Tag): Outline · Filled · Success · Dashed · Counter. */
-enum class DhChipStyle { Outline, Filled, Success, Dashed, Counter }
+/**
+ * C06 Chip trạng thái (Figma Display/Tag): Outline · Filled · Success · Dashed · Counter.
+ * Điểm danh (A03): [Warning] (Muộn) và [Danger] (Vắng) viền theo tông; [WarningFilled] (Vắng CP), [DangerFilled] (Vắng KP) đặc.
+ */
+enum class DhChipStyle { Outline, Filled, Success, Dashed, Counter, Warning, Danger, WarningFilled, DangerFilled }
 
 @Composable
 fun DhChip(text: String, modifier: Modifier = Modifier, style: DhChipStyle = DhChipStyle.Outline) {
@@ -39,17 +42,24 @@ fun DhChip(text: String, modifier: Modifier = Modifier, style: DhChipStyle = DhC
     val success = LocalSuccessColor.current
     val shape = RoundedCornerShape(Dimens.tagRadius)
     val stroke = 1.5.dp
+    val warning = LocalWarningColor.current
     val (container, content) = when (style) {
         DhChipStyle.Filled -> colors.inverseSurface to colors.inverseOnSurface
-        DhChipStyle.Counter -> colors.onErrorContainer to colors.inverseOnSurface
+        DhChipStyle.Counter, DhChipStyle.DangerFilled -> colors.onErrorContainer to colors.inverseOnSurface
+        DhChipStyle.WarningFilled -> warning to colors.inverseOnSurface
         DhChipStyle.Success -> colors.surface to success
+        DhChipStyle.Warning -> colors.surface to warning
+        DhChipStyle.Danger -> colors.surface to colors.onErrorContainer
         else -> colors.surface to colors.onSurface
     }
     val borderColor = when (style) {
         DhChipStyle.Success -> success
+        DhChipStyle.Warning -> warning
+        DhChipStyle.Danger -> colors.error
         else -> colors.outlineVariant
     }
-    val bordered = style == DhChipStyle.Outline || style == DhChipStyle.Success
+    val bordered = style == DhChipStyle.Outline || style == DhChipStyle.Success ||
+        style == DhChipStyle.Warning || style == DhChipStyle.Danger
     Row(
         modifier = modifier
             .height(24.dp)

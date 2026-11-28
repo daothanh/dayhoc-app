@@ -23,6 +23,10 @@ struct DayHocApp: App {
             UITestLaunch.resetPersistedState()
             return AppModel(env: .uiTest(mode: mode))
         }
-        return isTestHost ? nil : AppModel(env: .live())
+        guard !isTestHost else { return nil }
+        let model = AppModel(env: .live())
+        // Phải đăng ký trước khi app chạy xong khởi động.
+        model.attendance.registerBackgroundTask()
+        return model
     }
 }

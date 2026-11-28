@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Từ Figma Brand/App Icon (82:2420 / 82:2423): ký hiệu D 330px đặt tại (51,51) trong khung 432px (108dp @4x). Xem docs/app-icon.md. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="432"
+    android:viewportHeight="432">
+    <group android:translateX="51" android:translateY="51">
+        <path android:fillColor="#FF000000" android:fillType="evenOdd" android:pathData="M85.8 44.55H158.4C181.156 44.55 202.979 53.5896 219.07 69.6802C235.16 85.7709 244.2 107.594 244.2 130.35C244.2 153.106 235.16 174.929 219.07 191.02C202.979 207.11 181.156 216.15 158.4 216.15H85.8V44.55ZM132 87.45H158.4C169.778 87.45 180.69 91.9698 188.735 100.015C196.78 108.06 201.3 118.972 201.3 130.35C201.3 141.728 196.78 152.64 188.735 160.685C180.69 168.73 169.778 173.25 158.4 173.25H132V87.45Z" />
+        <path android:fillColor="#FF000000" android:pathData="M158.4 285.45C171.158 285.45 181.5 275.108 181.5 262.35C181.5 249.592 171.158 239.25 158.4 239.25C145.642 239.25 135.3 249.592 135.3 262.35C135.3 275.108 145.642 285.45 158.4 285.45Z" />
+    </group>
+</vector>

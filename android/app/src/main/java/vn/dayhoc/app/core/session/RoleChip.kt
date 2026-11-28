@@ -73,7 +73,7 @@ fun RoleChip(state: MembershipStore.State, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             RoleAvatar(name, 24.dp)
-            Text(name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Text(name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             if (multi) Icon(painterResource(R.drawable.ic_caret_down), null, Modifier.size(16.dp))
         }
     }

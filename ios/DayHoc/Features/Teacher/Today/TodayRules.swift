@@ -20,7 +20,7 @@ struct TodaySession: Identifiable, Equatable, Sendable {
     let className: String
     let start: Date
     let end: Date
-    let kind: SessionKind
+    var kind: SessionKind
     let enrolled: Int?
     let location: String?
     /// Chỉ có khi buổi đã điểm danh và lấy được số liệu; `nil` thì chip không kèm số.
@@ -28,15 +28,34 @@ struct TodaySession: Identifiable, Equatable, Sendable {
     let total: Int?
     /// Trạng thái server (`planned`, `taught`, `cancelled`) để tính lại `kind` khi giờ trôi qua.
     var status = "planned"
+    var classId = ""
+    /// Có lô điểm danh chờ đồng bộ trong outbox: thẻ hiện như đã điểm danh nhưng phụ huynh chưa được báo.
+    var pending = false
+    /// Lô của buổi bị server từ chối vĩnh viễn (giữ trong outbox): thẻ báo "Đồng bộ lỗi".
+    var syncFailed = false
 }
 
 /// Tính lại `kind` theo `now` rồi xếp lại: thẻ tự chuyển Sắp tới → Đang dạy → Chưa điểm danh theo giờ.
-func arrange(_ sessions: [TodaySession], now: Date) -> [TodaySession] {
-    sortSessions(sessions.map { s in
-        TodaySession(id: s.id, className: s.className, start: s.start, end: s.end,
-                     kind: classify(status: s.status, start: s.start, end: s.end, now: now),
-                     enrolled: s.enrolled, location: s.location, attended: s.attended, total: s.total, status: s.status)
-    })
+func arrange(_ sessions: [TodaySession], now: Date, pendingIds: Set<String> = [], failedIds: Set<String> = []) -> [TodaySession] {
+    let classified = sessions.map { s -> TodaySession in
+        var s = s
+        s.kind = classify(status: s.status, start: s.start, end: s.end, now: now)
+        return s
+    }
+    return sortSessions(mergePending(classified, pendingIds: pendingIds, failedIds: failedIds))
+}
+
+/// Buổi có lô chờ đồng bộ (trừ buổi đã hủy trên server) thành thẻ Taught + `pending`; buổi có lô `failed`
+/// (`failedIds`, tập con của `pendingIds`) thêm `syncFailed`. Cả hai tập đã lọc theo chủ hiện tại.
+func mergePending(_ sessions: [TodaySession], pendingIds: Set<String>, failedIds: Set<String> = []) -> [TodaySession] {
+    sessions.map { s in
+        var s = s
+        let hit = pendingIds.contains(s.id) && s.kind != .cancelled
+        if hit { s.kind = .taught }
+        s.pending = hit
+        s.syncFailed = hit && failedIds.contains(s.id)
+        return s
+    }
 }
 
 /// Đang dạy → Chưa điểm danh → Sắp tới → Đã điểm danh → Đã hủy; cùng nhóm thì theo giờ bắt đầu.
@@ -89,6 +108,12 @@ func formatDateLine(_ date: Date, _ tz: TimeZone) -> String {
     return "\(weekdayLong[weekdayIndex(date, tz)]), \(d[2])/\(d[1])/\(d[0])"
 }
 
+/// "Thứ Hai 09/11" cho dòng ngày của sheet Chi tiết buổi.
+func formatSheetDay(_ date: Date, _ tz: TimeZone) -> String {
+    let d = dayString(date, tz).split(separator: "-")
+    return "\(weekdayLong[weekdayIndex(date, tz)]) \(d[2])/\(d[1])"
+}
+
 /// "T2 16/11" cho dòng "Buổi tiếp theo".
 func formatShortDay(_ date: Date, _ tz: TimeZone) -> String {
     let i = weekdayIndex(date, tz)
@@ -130,4 +155,15 @@ func earliestPlanned(_ sessions: [SessionDTO]) -> SessionDTO? {
     sessions.filter { $0.status == "planned" }
         .compactMap { s in parseInstant(s.startsAt).map { (s, $0) } }
         .min { $0.1 < $1.1 }?.0
+}
+
+/// Hai biến thể trạng thái "Hôm nay không có buổi": A24 còn buổi kế tiếp, A35 chưa có lịch nào.
+enum TodayEmptyVariant: Equatable, Sendable { case nextSession, noSchedule }
+
+func todayEmptyVariant(next: NextSession?) -> TodayEmptyVariant { next == nil ? .noSchedule : .nextSession }
+
+/// Màn A35 đã có nút "Tạo lịch" cùng đích với bước `set_schedule`, nên banner bỏ bước đó (hết bước thì ẩn).
+func bannerSteps(_ steps: [OnboardingStep], sessionsEmpty: Bool, next: NextSession?) -> [OnboardingStep] {
+    guard sessionsEmpty, todayEmptyVariant(next: next) == .noSchedule else { return steps }
+    return steps.filter { $0 != .setSchedule }
 }

@@ -1,0 +1,122 @@
+{
+  "_doc": "Gộp lô chờ đồng bộ vào thẻ buổi ở T03. kind là trạng thái thẻ trước khi gộp (Teaching | Missed | Upcoming | Taught | Cancelled). Buổi có lô chờ (trừ Cancelled) thành Taught + pending=true; còn lại pending=false. failedIds (tùy chọn, tập con của pendingIds): buổi có lô failed thì syncFailed=true; chip \"Đồng bộ lỗi\" thay chip chờ đồng bộ. Cả pendingIds lẫn failedIds đã lọc theo chủ hiện tại.",
+  "cases": [
+    {
+      "name": "buổi đang dạy có lô chờ thành đã điểm danh chờ đồng bộ",
+      "sessions": [
+        {
+          "id": "a",
+          "kind": "Teaching"
+        },
+        {
+          "id": "b",
+          "kind": "Upcoming"
+        }
+      ],
+      "pendingIds": [
+        "a"
+      ],
+      "expected": [
+        {
+          "id": "a",
+          "kind": "Taught",
+          "pending": true
+        },
+        {
+          "id": "b",
+          "kind": "Upcoming",
+          "pending": false
+        }
+      ]
+    },
+    {
+      "name": "buổi đã hủy trên server giữ nguyên",
+      "sessions": [
+        {
+          "id": "c",
+          "kind": "Cancelled"
+        }
+      ],
+      "pendingIds": [
+        "c"
+      ],
+      "expected": [
+        {
+          "id": "c",
+          "kind": "Cancelled",
+          "pending": false
+        }
+      ]
+    },
+    {
+      "name": "không có lô chờ",
+      "sessions": [
+        {
+          "id": "a",
+          "kind": "Missed"
+        }
+      ],
+      "pendingIds": [],
+      "expected": [
+        {
+          "id": "a",
+          "kind": "Missed",
+          "pending": false
+        }
+      ]
+    },
+    {
+      "name": "mã buổi không có trong danh sách bị bỏ qua",
+      "sessions": [
+        {
+          "id": "a",
+          "kind": "Taught"
+        }
+      ],
+      "pendingIds": [
+        "zzz"
+      ],
+      "expected": [
+        {
+          "id": "a",
+          "kind": "Taught",
+          "pending": false
+        }
+      ]
+    },
+    {
+      "name": "lô lỗi: thẻ vẫn Taught + pending, đánh dấu syncFailed",
+      "sessions": [
+        {
+          "id": "a",
+          "kind": "Missed"
+        },
+        {
+          "id": "b",
+          "kind": "Upcoming"
+        }
+      ],
+      "pendingIds": [
+        "a",
+        "b"
+      ],
+      "failedIds": [
+        "a"
+      ],
+      "expected": [
+        {
+          "id": "a",
+          "kind": "Taught",
+          "pending": true,
+          "syncFailed": true
+        },
+        {
+          "id": "b",
+          "kind": "Taught",
+          "pending": true,
+          "syncFailed": false
+        }
+      ]
+    }
+  ]
+}

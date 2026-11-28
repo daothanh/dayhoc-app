@@ -1662,6 +1662,17 @@
         }
       }
     },
+    "today.empty.create": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo lịch"
+          }
+        }
+      }
+    },
     "today.empty.next %@ %@ %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2076,6 +2087,732 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trong lúc chờ, bạn có thể dùng thử với vai trò Giáo viên."
+          }
+        }
+      }
+    },
+    "session.sheet.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng"
+          }
+        }
+      }
+    },
+    "session.sheet.edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa điểm danh"
+          }
+        }
+      }
+    },
+    "session.sheet.repeat %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · lặp %2$@"
+          }
+        }
+      }
+    },
+    "session.sheet.reschedule": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dời buổi"
+          }
+        }
+      }
+    },
+    "session.sheet.rescheduleHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi ngày/giờ, tự báo phụ huynh"
+          }
+        }
+      }
+    },
+    "session.sheet.makeup": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo buổi bù"
+          }
+        }
+      }
+    },
+    "session.sheet.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy buổi"
+          }
+        }
+      }
+    },
+    "session.sheet.cancelHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ huynh và học sinh được báo ngay"
+          }
+        }
+      }
+    },
+    "session.sheet.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ huynh và học sinh được báo tự động khi đổi lịch."
+          }
+        }
+      }
+    },
+    "today.chip.pending": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chờ đồng bộ — phụ huynh chưa được báo"
+          }
+        }
+      }
+    },
+    "today.chip.syncFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đồng bộ lỗi"
+          }
+        }
+      }
+    },
+    "today.sync.pending %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chờ đồng bộ (%lld)"
+          }
+        }
+      }
+    },
+    "attendance.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm danh"
+          }
+        }
+      }
+    },
+    "attendance.titleEdit %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa điểm danh · %@"
+          }
+        }
+      }
+    },
+    "attendance.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mặc định tất cả có mặt. Chạm học sinh để đổi."
+          }
+        }
+      }
+    },
+    "attendance.legend": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CP = có phép · KP = không phép"
+          }
+        }
+      }
+    },
+    "attendance.status.present": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có mặt"
+          }
+        }
+      }
+    },
+    "attendance.status.late": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muộn"
+          }
+        }
+      }
+    },
+    "attendance.status.excused": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vắng CP"
+          }
+        }
+      }
+    },
+    "attendance.status.unexcused": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vắng KP"
+          }
+        }
+      }
+    },
+    "attendance.count.present %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có mặt %lld"
+          }
+        }
+      }
+    },
+    "attendance.count.absent %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vắng %lld"
+          }
+        }
+      }
+    },
+    "attendance.count.late %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muộn %lld"
+          }
+        }
+      }
+    },
+    "attendance.row.parentReported": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PH đã báo vắng trước"
+          }
+        }
+      }
+    },
+    "attendance.row.changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vừa đổi"
+          }
+        }
+      }
+    },
+    "attendance.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu điểm danh"
+          }
+        }
+      }
+    },
+    "attendance.saveNotify %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu · báo %lld phụ huynh"
+          }
+        }
+      }
+    },
+    "attendance.saveChanges": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu thay đổi"
+          }
+        }
+      }
+    },
+    "attendance.saveLocal": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu trên máy · gửi sau"
+          }
+        }
+      }
+    },
+    "attendance.saving": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang lưu…"
+          }
+        }
+      }
+    },
+    "attendance.offline.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang ngoại tuyến"
+          }
+        }
+      }
+    },
+    "attendance.offline.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm danh lưu trên máy, tự gửi phụ huynh khi có mạng."
+          }
+        }
+      }
+    },
+    "attendance.editBanner.title %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa lần cuối lúc %@"
+          }
+        }
+      }
+    },
+    "attendance.editBanner.titleBy %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa lần cuối bởi %1$@ lúc %2$@"
+          }
+        }
+      }
+    },
+    "attendance.reason.sick": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ốm"
+          }
+        }
+      }
+    },
+    "attendance.reason.family": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Việc gia đình"
+          }
+        }
+      }
+    },
+    "attendance.reason.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lý do khác"
+          }
+        }
+      }
+    },
+    "attendance.editBanner.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang sửa điểm danh"
+          }
+        }
+      }
+    },
+    "attendance.editBanner.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thay đổi sẽ báo lại cho phụ huynh liên quan."
+          }
+        }
+      }
+    },
+    "attendance.readonly.expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi đã quá 7 ngày, chỉ xem được."
+          }
+        }
+      }
+    },
+    "attendance.readonly.cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi đã hủy, không điểm danh được."
+          }
+        }
+      }
+    },
+    "attendance.loadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được danh sách học sinh. Kiểm tra mạng rồi thử lại."
+          }
+        }
+      }
+    },
+    "attendance.discard.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ thay đổi điểm danh?"
+          }
+        }
+      }
+    },
+    "attendance.discard.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các thay đổi chưa được lưu sẽ mất."
+          }
+        }
+      }
+    },
+    "attendance.discard.stay": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ở lại"
+          }
+        }
+      }
+    },
+    "attendance.discard.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ thay đổi"
+          }
+        }
+      }
+    },
+    "attendance.error.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không lưu được. Kiểm tra kết nối rồi thử lại."
+          }
+        }
+      }
+    },
+    "attendance.error.windowClosed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi đã quá 7 ngày, không sửa điểm danh được nữa."
+          }
+        }
+      }
+    },
+    "attendance.error.cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buổi đã hủy, không điểm danh được."
+          }
+        }
+      }
+    },
+    "attendance.error.notFound": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy buổi hoặc học sinh. Hãy mở lại danh sách."
+          }
+        }
+      }
+    },
+    "attendance.stale": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một số học sinh vừa được sửa trên thiết bị khác"
+          }
+        }
+      }
+    },
+    "attendance.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu điểm danh"
+          }
+        }
+      }
+    },
+    "attendance.saved.notified %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu điểm danh · đã báo %lld phụ huynh"
+          }
+        }
+      }
+    },
+    "attendance.saved.local": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu trên máy · sẽ đồng bộ khi có mạng"
+          }
+        }
+      }
+    },
+    "attendance.dropped": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đồng bộ được điểm danh của một buổi, lô này đã bị bỏ."
+          }
+        }
+      }
+    },
+    "attendance.syncFailed.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm danh trước chưa đồng bộ được"
+          }
+        }
+      }
+    },
+    "attendance.resend": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại"
+          }
+        }
+      }
+    },
+    "logout.pending.title %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn %lld buổi chưa đồng bộ"
+          }
+        }
+      }
+    },
+    "logout.pending.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng xuất sẽ xóa điểm danh chưa gửi trên máy này."
+          }
+        }
+      }
+    },
+    "logout.pending.stay": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ở lại"
+          }
+        }
+      }
+    },
+    "logout.pending.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vẫn đăng xuất"
+          }
+        }
+      }
+    },
+    "attendance.error.corrupt": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu điểm danh lưu trên máy bị lỗi. Hãy điểm danh lại."
+          }
+        }
+      }
+    },
+    "attendance.error.owner": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa xác định được tài khoản đang dùng. Hãy thử lại."
+          }
+        }
+      }
+    },
+    "attendance.error.discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không bỏ được điểm danh đã lưu trên máy. Hãy thử lại."
+          }
+        }
+      }
+    },
+    "attendance.saved.rejected %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu điểm danh, trừ %@ (không ghi được)"
+          }
+        }
+      }
+    },
+    "attendance.partlyRejected %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đồng bộ điểm danh, nhưng %lld học sinh không ghi được"
           }
         }
       }

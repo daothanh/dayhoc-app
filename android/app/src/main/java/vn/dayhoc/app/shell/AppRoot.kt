@@ -1,9 +1,12 @@
 package vn.dayhoc.app.shell
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -30,13 +34,19 @@ import vn.dayhoc.app.AppContainer
 import vn.dayhoc.app.BuildConfig
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
+import vn.dayhoc.app.core.designsystem.DhTextButton
 import vn.dayhoc.app.core.designsystem.TeachHubTokens.Dimens
+import vn.dayhoc.app.core.network.ApiError
 import vn.dayhoc.app.core.network.apiCall
 import vn.dayhoc.app.core.session.MembershipStore
 import vn.dayhoc.app.core.session.RoleSpaceScaffold
 import vn.dayhoc.app.core.session.Roles
 import vn.dayhoc.app.core.session.isVersionBelow
+import java.time.ZoneId
 import vn.dayhoc.app.teacher.TeacherSpace
+import vn.dayhoc.app.teacher.attendance.AttendanceScreen
+import vn.dayhoc.app.teacher.attendance.AttendanceViewModel
+import vn.dayhoc.app.teacher.attendance.repeatLabel
 import vn.dayhoc.app.teacher.onboarding.OnboardingScreen
 import vn.dayhoc.app.teacher.onboarding.OnboardingStep
 import vn.dayhoc.app.teacher.today.TodayViewModel
@@ -57,6 +67,10 @@ data object CenterWaitlistRoute
 
 @Serializable
 data object TeacherRoute
+
+/** [endsAt] = giờ kết thúc buổi (ISO) từ thẻ ở T03, chỉ để hiện "17:30–19:00" ở tiêu đề; API T04 không trả giờ kết thúc. */
+@Serializable
+data class AttendanceRoute(val sessionId: String, val endsAt: String)
 
 /** [startStep] = mở lại đúng bước đã bỏ qua (banner ở T03); `null` = bước đang dở theo server. */
 @Serializable
@@ -81,6 +95,8 @@ private fun spaceRoute(role: String): Any = when (role) {
 @Composable
 fun AppRoot(container: AppContainer) {
     val nav = rememberNavController()
+    var unsynced by remember { mutableStateOf<Int?>(null) }
+    val scope = rememberCoroutineScope()
 
     // Không chờ khi khởi động, lỗi thì bỏ qua: app phải mở được khi mất mạng (NFR-17); lần mở sau kiểm lại.
     var updateRequired by remember { mutableStateOf(false) }
@@ -103,9 +119,14 @@ fun AppRoot(container: AppContainer) {
         return
     }
 
-    val logout: suspend () -> Unit = {
+    val forceLogout: suspend () -> Unit = {
         container.logout()
         nav.resetTo(LoginRoute)
+    }
+    // Đăng xuất xóa điểm danh chưa gửi trên máy này: còn lô chờ/lỗi thì hỏi trước. Hết phiên không qua đây (giữ lô).
+    val logout: suspend () -> Unit = {
+        val n = container.unsyncedSessionCount()
+        if (n > 0) unsynced = n else forceLogout()
     }
 
     NavHost(navController = nav, startDestination = SplashRoute) {
@@ -147,15 +168,55 @@ fun AppRoot(container: AppContainer) {
             CenterWaitlistScreen(vm, onBack = { nav.popBackStack() })
         }
         composable<TeacherRoute> {
+            // Gắn chủ dữ liệu ngoại tuyến (người dùng + tenant) trước khi vào không gian giáo viên, và gắn lại khi đổi tenant.
+            val membership by container.membershipStore.state.collectAsState()
+            val tenantId = membership.active?.tenantId
+            val bound by produceState(false, tenantId) {
+                value = false
+                container.bindAttendanceOwner(tenantId)
+                value = true
+            }
+            if (!bound) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                return@composable
+            }
             TeacherSpace(
                 store = container.membershipStore,
                 onboardingApi = container.onboardingApi,
-                today = viewModel { TodayViewModel(container.todayApi) },
+                today = viewModel { TodayViewModel(container.todayApi, outboxSessions = container.outboxSessions) },
+                attendanceNotice = container.attendanceNotice,
+                syncEvents = container.syncEngine.events,
+                loadRepeat = { classId ->
+                    try {
+                        repeatLabel(apiCall { container.attendanceApi.classDetail(classId) }.scheduleRules.map { it.weekday })
+                    } catch (e: ApiError) {
+                        null
+                    }
+                },
+                onOpenAttendance = { id, endsAt -> nav.navigate(AttendanceRoute(id, endsAt)) { launchSingleTop = true } },
                 onOpenOnboarding = { step -> nav.navigate(OnboardingRoute(step?.wire)) { launchSingleTop = true } },
                 onSwitched = { m -> nav.resetTo(spaceRoute(m.role)) },
                 onAddRole = { nav.navigate(RolePickerRoute(adding = true)) },
                 onLogout = logout,
             )
+        }
+        composable<AttendanceRoute> { entry ->
+            val route = entry.toRoute<AttendanceRoute>()
+            val vm = viewModel {
+                AttendanceViewModel(
+                    sessionId = route.sessionId,
+                    api = container.attendanceApi,
+                    outbox = container.localStore,
+                    roster = container.localStore,
+                    device = container.localStore,
+                    engine = container.syncEngine,
+                    connectivity = container.connectivity,
+                    ownerProvider = container::currentOwner,
+                    notify = { container.attendanceNotice.value = it },
+                    onEnqueued = container::onOutboxEnqueued,
+                )
+            }
+            AttendanceScreen(vm, route.endsAt, ZoneId.systemDefault(), onClose = { nav.popBackStack() })
         }
         composable<OnboardingRoute> { entry ->
             val start = OnboardingStep.fromWire(entry.toRoute<OnboardingRoute>().startStep)
@@ -168,6 +229,21 @@ fun AppRoot(container: AppContainer) {
         composable<StudentRoute> {
             PlaceholderSpace(container.membershipStore, nav, logout)
         }
+    }
+
+    unsynced?.let { n ->
+        AlertDialog(
+            onDismissRequest = { unsynced = null },
+            title = { Text(stringResource(R.string.logout_unsynced_title, n)) },
+            text = { Text(stringResource(R.string.logout_unsynced_body)) },
+            dismissButton = { DhTextButton(stringResource(R.string.logout_unsynced_stay), { unsynced = null }) },
+            confirmButton = {
+                DhTextButton(stringResource(R.string.logout_unsynced_confirm), {
+                    unsynced = null
+                    scope.launch { forceLogout() }
+                })
+            },
+        )
     }
 }
 
@@ -194,7 +270,10 @@ private fun PlaceholderSpace(store: MembershipStore, nav: NavHostController, log
                 loading = loggingOut,
                 onClick = {
                     loggingOut = true
-                    scope.launch { logout() }
+                    scope.launch {
+                        logout()
+                        loggingOut = false
+                    }
                 },
             )
         }

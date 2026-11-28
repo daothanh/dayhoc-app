@@ -84,6 +84,7 @@ import java.time.format.DateTimeFormatter
 import vn.dayhoc.app.R
 import vn.dayhoc.app.core.designsystem.DhAppBar
 import vn.dayhoc.app.core.designsystem.DhInfoBanner
+import vn.dayhoc.app.core.designsystem.DhAvatar
 import vn.dayhoc.app.core.designsystem.DhPrimaryButton
 import vn.dayhoc.app.core.designsystem.DhRadio
 import vn.dayhoc.app.core.designsystem.DhSecondaryButton
@@ -404,16 +405,7 @@ private fun AddedRow(s: AddedStudent) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingContent),
     ) {
-        Box(
-            Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            Alignment.Center,
-        ) {
-            Text(
-                initials(s.name),
-                style = TeachHubText.bodyBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        DhAvatar(s.name)
         Column {
             Text(s.name, style = TeachHubText.bodyBold)
             if (s.phone != null) {
@@ -425,12 +417,6 @@ private fun AddedRow(s: AddedStudent) {
             }
         }
     }
-}
-
-private fun initials(name: String): String {
-    val parts = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-    if (parts.isEmpty()) return "?"
-    return (if (parts.size == 1) parts[0].take(1) else parts.first().take(1) + parts.last().take(1)).uppercase()
 }
 
 /** Hồ sơ trùng họ tên (409 `STUDENT_POSSIBLE_DUPLICATE`): chọn đúng em, thêm em mới, hoặc quay lại sửa. */

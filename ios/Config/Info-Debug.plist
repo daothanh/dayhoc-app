@@ -4,6 +4,10 @@
 <dict>
 	<key>API_URL</key>
 	<string>$(API_URL)</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>vn.dayhoc.app.attendance-sync</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -22,6 +26,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>be_vietnam_pro_regular.ttf</string>

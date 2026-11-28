@@ -29,6 +29,9 @@ final class AppModel {
     let memberships: MembershipStore
     private let env: AppEnvironment
     var api: APIClient { env.api }
+    var attendance: AttendanceServices { env.attendance }
+    /// [T03] của phiên hiện tại: tạo một lần cho mỗi phiên (đăng nhập lại thì tạo mới, không giữ dữ liệu của người cũ).
+    private(set) var today: TodayModel
 
     /// Vòng nghe hết phiên do model giữ: nếu để `.task` của view giữ, view dựng lại sẽ hủy task
     /// và `AsyncStream` kết thúc, từ đó không còn nhận sự kiện nào.
@@ -37,6 +40,7 @@ final class AppModel {
     init(env: AppEnvironment) {
         self.env = env
         memberships = MembershipStore(api: env.api)
+        today = Self.makeToday(env)
         expiryListener = Task { [weak self, stream = env.api.sessionExpired] in
             for await _ in stream { self?.showLogin() }
         }
@@ -53,6 +57,8 @@ final class AppModel {
 
     func logout() async {
         await env.auth.logout()
+        // Đăng xuất thì xóa dữ liệu ngoại tuyến (CSDL, khóa, chủ); hết phiên thì giữ lô để gửi sau khi đăng nhập lại.
+        await env.attendance.wipe()
         showLogin()
     }
 
@@ -101,11 +107,37 @@ final class AppModel {
     private func open(_ role: String) async {
         switch role {
         case Roles.teacher:
+            // Gắn chủ dữ liệu trước khi vào không gian giáo viên (và mỗi khi đổi tenant).
+            await bindAttendanceOwner(tenantId: memberships.active?.tenantId)
             route = .teacher
             await openOnboardingIfPending()
         case Roles.parent: route = .parent
         default: route = .student
         }
+    }
+
+    /// Chủ của dữ liệu ngoại tuyến = người dùng (lưu bền từ lúc đăng nhập; chưa có thì hỏi `auth/me`) + tenant đang mở.
+    /// Chưa xác định được thì không gắn: T04 không cho lưu và SyncEngine không gửi gì (đóng kín khi chưa biết chủ).
+    private func bindAttendanceOwner(tenantId: String?) async {
+        guard let tenantId else { return }
+        var userId = env.attendance.userId
+        if userId == nil, let me = try? await env.auth.me() {
+            env.attendance.rememberUser(me.id)
+            userId = me.id
+        }
+        guard let userId else { return }
+        await env.attendance.adopt(OutboxOwner(userId: userId, tenantId: tenantId))
+    }
+
+    /// Chủ hiện tại; chưa gắn thì thử gắn lại theo vai trò đang mở (nút "Thử lại" của T04).
+    func currentOwner() async -> OutboxOwner? {
+        if let owner = env.attendance.currentOwner { return owner }
+        await bindAttendanceOwner(tenantId: memberships.active?.tenantId)
+        return env.attendance.currentOwner
+    }
+
+    private static func makeToday(_ env: AppEnvironment) -> TodayModel {
+        TodayModel(source: TodayAPI(api: env.api), outbox: env.attendance.store.batches(), owner: env.attendance.ownerStream())
     }
 
     /// Giáo viên mới hoặc còn bước onboarding dở: vào onboarding, tiếp đúng bước dở (US-0.2 AC1, AC3).
@@ -134,9 +166,13 @@ final class AppModel {
         // Học phí Trọn khóa đang chờ thì giữ: chỉ có id lớp và số tiền, đăng nhập lại vẫn ghi được ở bước 3.
         memberships.clear()
         addingRole = nil
+        // Hết phiên hay đăng xuất: bỏ gắn chủ để SyncEngine không gửi gì; lô giữ nguyên chờ chủ đó đăng nhập lại.
+        env.attendance.unbindOwner()
+        today = Self.makeToday(env)
         if case .login = route { return }
-        route = .login(LoginModel(auth: env.auth, google: env.google) { [weak self] _ in
+        route = .login(LoginModel(auth: env.auth, google: env.google) { [weak self] user in
             // Đăng nhập xong: tải vai trò rồi mở đúng nơi.
+            self?.env.attendance.rememberUser(user.id)
             await self?.enter()
         })
     }

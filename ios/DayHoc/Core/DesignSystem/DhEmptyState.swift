@@ -1,30 +1,29 @@
 import SwiftUI
 
-/// Empty State (Figma A24): khối minh hoạ, tiêu đề, mô tả, nút chính.
-/// shortcut: minh hoạ là khối Fill giữ chỗ như Figma, thay khi DS xuất bộ minh hoạ.
+/// Empty State (Figma C17/A24): minh hoạ, tiêu đề H3, mô tả Caption (rộng tối đa 300), nút chính nhỏ.
 struct DhEmptyState: View {
     let title: LocalizedStringKey
     var description: String?
     let actionTitle: LocalizedStringKey
+    var illustration: DhIllustrationType = .calendar
     let action: () -> Void
 
     @Environment(\.dhColors) private var colors
 
     var body: some View {
-        VStack(spacing: TeachHubTokens.Dimens.spacingControl) {
-            RoundedRectangle(cornerRadius: TeachHubTokens.Dimens.dialogRadius)
-                .fill(colors.surfaceContainerHighest)
-                .frame(width: 120, height: 120)
-            Text(title).dhText(TeachHubTokens.Typo.bodyBold).foregroundStyle(colors.onSurface)
+        VStack(spacing: TeachHubTokens.Dimens.spacingContent) {
+            DhIllustration(type: illustration)
+            Text(title).dhText(TeachHubTokens.Typo.h3).foregroundStyle(colors.onSurface)
             if let description {
                 Text(description).dhText(TeachHubTokens.Typo.caption).foregroundStyle(colors.onSurfaceVariant)
+                    .frame(maxWidth: 300)
             }
-            DhPrimaryButton(title: actionTitle, action: action)
+            DhPrimaryButton(title: actionTitle, small: true, action: action)
                 .fixedSize(horizontal: true, vertical: false)
-                .padding(.top, TeachHubTokens.Dimens.spacingControl)
         }
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, TeachHubTokens.Dimens.spacingSection)
+        .padding(.horizontal, TeachHubTokens.Dimens.spacingPage)
+        .padding(.vertical, 32)
     }
 }
