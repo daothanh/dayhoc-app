@@ -20,7 +20,7 @@ struct TodaySession: Identifiable, Equatable, Sendable {
     let className: String
     let start: Date
     let end: Date
-    let kind: SessionKind
+    var kind: SessionKind
     let enrolled: Int?
     let location: String?
     /// Chỉ có khi buổi đã điểm danh và lấy được số liệu; `nil` thì chip không kèm số.
@@ -28,15 +28,33 @@ struct TodaySession: Identifiable, Equatable, Sendable {
     let total: Int?
     /// Trạng thái server (`planned`, `taught`, `cancelled`) để tính lại `kind` khi giờ trôi qua.
     var status = "planned"
+    var classId = ""
+    /// Có lô điểm danh chờ đồng bộ trong outbox: thẻ hiện như đã điểm danh nhưng phụ huynh chưa được báo.
+    var pending = false
+    /// Lô của buổi bị server từ chối vĩnh viễn (giữ trong outbox): thẻ báo "Đồng bộ lỗi".
+    var syncFailed = false
 }
 
 /// Tính lại `kind` theo `now` rồi xếp lại: thẻ tự chuyển Sắp tới → Đang dạy → Chưa điểm danh theo giờ.
-func arrange(_ sessions: [TodaySession], now: Date) -> [TodaySession] {
-    sortSessions(sessions.map { s in
-        TodaySession(id: s.id, className: s.className, start: s.start, end: s.end,
-                     kind: classify(status: s.status, start: s.start, end: s.end, now: now),
-                     enrolled: s.enrolled, location: s.location, attended: s.attended, total: s.total, status: s.status)
-    })
+func arrange(_ sessions: [TodaySession], now: Date, pendingIds: Set<String> = [], failedIds: Set<String> = []) -> [TodaySession] {
+    let classified = sessions.map { s -> TodaySession in
+        var s = s
+        s.kind = classify(status: s.status, start: s.start, end: s.end, now: now)
+        s.syncFailed = failedIds.contains(s.id)
+        return s
+    }
+    return sortSessions(mergePending(classified, pendingIds: pendingIds))
+}
+
+/// Buổi có lô chờ đồng bộ (trừ buổi đã hủy trên server) thành thẻ Taught + `pending`.
+func mergePending(_ sessions: [TodaySession], pendingIds: Set<String>) -> [TodaySession] {
+    sessions.map { s in
+        var s = s
+        let hit = pendingIds.contains(s.id) && s.kind != .cancelled
+        if hit { s.kind = .taught }
+        s.pending = hit
+        return s
+    }
 }
 
 /// Đang dạy → Chưa điểm danh → Sắp tới → Đã điểm danh → Đã hủy; cùng nhóm thì theo giờ bắt đầu.
@@ -87,6 +105,12 @@ private let weekdayLong = ["", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm
 func formatDateLine(_ date: Date, _ tz: TimeZone) -> String {
     let d = dayString(date, tz).split(separator: "-")
     return "\(weekdayLong[weekdayIndex(date, tz)]), \(d[2])/\(d[1])/\(d[0])"
+}
+
+/// "Thứ Hai 09/11" cho dòng ngày của sheet Chi tiết buổi.
+func formatSheetDay(_ date: Date, _ tz: TimeZone) -> String {
+    let d = dayString(date, tz).split(separator: "-")
+    return "\(weekdayLong[weekdayIndex(date, tz)]) \(d[2])/\(d[1])"
 }
 
 /// "T2 16/11" cho dòng "Buổi tiếp theo".

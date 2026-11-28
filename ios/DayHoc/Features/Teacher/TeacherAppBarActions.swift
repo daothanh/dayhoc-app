@@ -14,6 +14,9 @@ struct TeacherAppBarActions: View {
     }
 
     private var syncText: String {
+        // Số buổi còn chờ đồng bộ đọc từ outbox (Figma A25): hiện cả khi mất mạng.
+        let waiting = model.pendingSessions.subtracting(model.failedSessions).count
+        if waiting > 0 { return String(localized: "today.sync.pending \(waiting)") }
         if model.offline { return String(localized: "today.sync.offline") }
         if model.syncing { return String(localized: "today.sync.busy") }
         return String(localized: "today.sync.done")

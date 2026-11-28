@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// [T03] Hôm nay: nội dung dưới App Bar. Các màn đích (T04, T05a, T03b, T11) chưa có nên [onComingSoon]
-/// báo "đang hoàn thiện".
+/// [T03] Hôm nay: nội dung dưới App Bar. Chạm thẻ → `onSession` (sheet T05a); nút "Điểm danh" và thẻ đã điểm danh →
+/// `onAttendance` (T04). Các màn đích còn lại (T03b, T11) chưa có nên `onComingSoon` báo "đang hoàn thiện".
 struct TodayView: View {
     let model: TodayModel
     let onComingSoon: () -> Void
+    let onSession: (TodaySession) -> Void
+    let onAttendance: (TodaySession) -> Void
     let onOpenSchedule: () -> Void
     let onContinueSetup: (OnboardingStep) -> Void
 
@@ -36,7 +38,7 @@ struct TodayView: View {
     }
 
     private func content(_ data: TodayData, now: Date) -> some View {
-        let sessions = arrange(data.sessions, now: now)
+        let sessions = arrange(data.sessions, now: now, pendingIds: model.pendingSessions, failedIds: model.failedSessions)
         return ScrollView {
             LazyVStack(alignment: .leading, spacing: TeachHubTokens.Dimens.spacingContent) {
                 Text(formatDateLine(data.date, model.timeZone))
@@ -84,13 +86,23 @@ struct TodayView: View {
         case .teaching, .missed:
             // Nút "Điểm danh" nằm trong thẻ: vùng bấm của thẻ là phần tiêu đề (Button riêng), không lồng Button trong Button.
             DhCard(style: .emphasis) {
-                Button(action: onComingSoon) { header(s) }.buttonStyle(.plain)
-                DhPrimaryButton(title: "today.attendance", action: onComingSoon)
+                Button { onSession(s) } label: { header(s) }.buttonStyle(.plain)
+                DhPrimaryButton(title: "today.attendance") { onAttendance(s) }
             }
         case .upcoming:
-            DhCard(style: .default, onTap: onComingSoon) { header(s) }
-        case .taught, .cancelled:
-            DhCard(style: .muted, onTap: onComingSoon) { header(s) }
+            DhCard(style: .default, onTap: { onSession(s) }) { header(s) }
+        case .taught:
+            DhCard(style: .muted, onTap: { onAttendance(s) }) {
+                header(s)
+                // Lô chờ đồng bộ: phụ huynh chưa được báo (US-3.5), đọc từ outbox nên không cần mạng.
+                if s.syncFailed {
+                    DhChip(text: String(localized: "today.chip.syncFailed"), style: .danger)
+                } else if s.pending {
+                    DhChip(text: String(localized: "today.chip.pending"), style: .dashed)
+                }
+            }
+        case .cancelled:
+            DhCard(style: .muted, onTap: { onSession(s) }) { header(s) }
         }
     }
 
@@ -107,17 +119,18 @@ struct TodayView: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            chip(s)
+            if let chip = chip(s) { chip }
         }
         .contentShape(Rectangle())
     }
 
-    private func chip(_ s: TodaySession) -> DhChip {
+    private func chip(_ s: TodaySession) -> DhChip? {
         switch s.kind {
         case .teaching: DhChip(text: String(localized: "today.chip.teaching"), style: .filled)
         case .missed: DhChip(text: String(localized: "today.chip.missed"), style: .filled)
         case .upcoming: DhChip(text: String(localized: "today.chip.upcoming"))
         case .cancelled: DhChip(text: String(localized: "today.chip.cancelled"))
+        case .taught where s.pending: nil
         case .taught:
             if let a = s.attended, let t = s.total {
                 DhChip(text: String(localized: "today.chip.taughtCount \(a) \(t)"), style: .success)

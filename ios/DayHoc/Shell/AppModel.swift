@@ -29,6 +29,8 @@ final class AppModel {
     let memberships: MembershipStore
     private let env: AppEnvironment
     var api: APIClient { env.api }
+    var attendance: AttendanceServices { env.attendance }
+    private static let userKey = "session.userId"
 
     /// Vòng nghe hết phiên do model giữ: nếu để `.task` của view giữ, view dựng lại sẽ hủy task
     /// và `AsyncStream` kết thúc, từ đó không còn nhận sự kiện nào.
@@ -53,6 +55,9 @@ final class AppModel {
 
     func logout() async {
         await env.auth.logout()
+        // Đăng xuất thì xóa dữ liệu ngoại tuyến (CSDL, khóa); hết phiên thì giữ để gửi sau khi đăng nhập lại.
+        await env.attendance.wipe()
+        UserDefaults.standard.removeObject(forKey: Self.userKey)
         showLogin()
     }
 
@@ -102,10 +107,21 @@ final class AppModel {
         switch role {
         case Roles.teacher:
             route = .teacher
+            await bindAttendanceOwner()
             await openOnboardingIfPending()
         case Roles.parent: route = .parent
         default: route = .student
         }
+    }
+
+    /// Chủ của dữ liệu ngoại tuyến là người dùng + tenant đang mở; dữ liệu của chủ khác bị bỏ (đăng nhập tài khoản khác).
+    private func bindAttendanceOwner() async {
+        let defaults = UserDefaults.standard
+        if defaults.string(forKey: Self.userKey) == nil, let me = try? await env.auth.me() {
+            defaults.set(me.id, forKey: Self.userKey)
+        }
+        guard let userId = defaults.string(forKey: Self.userKey), let tenantId = memberships.active?.tenantId else { return }
+        await env.attendance.adopt(OutboxOwner(userId: userId, tenantId: tenantId))
     }
 
     /// Giáo viên mới hoặc còn bước onboarding dở: vào onboarding, tiếp đúng bước dở (US-0.2 AC1, AC3).
@@ -135,8 +151,9 @@ final class AppModel {
         memberships.clear()
         addingRole = nil
         if case .login = route { return }
-        route = .login(LoginModel(auth: env.auth, google: env.google) { [weak self] _ in
+        route = .login(LoginModel(auth: env.auth, google: env.google) { [weak self] user in
             // Đăng nhập xong: tải vai trò rồi mở đúng nơi.
+            UserDefaults.standard.set(user.id, forKey: Self.userKey)
             await self?.enter()
         })
     }
