@@ -81,6 +81,7 @@ struct TodayRulesTests {
 
 private final class FakeSource: TodayDataSource, @unchecked Sendable {
     var sessionsError: APIError?
+    var delay: Duration = .zero
     var attendanceFails = false
     var receivablesFails = false
     var notificationsFails = false
@@ -101,8 +102,11 @@ private final class FakeSource: TodayDataSource, @unchecked Sendable {
 
     func sessions(from: String, to: String) async throws -> [SessionDTO] {
         sessionCalls.append((from, to))
-        if let sessionsError { throw sessionsError }
-        return from == to ? today : upcoming
+        let result = from == to ? today : upcoming
+        let error = sessionsError
+        try await Task.sleep(for: delay)
+        if let error { throw error }
+        return result
     }
 
     func classes() async throws -> [ClassInfoDTO] {
@@ -185,6 +189,52 @@ struct TodayModelTests {
         let m = model()
         await m.refresh()
         #expect(m.data?.next == nil)
+    }
+
+    @Test func cancelledRefreshDoesNotOverwriteData() async throws {
+        let m = model()
+        await m.refresh()
+        #expect(m.data?.sessions.count == 4)
+        // Lần tải chậm sẽ trả danh sách rỗng; bị lần tải sau (lỗi mạng) hủy thì không được ghi đè.
+        source.today = []
+        source.delay = .milliseconds(300)
+        let slow = Task { await m.refresh() }
+        try await Task.sleep(for: .milliseconds(50))
+        source.delay = .zero
+        source.sessionsError = APIError(kind: .offline)
+        await m.refresh()
+        await slow.value
+        #expect(m.data?.sessions.count == 4)
+        #expect(m.offline)
+    }
+
+    @Test func firstLoadCancelledByNewRefreshStillEndsLoaded() async throws {
+        source.delay = .milliseconds(300)
+        let m = model()
+        let slow = Task { await m.refresh() }
+        try await Task.sleep(for: .milliseconds(50))
+        source.delay = .zero
+        await m.refresh()
+        await slow.value
+        #expect(m.data?.sessions.count == 4)
+        #expect(!m.loading && !m.failed)
+    }
+
+    @Test func nonNetworkErrorWithDataKeepsDataAndCountsFailure() async {
+        let m = model()
+        await m.refresh()
+        source.sessionsError = APIError(kind: .http, status: 500)
+        await m.refresh()
+        #expect(m.refreshFailures == 1)
+        #expect(!m.offline && m.data?.sessions.count == 4)
+    }
+
+    @Test func cardsChangeStateAsTimePasses() {
+        let s = TodaySession(id: "a", className: "Toán 9A", start: t0, end: t1, kind: .upcoming,
+                             enrolled: nil, location: nil, attended: nil, total: nil)
+        #expect(arrange([s], now: t0 - 60).first?.kind == .upcoming)
+        #expect(arrange([s], now: t0 + 60).first?.kind == .teaching)
+        #expect(arrange([s], now: t1).first?.kind == .missed)
     }
 
     @Test func firstLoadFailureShowsErrorThenRetrySucceeds() async {

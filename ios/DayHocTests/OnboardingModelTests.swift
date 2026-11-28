@@ -77,6 +77,17 @@ struct OnboardingModelTests {
         return OnboardingModel(api: OnboardingAPI(api: server.makeClient(tokenStore: store)), pendingFee: fees) { today }
     }
 
+    @Test func startStepAppliesOnlyToFirstLoad() async throws {
+        let server = FakeBackend(current: "add_students").server()
+        let model = OnboardingModel(
+            api: OnboardingAPI(api: server.makeClient(tokenStore: store)), pendingFee: fees, startStep: .setSchedule
+        ) { today }
+        await model.load()
+        #expect(model.step == .setSchedule)
+        await model.load()
+        #expect(model.step == .addStudents)
+    }
+
     @Test func retryAfterServerErrorReusesClassIdAndKey() async throws {
         let attempts = OSAllocatedUnfairLock(initialState: 0)
         let server = FakeBackend(current: "create_class").server { request in

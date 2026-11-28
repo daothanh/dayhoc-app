@@ -1761,6 +1761,17 @@
         }
       }
     },
+    "today.refreshFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không làm mới được, thử lại sau."
+          }
+        }
+      }
+    },
     "today.retry": {
       "extractionState": "manual",
       "localizations": {

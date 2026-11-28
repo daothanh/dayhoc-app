@@ -9,20 +9,43 @@ struct RoleSpace<Content: View, Trailing: View>: View {
     @ViewBuilder let content: () -> Content
 
     @State private var switcher = false
+    @Environment(\.dhColors) private var colors
+
+    private func header(_ title: LocalizedStringKey) -> some View {
+        HStack(spacing: TeachHubTokens.Dimens.spacingControl) {
+            RoleChip(store: app.memberships) { switcher = true }
+                .fixedSize()
+            Text(title).dhText(TeachHubTokens.Typo.h2).lineLimit(1)
+            Spacer(minLength: 0)
+            trailing()
+        }
+        .padding(.leading, TeachHubTokens.Dimens.spacingPage)
+        .padding(.trailing, TeachHubTokens.Dimens.spacingInline)
+        .frame(height: 56)
+        .background(colors.surface)
+        .overlay(alignment: .bottom) { Rectangle().fill(colors.outlineVariant).frame(height: 1.5) }
+    }
 
     var body: some View {
         NavigationStack {
-            content()
-                .dhScreen()
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        HStack(spacing: TeachHubTokens.Dimens.spacingControl) {
-                            RoleChip(store: app.memberships) { switcher = true }
-                            if let title { Text(title).dhText(TeachHubTokens.Typo.h2) }
-                        }
+            Group {
+                if let title {
+                    // App Bar `Root` có tiêu đề: tự vẽ để chip vai trò không bị thanh điều hướng nén còn avatar.
+                    VStack(spacing: 0) {
+                        header(title)
+                        content()
                     }
-                    ToolbarItem(placement: .topBarTrailing, content: trailing)
+                    .toolbar(.hidden, for: .navigationBar)
+                } else {
+                    content()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                RoleChip(store: app.memberships) { switcher = true }
+                            }
+                        }
                 }
+            }
+            .dhScreen()
         }
         .sheet(isPresented: $switcher) {
             RoleSwitcher(store: app.memberships) { m in
@@ -61,6 +84,7 @@ private struct RoleChip: View {
             .padding(.leading, 4)
             .padding(.trailing, 10)
             .frame(height: 32)
+            .fixedSize()
             .overlay(Capsule().stroke(colors.outlineVariant, lineWidth: 1.5))
             .foregroundStyle(colors.onSurface)
             if multi {
@@ -194,6 +218,7 @@ struct TeacherSpaceView: View {
                     }
                 }
                 .task(id: tab) { if tab == 0 { await today.refresh() } }
+                .onChange(of: today.refreshFailures) { app.toast = String(localized: "today.refreshFailed") }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active, tab == 0 { Task { await today.refresh() } }
                 }

@@ -16,30 +16,13 @@ struct TodayView: View {
                 DhOfflineBanner(title: "today.offline.title", description: "today.offline.body")
             }
             if let data = model.data {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: TeachHubTokens.Dimens.spacingContent) {
-                        Text(formatDateLine(data.date, model.timeZone))
-                            .dhText(TeachHubTokens.Typo.caption)
-                            .foregroundStyle(colors.onSurfaceVariant)
-                        if data.sessions.isEmpty {
-                            empty(data.next)
-                        } else {
-                            section(String(localized: "today.section.sessions \(data.sessions.count)"))
-                            ForEach(data.sessions) { sessionCard($0) }
+                // Giờ trôi qua thì thẻ buổi tự chuyển trạng thái; sang ngày mới thì tải lại.
+                TimelineView(.everyMinute) { context in
+                    content(data, now: context.date)
+                        .onChange(of: dayString(context.date, model.timeZone)) { _, day in
+                            if day != dayString(data.date, model.timeZone) { Task { await model.refresh() } }
                         }
-                        if !data.setupSteps.isEmpty { setupBanner(data.setupSteps) }
-                        if let overdue = data.overdue, overdue.count > 0 {
-                            section(String(localized: "today.section.todo"))
-                            DhListRow(
-                                title: "today.overdue.title",
-                                subtitle: String(localized: "today.overdue.total \(formatVnd(overdue.total))"),
-                                onTap: onComingSoon
-                            ) { DhChip(text: "\(overdue.count)", style: .counter) }
-                        }
-                    }
-                    .padding(TeachHubTokens.Dimens.spacingPage)
                 }
-                .refreshable { await model.refresh() }
             } else if model.failed {
                 ScrollView {
                     DhEmptyState(title: "today.loadFailed", description: nil, actionTitle: "today.retry") {
@@ -50,6 +33,34 @@ struct TodayView: View {
                 skeleton
             }
         }
+    }
+
+    private func content(_ data: TodayData, now: Date) -> some View {
+        let sessions = arrange(data.sessions, now: now)
+        return ScrollView {
+            LazyVStack(alignment: .leading, spacing: TeachHubTokens.Dimens.spacingContent) {
+                Text(formatDateLine(data.date, model.timeZone))
+                    .dhText(TeachHubTokens.Typo.caption)
+                    .foregroundStyle(colors.onSurfaceVariant)
+                if sessions.isEmpty {
+                    empty(data.next)
+                } else {
+                    section(String(localized: "today.section.sessions \(sessions.count)"))
+                    ForEach(sessions) { sessionCard($0) }
+                }
+                if !data.setupSteps.isEmpty { setupBanner(data.setupSteps) }
+                if let overdue = data.overdue, overdue.count > 0 {
+                    section(String(localized: "today.section.todo"))
+                    DhListRow(
+                        title: "today.overdue.title",
+                        subtitle: String(localized: "today.overdue.total \(formatVnd(overdue.total))"),
+                        onTap: onComingSoon
+                    ) { DhChip(text: "\(overdue.count)", style: .counter) }
+                }
+            }
+            .padding(TeachHubTokens.Dimens.spacingPage)
+        }
+        .refreshable { await model.refresh() }
     }
 
     private func section(_ text: String) -> some View {
@@ -69,22 +80,25 @@ struct TodayView: View {
 
     @ViewBuilder
     private func sessionCard(_ s: TodaySession) -> some View {
-        let emphasis = s.kind == .teaching || s.kind == .missed
-        let style: DhCardStyle = emphasis ? .emphasis : (s.kind == .upcoming ? .default : .muted)
-        if emphasis {
-            // Nút "Điểm danh" nằm trong thẻ nên cả thẻ không bọc Button (tránh Button lồng Button).
-            DhCard(style: style) { cardContent(s, emphasis: true) }.onTapGesture(perform: onComingSoon)
-        } else {
-            DhCard(style: style, onTap: onComingSoon) { cardContent(s, emphasis: false) }
+        switch s.kind {
+        case .teaching, .missed:
+            // Nút "Điểm danh" nằm trong thẻ: vùng bấm của thẻ là phần tiêu đề (Button riêng), không lồng Button trong Button.
+            DhCard(style: .emphasis) {
+                Button(action: onComingSoon) { header(s) }.buttonStyle(.plain)
+                DhPrimaryButton(title: "today.attendance", action: onComingSoon)
+            }
+        case .upcoming:
+            DhCard(style: .default, onTap: onComingSoon) { header(s) }
+        case .taught, .cancelled:
+            DhCard(style: .muted, onTap: onComingSoon) { header(s) }
         }
     }
 
-    @ViewBuilder
-    private func cardContent(_ s: TodaySession, emphasis: Bool) -> some View {
+    private func header(_ s: TodaySession) -> some View {
         let parts = [formatTimeRange(s.start, s.end, model.timeZone)]
             + (s.enrolled.map { [String(localized: "today.students \($0)")] } ?? [])
             + (s.location.map { [$0] } ?? [])
-        HStack(spacing: TeachHubTokens.Dimens.spacingControl) {
+        return HStack(spacing: TeachHubTokens.Dimens.spacingControl) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(s.className).dhText(TeachHubTokens.Typo.bodyBold).foregroundStyle(colors.onSurface).lineLimit(1)
                 Text(parts.joined(separator: " · "))
@@ -95,7 +109,7 @@ struct TodayView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             chip(s)
         }
-        if emphasis { DhPrimaryButton(title: "today.attendance", action: onComingSoon) }
+        .contentShape(Rectangle())
     }
 
     private func chip(_ s: TodaySession) -> DhChip {
@@ -114,7 +128,12 @@ struct TodayView: View {
     }
 
     private func setupBanner(_ steps: [OnboardingStep]) -> some View {
-        let names = steps.map { $0 == .addStudents ? String(localized: "today.setup.addStudents") : String(localized: "today.setup.setSchedule") }
+        let names = steps.map { step -> String in
+            switch step {
+            case .addStudents: String(localized: "today.setup.addStudents")
+            default: String(localized: "today.setup.setSchedule")
+            }
+        }
         return DhInfoBanner(
             title: "today.setup.title \(steps.count)",
             description: names.joined(separator: " · "),
@@ -136,29 +155,16 @@ struct TodayAppBarActions: View {
     let model: TodayModel
     let onBell: () -> Void
 
-    @Environment(\.dhColors) private var colors
-
     var body: some View {
         HStack(spacing: TeachHubTokens.Dimens.spacingInline) {
-            DhChip(
-                text: String(localized: model.offline ? "today.sync.offline" : (model.syncing ? "today.sync.busy" : "today.sync.done")),
-                style: .dashed
-            )
-            Button(action: onBell) {
-                Image(systemName: "bell")
-                    .font(.system(size: 20))
-                    .foregroundStyle(colors.onSurface)
-                    .frame(width: 44, height: 44)
-                    .overlay(alignment: .topTrailing) {
-                        if (model.data?.unread ?? 0) > 0 {
-                            Circle().fill(colors.onErrorContainer).frame(width: 8, height: 8)
-                                .overlay(Circle().stroke(colors.scaffoldBackground, lineWidth: 1.5))
-                                .padding(.top, 10).padding(.trailing, 10)
-                        }
-                    }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("today.notifications"))
+            DhChip(text: syncText, style: .dashed)
+            DhBellButton(unread: model.data?.unread ?? 0, label: "today.notifications", action: onBell)
         }
+    }
+
+    private var syncText: String {
+        if model.offline { return String(localized: "today.sync.offline") }
+        if model.syncing { return String(localized: "today.sync.busy") }
+        return String(localized: "today.sync.done")
     }
 }

@@ -26,6 +26,17 @@ struct TodaySession: Identifiable, Equatable, Sendable {
     /// Chỉ có khi buổi đã điểm danh và lấy được số liệu; `nil` thì chip không kèm số.
     let attended: Int?
     let total: Int?
+    /// Trạng thái server (`planned`, `taught`, `cancelled`) để tính lại `kind` khi giờ trôi qua.
+    var status = "planned"
+}
+
+/// Tính lại `kind` theo `now` rồi xếp lại: thẻ tự chuyển Sắp tới → Đang dạy → Chưa điểm danh theo giờ.
+func arrange(_ sessions: [TodaySession], now: Date) -> [TodaySession] {
+    sortSessions(sessions.map { s in
+        TodaySession(id: s.id, className: s.className, start: s.start, end: s.end,
+                     kind: classify(status: s.status, start: s.start, end: s.end, now: now),
+                     enrolled: s.enrolled, location: s.location, attended: s.attended, total: s.total, status: s.status)
+    })
 }
 
 /// Đang dạy → Chưa điểm danh → Sắp tới → Đã điểm danh → Đã hủy; cùng nhóm thì theo giờ bắt đầu.
@@ -33,18 +44,21 @@ func sortSessions(_ sessions: [TodaySession]) -> [TodaySession] {
     sessions.sorted { ($0.kind, $0.start) < ($1.kind, $1.start) }
 }
 
-func parseInstant(_ iso: String) -> Date? {
-    let plain = ISO8601DateFormatter()
-    let fractional = ISO8601DateFormatter()
-    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    return plain.date(from: iso) ?? fractional.date(from: iso)
-}
+// ISO8601DateFormatter an toàn đa luồng; Foundation chưa khai Sendable.
+nonisolated(unsafe) private let plainISO = ISO8601DateFormatter()
+nonisolated(unsafe) private let fractionalISO: ISO8601DateFormatter = {
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return f
+}()
+
+func parseInstant(_ iso: String) -> Date? { plainISO.date(from: iso) ?? fractionalISO.date(from: iso) }
 
 private func hhmm(_ date: Date, _ tz: TimeZone) -> String {
     var cal = Calendar(identifier: .gregorian)
     cal.timeZone = tz
     let c = cal.dateComponents([.hour, .minute], from: date)
-    return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
+    return String(format: "%02ld:%02ld", c.hour ?? 0, c.minute ?? 0)
 }
 
 func formatTime(_ date: Date, _ tz: TimeZone) -> String { hhmm(date, tz) }
@@ -58,7 +72,7 @@ func dayString(_ date: Date, _ tz: TimeZone) -> String {
     var cal = Calendar(identifier: .gregorian)
     cal.timeZone = tz
     let c = cal.dateComponents([.year, .month, .day], from: date)
-    return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    return String(format: "%04ld-%02ld-%02ld", c.year ?? 0, c.month ?? 0, c.day ?? 0)
 }
 
 private func weekdayIndex(_ date: Date, _ tz: TimeZone) -> Int {

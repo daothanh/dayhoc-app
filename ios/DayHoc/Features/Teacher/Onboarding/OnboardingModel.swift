@@ -68,7 +68,7 @@ final class OnboardingModel {
     private let pendingFee: PendingFeeStore
     private let today: () -> Date
     /// Mở thẳng một bước đã bỏ qua (banner ở T03); chỉ áp cho lần tải đầu, sau đó theo server.
-    private let startStep: OnboardingStep?
+    @ObservationIgnored private var pendingStart: OnboardingStep?
     @ObservationIgnored private let keys = IdempotencyKeys()
     @ObservationIgnored private var createdClassId: String?
     @ObservationIgnored private var draftClassId: String?
@@ -85,7 +85,7 @@ final class OnboardingModel {
         today: @escaping () -> Date = { .now }
     ) {
         self.api = api
-        self.startStep = startStep
+        pendingStart = startStep
         self.pendingFee = pendingFee
         self.today = today
     }
@@ -94,7 +94,10 @@ final class OnboardingModel {
         loading = true
         loadFailed = false
         do {
-            await show(try await api.get(), override: startStep)
+            let start = pendingStart
+            await show(try await api.get(), override: start)
+            // Chỉ lần tải đầu: "Thử lại" hay tải lại sau đó theo server.
+            if start != nil { pendingStart = nil }
         } catch is CancellationError {
             // View dựng lại hủy `.task`: lần chạy mới sẽ tải, không báo lỗi.
         } catch {

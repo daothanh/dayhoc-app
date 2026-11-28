@@ -32,7 +32,6 @@ private struct DhCardBody<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(pressed || style == .muted ? colors.surfaceContainerLow : colors.surface, in: shape)
             .overlay(shape.stroke(style == .emphasis ? colors.surfaceContainerLow : colors.outlineVariant, lineWidth: style == .emphasis ? 1 : 1.5))
-            .shadow(color: .black.opacity(style == .emphasis ? 0.06 : 0), radius: 1, y: 1)
             .contentShape(shape)
     }
 }

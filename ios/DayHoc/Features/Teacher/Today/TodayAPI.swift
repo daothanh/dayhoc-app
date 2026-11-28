@@ -81,6 +81,7 @@ struct TodayAPI: TodayDataSource {
     }
 
     func classes() async throws -> [ClassInfoDTO] {
+        // shortcut: chỉ trang đầu 100 lớp đang mở, nâng cấp khi một giáo viên có hơn 100 lớp
         let page: Page<ClassInfoDTO> = try await api.request(
             "GET", "classes",
             query: [URLQueryItem(name: "status", value: "active"), URLQueryItem(name: "pageSize", value: "100")]
