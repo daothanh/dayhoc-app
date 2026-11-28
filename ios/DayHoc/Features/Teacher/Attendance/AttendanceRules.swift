@@ -186,12 +186,20 @@ func repeatLabel(_ weekdays: [Int]) -> String? {
     return days.isEmpty ? nil : days.map { $0 == 7 ? "CN" : "T\($0 + 1)" }.joined(separator: "-")
 }
 
-/// Người sửa lần cuối: tên ở dòng có `syncedAt` mới nhất (US-3.3); `nil` khi không có dòng hoặc server không trả tên.
-func lastEditorName(_ items: [AttendanceItemDTO]) -> String? {
-    items.compactMap { i in i.syncedAt.flatMap(parseInstant).map { ($0, i.recordedByName) } }.max { $0.0 < $1.0 }?.1
+/// Lần sửa cuối của buổi: giờ và tên người ghi, lấy từ CÙNG một dòng.
+struct LastEdit: Equatable, Sendable {
+    let at: Date
+    let by: String?
 }
 
-/// Hạn xem lại: "Sửa lần cuối" lấy mốc server nhận gần nhất của các dòng.
-func lastEditedTime(_ items: [AttendanceItemDTO]) -> Date? {
-    items.compactMap { ($0.syncedAt ?? $0.clientUpdatedAt).flatMap(parseInstant) }.max()
+/// Dòng mới nhất theo `syncedAt ?? clientUpdatedAt`; hòa giờ thì lấy `studentId` nhỏ nhất (cả hai nền tảng cùng kết quả).
+/// `by` là `nil` khi server không trả tên; không lấy tên của dòng khác.
+func lastEdit(_ items: [AttendanceItemDTO]) -> LastEdit? {
+    let c = items.compactMap { i in (i.syncedAt ?? i.clientUpdatedAt).flatMap(parseInstant).map { (at: $0, id: i.studentId, by: i.recordedByName) } }
+    return c.max { $0.at != $1.at ? $0.at < $1.at : $0.id > $1.id }.map { LastEdit(at: $0.at, by: $0.by) }
+}
+
+/// Lý do phụ huynh báo (`AbsenceReason`); giá trị lạ → `nil` (UI chỉ hiện "PH đã báo vắng trước").
+enum ParentReason: String, Sendable {
+    case sick, family, other
 }

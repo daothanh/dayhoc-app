@@ -190,10 +190,24 @@ fun repeatLabel(weekdays: List<Int>): String? =
     weekdays.filter { it in 1..7 }.distinct().sorted().takeIf { it.isNotEmpty() }
         ?.joinToString("-") { if (it == 7) "CN" else "T${it + 1}" }
 
-/** Người sửa lần cuối: tên ở dòng có `syncedAt` mới nhất (US-3.3); `null` khi không có dòng hoặc server không trả tên. */
-fun lastEditedBy(items: List<AttendanceItemDto>): String? =
-    items.mapNotNull { i -> i.syncedAt?.let(::toInstantOrNull)?.let { it to i.recordedByName } }.maxByOrNull { it.first }?.second
+/** Lần sửa cuối của buổi: giờ và tên người ghi, lấy từ CÙNG một dòng. */
+data class LastEdit(val at: Instant, val by: String?)
 
-/** Hạn xem lại: "Sửa lần cuối" lấy mốc server nhận gần nhất của các dòng. */
-fun lastEditedAt(items: List<AttendanceItemDto>): Instant? =
-    items.mapNotNull { (it.syncedAt ?: it.clientUpdatedAt)?.let(::toInstantOrNull) }.maxOrNull()
+/**
+ * Dòng mới nhất theo `syncedAt ?: clientUpdatedAt`; hòa giờ thì lấy `studentId` nhỏ nhất (cả hai nền tảng cùng kết quả).
+ * `by` là `null` khi server không trả tên; không lấy tên của dòng khác.
+ */
+fun lastEdit(items: List<AttendanceItemDto>): LastEdit? =
+    items.mapNotNull { i -> (i.syncedAt ?: i.clientUpdatedAt)?.let(::toInstantOrNull)?.let { Triple(it, i.studentId, i.recordedByName) } }
+        .maxWithOrNull(compareBy<Triple<Instant, String, String?>> { it.first }.thenByDescending { it.second })
+        ?.let { LastEdit(it.first, it.third) }
+
+/** Lý do phụ huynh báo (`AbsenceReason`); giá trị lạ → `null` (UI chỉ hiện "PH đã báo vắng trước"). */
+enum class ParentReason { Sick, Family, Other }
+
+fun parentReasonOf(wire: String?): ParentReason? = when (wire) {
+    "sick" -> ParentReason.Sick
+    "family" -> ParentReason.Family
+    "other" -> ParentReason.Other
+    else -> null
+}

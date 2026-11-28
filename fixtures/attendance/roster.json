@@ -1,52 +1,305 @@
 {
-  "_doc": "Dựng hàng từ phản hồi GET /sessions/{id}/attendance (rowsOf) và người sửa lần cuối (lastEditedBy). items: trường thiếu = null (phản hồi cũ). parentReport.reason: sick | family | other. Chưa có status mà phụ huynh đã báo: status = excused, original = excused (không tính là đã đổi), parentReported = true. Đã có status: giữ status. lastEditedBy: recordedByName của dòng có syncedAt mới nhất; null nếu tên null hoặc không dòng nào có syncedAt.",
+  "_doc": "Dựng hàng từ phản hồi GET /sessions/{id}/attendance (rowsOf) và người sửa lần cuối (lastEditedBy). items: trường thiếu = null (phản hồi cũ). parentReport.reason: sick | family | other. Chưa có status mà phụ huynh đã báo: status = excused, original = excused (không tính là đã đổi), parentReported = true. Đã có status: giữ status. lastEditedBy: recordedByName của dòng có syncedAt mới nhất; null nếu tên null hoặc không dòng nào có syncedAt. lastEditedAt/lastEditedBy lấy từ cùng một dòng: syncedAt ?? clientUpdatedAt mới nhất, hòa giờ thì studentId nhỏ nhất. reason_labels: reason → enum ParentReason (Sick|Family|Other), lạ/null → null (nhãn rơi về \"PH đã báo vắng trước\").",
   "cases": [
     {
       "name": "phản hồi cũ không có hai trường mới",
-      "items": [{"studentId": "s1", "fullName": "An", "status": null, "note": null, "syncedAt": null}],
+      "items": [
+        {
+          "studentId": "s1",
+          "fullName": "An",
+          "status": null,
+          "note": null,
+          "syncedAt": null
+        }
+      ],
       "expected": {
-        "rows": [{"studentId": "s1", "name": "An", "status": "present", "original": null, "note": null, "parentReported": false, "parentReason": null}],
-        "lastEditedBy": null
+        "rows": [
+          {
+            "studentId": "s1",
+            "name": "An",
+            "status": "present",
+            "original": null,
+            "note": null,
+            "parentReported": false,
+            "parentReason": null
+          }
+        ],
+        "lastEditedBy": null,
+        "lastEditedAt": null
       }
     },
     {
       "name": "phụ huynh báo ốm, chưa điểm danh: điền sẵn vắng có phép",
-      "items": [{"studentId": "s1", "fullName": "Dũng", "status": null, "note": null, "syncedAt": null, "recordedByName": null,
-                 "parentReport": {"reason": "sick", "note": "Sốt", "reportedAt": "2026-11-09T06:00:00.000+07:00"}}],
+      "items": [
+        {
+          "studentId": "s1",
+          "fullName": "Dũng",
+          "status": null,
+          "note": null,
+          "syncedAt": null,
+          "recordedByName": null,
+          "parentReport": {
+            "reason": "sick",
+            "note": "Sốt",
+            "reportedAt": "2026-11-09T06:00:00.000+07:00"
+          }
+        }
+      ],
       "expected": {
-        "rows": [{"studentId": "s1", "name": "Dũng", "status": "excused", "original": "excused", "note": null, "parentReported": true, "parentReason": "sick"}],
-        "lastEditedBy": null
+        "rows": [
+          {
+            "studentId": "s1",
+            "name": "Dũng",
+            "status": "excused",
+            "original": "excused",
+            "note": null,
+            "parentReported": true,
+            "parentReason": "sick"
+          }
+        ],
+        "lastEditedBy": null,
+        "lastEditedAt": null
       }
     },
     {
       "name": "phụ huynh báo nhưng đã có status: giữ status, vẫn hiện báo trước",
       "items": [
-        {"studentId": "s1", "fullName": "Dũng", "status": "present", "note": null, "syncedAt": "2026-11-09T08:00:00.000+07:00", "recordedByName": "Cô Lan",
-         "parentReport": {"reason": "family", "note": null, "reportedAt": "2026-11-09T06:00:00.000+07:00"}},
-        {"studentId": "s2", "fullName": "Hà", "status": "unexcused", "note": "x", "syncedAt": "2026-11-09T09:30:00.000+07:00", "recordedByName": "Thầy Minh",
-         "parentReport": {"reason": "other", "note": null, "reportedAt": "2026-11-09T06:00:00.000+07:00"}}
+        {
+          "studentId": "s1",
+          "fullName": "Dũng",
+          "status": "present",
+          "note": null,
+          "syncedAt": "2026-11-09T08:00:00.000+07:00",
+          "recordedByName": "Cô Lan",
+          "parentReport": {
+            "reason": "family",
+            "note": null,
+            "reportedAt": "2026-11-09T06:00:00.000+07:00"
+          }
+        },
+        {
+          "studentId": "s2",
+          "fullName": "Hà",
+          "status": "unexcused",
+          "note": "x",
+          "syncedAt": "2026-11-09T09:30:00.000+07:00",
+          "recordedByName": "Thầy Minh",
+          "parentReport": {
+            "reason": "other",
+            "note": null,
+            "reportedAt": "2026-11-09T06:00:00.000+07:00"
+          }
+        }
       ],
       "expected": {
         "rows": [
-          {"studentId": "s1", "name": "Dũng", "status": "present", "original": "present", "note": null, "parentReported": true, "parentReason": "family"},
-          {"studentId": "s2", "name": "Hà", "status": "unexcused", "original": "unexcused", "note": "x", "parentReported": true, "parentReason": "other"}
+          {
+            "studentId": "s1",
+            "name": "Dũng",
+            "status": "present",
+            "original": "present",
+            "note": null,
+            "parentReported": true,
+            "parentReason": "family"
+          },
+          {
+            "studentId": "s2",
+            "name": "Hà",
+            "status": "unexcused",
+            "original": "unexcused",
+            "note": "x",
+            "parentReported": true,
+            "parentReason": "other"
+          }
         ],
-        "lastEditedBy": "Thầy Minh"
+        "lastEditedBy": "Thầy Minh",
+        "lastEditedAt": "2026-11-09T09:30:00.000+07:00"
       }
     },
     {
       "name": "dòng mới nhất không có tên: không lấy tên dòng cũ",
       "items": [
-        {"studentId": "s1", "fullName": "An", "status": "present", "syncedAt": "2026-11-09T08:00:00.000+07:00", "recordedByName": "Cô Lan"},
-        {"studentId": "s2", "fullName": "Bo", "status": "late", "syncedAt": "2026-11-09T09:00:00.000+07:00", "recordedByName": null}
+        {
+          "studentId": "s1",
+          "fullName": "An",
+          "status": "present",
+          "syncedAt": "2026-11-09T08:00:00.000+07:00",
+          "recordedByName": "Cô Lan"
+        },
+        {
+          "studentId": "s2",
+          "fullName": "Bo",
+          "status": "late",
+          "syncedAt": "2026-11-09T09:00:00.000+07:00",
+          "recordedByName": null
+        }
       ],
       "expected": {
         "rows": [
-          {"studentId": "s1", "name": "An", "status": "present", "original": "present", "note": null, "parentReported": false, "parentReason": null},
-          {"studentId": "s2", "name": "Bo", "status": "late", "original": "late", "note": null, "parentReported": false, "parentReason": null}
+          {
+            "studentId": "s1",
+            "name": "An",
+            "status": "present",
+            "original": "present",
+            "note": null,
+            "parentReported": false,
+            "parentReason": null
+          },
+          {
+            "studentId": "s2",
+            "name": "Bo",
+            "status": "late",
+            "original": "late",
+            "note": null,
+            "parentReported": false,
+            "parentReason": null
+          }
         ],
-        "lastEditedBy": null
+        "lastEditedBy": null,
+        "lastEditedAt": "2026-11-09T09:00:00.000+07:00"
       }
+    },
+    {
+      "name": "hòa giờ: lấy studentId nhỏ nhất",
+      "items": [
+        {
+          "studentId": "s2",
+          "fullName": "Bo",
+          "status": "late",
+          "syncedAt": "2026-11-09T09:00:00.000+07:00",
+          "clientUpdatedAt": null,
+          "recordedByName": "Thầy Minh"
+        },
+        {
+          "studentId": "s1",
+          "fullName": "An",
+          "status": "present",
+          "syncedAt": "2026-11-09T09:00:00.000+07:00",
+          "clientUpdatedAt": null,
+          "recordedByName": "Cô Lan"
+        }
+      ],
+      "expected": {
+        "rows": [
+          {
+            "studentId": "s2",
+            "name": "Bo",
+            "status": "late",
+            "original": "late",
+            "note": null,
+            "parentReported": false,
+            "parentReason": null
+          },
+          {
+            "studentId": "s1",
+            "name": "An",
+            "status": "present",
+            "original": "present",
+            "note": null,
+            "parentReported": false,
+            "parentReason": null
+          }
+        ],
+        "lastEditedBy": "Cô Lan",
+        "lastEditedAt": "2026-11-09T09:00:00.000+07:00"
+      }
+    },
+    {
+      "name": "không có syncedAt: dùng clientUpdatedAt",
+      "items": [
+        {
+          "studentId": "s1",
+          "fullName": "An",
+          "status": "present",
+          "syncedAt": null,
+          "clientUpdatedAt": "2026-11-09T08:00:00.000+07:00",
+          "recordedByName": "Cô Lan"
+        },
+        {
+          "studentId": "s2",
+          "fullName": "Bo",
+          "status": "late",
+          "syncedAt": null,
+          "clientUpdatedAt": "2026-11-09T08:30:00.000+07:00",
+          "recordedByName": "Thầy Minh"
+        }
+      ],
+      "expected": {
+        "rows": [
+          {
+            "studentId": "s1",
+            "name": "An",
+            "status": "present",
+            "original": "present",
+            "note": null,
+            "parentReported": false,
+            "parentReason": null
+          },
+          {
+            "studentId": "s2",
+            "name": "Bo",
+            "status": "late",
+            "original": "late",
+            "note": null,
+            "parentReported": false,
+            "parentReason": null
+          }
+        ],
+        "lastEditedBy": "Thầy Minh",
+        "lastEditedAt": "2026-11-09T08:30:00.000+07:00"
+      }
+    },
+    {
+      "name": "reason lạ: giữ nguyên trong hàng, nhãn rơi về câu gốc",
+      "items": [
+        {
+          "studentId": "s1",
+          "fullName": "An",
+          "status": null,
+          "parentReport": {
+            "reason": "x",
+            "note": null,
+            "reportedAt": "2026-11-09T06:00:00.000+07:00"
+          }
+        }
+      ],
+      "expected": {
+        "rows": [
+          {
+            "studentId": "s1",
+            "name": "An",
+            "status": "excused",
+            "original": "excused",
+            "note": null,
+            "parentReported": true,
+            "parentReason": "x"
+          }
+        ],
+        "lastEditedBy": null,
+        "lastEditedAt": null
+      }
+    }
+  ],
+  "reason_labels": [
+    {
+      "reason": "sick",
+      "expected": "Sick"
+    },
+    {
+      "reason": "family",
+      "expected": "Family"
+    },
+    {
+      "reason": "other",
+      "expected": "Other"
+    },
+    {
+      "reason": "x",
+      "expected": null
+    },
+    {
+      "reason": null,
+      "expected": null
     }
   ]
 }

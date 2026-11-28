@@ -223,11 +223,11 @@ private struct StudentRow: View {
     private var subtitle: String? {
         if row.parentReported {
             let base = String(localized: "attendance.row.parentReported")
-            let reason: String? = switch row.parentReason {
-            case "sick": String(localized: "attendance.reason.sick")
-            case "family": String(localized: "attendance.reason.family")
-            case "other": String(localized: "attendance.reason.other")
-            default: nil
+            let reason: String? = switch row.parentReason.flatMap(ParentReason.init(rawValue:)) {
+            case .sick: String(localized: "attendance.reason.sick")
+            case .family: String(localized: "attendance.reason.family")
+            case .other: String(localized: "attendance.reason.other")
+            case nil: nil
             }
             return reason.map { "\(base) · \($0)" } ?? base
         }

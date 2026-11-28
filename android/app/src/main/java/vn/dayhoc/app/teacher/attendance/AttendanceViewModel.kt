@@ -146,8 +146,8 @@ class AttendanceViewModel(
                         !dto.canEdit || expired -> ReadOnly.Expired
                         else -> null
                     },
-                    lastEditedAt = lastEditedAt(dto.items),
-                    lastEditedBy = lastEditedBy(dto.items),
+                    lastEditedAt = lastEdit(dto.items)?.at,
+                    lastEditedBy = lastEdit(dto.items)?.by,
                     failedCode = batches.firstOrNull { b -> b.state == OutboxState.Failed }?.errorCode,
                 )
             }

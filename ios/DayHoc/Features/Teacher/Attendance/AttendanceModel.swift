@@ -166,8 +166,8 @@ final class AttendanceModel {
         editMode = dto.sessionStatus == "taught" || batches.contains { $0.state == .pending }
             || (fromCache && dto.items.contains { $0.status != nil })
         readOnly = dto.sessionStatus == "cancelled" ? .cancelled : (!dto.canEdit || expired ? .expired : nil)
-        lastEditedAt = lastEditedTime(dto.items)
-        lastEditedBy = lastEditorName(dto.items)
+        lastEditedAt = lastEdit(dto.items)?.at
+        lastEditedBy = lastEdit(dto.items)?.by
         failedCode = batches.first { $0.state == .failed }?.errorCode
         loading = false
     }

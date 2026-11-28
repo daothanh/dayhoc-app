@@ -221,6 +221,13 @@ class AttendanceFixturesTest {
             )
         }
         assertEquals(c.str("name"), wantRows, rowsOf(items))
-        assertEquals(c.str("name"), want.str("lastEditedBy"), lastEditedBy(items))
+        val last = lastEdit(items)
+        assertEquals(c.str("name"), want.str("lastEditedBy"), last?.by)
+        assertEquals(c.str("name"), want.str("lastEditedAt")?.let { java.time.OffsetDateTime.parse(it).toInstant() }, last?.at)
+    }
+
+    @Test
+    fun `nhan ly do phu huynh bao`() = fixture("roster.json").getValue("reason_labels").jsonArray.map { it.jsonObject }.forEach { c ->
+        assertEquals(c.str("reason"), c.str("expected"), parentReasonOf(c.str("reason"))?.name)
     }
 }

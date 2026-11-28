@@ -11,7 +11,7 @@ Test Android đọc trực tiếp các file này (`android/app/src/test/.../Atte
 | `pending_merge.json` | `mergePending` | thẻ buổi (`id`, `kind`) + `pendingIds` → `kind`, `pending` sau khi gộp |
 | `error_decision.json` | `decideOnError`, `verdictOf`, `rejectedStudentIds`, `isDeletableError` | lỗi gọi API + số lần thử → giữ/bỏ lô; kết quả 200 → xong/bị từ chối |
 | `flush_rules.json` | `AttendanceSyncEngine.flush` | lô trong outbox + kịch bản API + chủ → lô đã gửi, lô còn lại (pending/failed), kết quả, bản chụp danh sách bị xóa |
-| `roster.json` | `rowsOf`, `lastEditedBy` (iOS: `lastEditorName`) | `items` của GET điểm danh (thiếu trường = phản hồi cũ) → `rows` dựng sẵn (vắng có phép khi PH đã báo), người sửa lần cuối |
+| `roster.json` | `rowsOf`, `lastEdit`, `parentReasonOf` (iOS: `ParentReason(rawValue:)`) | `items` của GET điểm danh (thiếu trường = phản hồi cũ) → `rows` dựng sẵn (vắng có phép khi PH đã báo), người sửa lần cuối |
 | `sheet.json` | `sheetAction`, `repeatLabel` | trạng thái buổi → hành động chính của sheet; thứ ISO → "T2-T4-T6" |
 
 ## Định dạng chung

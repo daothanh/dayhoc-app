@@ -196,12 +196,12 @@ private fun Body(s: AttendanceUiState, zone: ZoneId, vm: AttendanceViewModel) {
 @Composable
 private fun parentReportedText(reason: String?): String {
     val base = stringResource(R.string.attendance_row_parent_reported)
-    val label = when (reason) {
-        "sick" -> R.string.attendance_reason_sick
-        "family" -> R.string.attendance_reason_family
-        "other" -> R.string.attendance_reason_other
-        else -> null
-    } ?: return base
+    val label = when (parentReasonOf(reason)) {
+        ParentReason.Sick -> R.string.attendance_reason_sick
+        ParentReason.Family -> R.string.attendance_reason_family
+        ParentReason.Other -> R.string.attendance_reason_other
+        null -> return base
+    }
     return "$base · ${stringResource(label)}"
 }
 

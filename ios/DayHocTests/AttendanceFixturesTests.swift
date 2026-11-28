@@ -223,7 +223,18 @@ struct AttendanceFixturesTests {
                        parentReason: $0["parentReason"] as? String)
             }
             #expect(rowsOf(items) == wantRows, Comment(rawValue: name))
-            #expect(lastEditorName(items) == want["lastEditedBy"] as? String, Comment(rawValue: name))
+            let last = lastEdit(items)
+            #expect(last?.by == want["lastEditedBy"] as? String, Comment(rawValue: name))
+            #expect(last?.at == (want["lastEditedAt"] as? String).flatMap(parseInstant), Comment(rawValue: name))
+        }
+    }
+
+    @Test func parentReasonLabels() throws {
+        let list = try #require(try fixture("roster.json")["reason_labels"] as? [JSON])
+        #expect(!list.isEmpty)
+        for c in list {
+            let got = (c["reason"] as? String).flatMap(ParentReason.init(rawValue:))
+            #expect(got?.rawValue.capitalized == c["expected"] as? String, Comment(rawValue: c["reason"] as! String))
         }
     }
 }
