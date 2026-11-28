@@ -102,6 +102,7 @@ enum TeachHubTokens {
 
         static let h1 = Spec(fontSize: 20, lineHeight: 28, fontWeight: 600, letterSpacing: -0.3)
         static let h2 = Spec(fontSize: 17, lineHeight: 24, fontWeight: 600, letterSpacing: -0.17)
+        static let h3 = Spec(fontSize: 15, lineHeight: 22, fontWeight: 600, letterSpacing: -0.075)
         static let body = Spec(fontSize: 14, lineHeight: 20, fontWeight: 400, letterSpacing: 0)
         static let bodyBold = Spec(fontSize: 14, lineHeight: 20, fontWeight: 600, letterSpacing: 0)
         static let label = Spec(fontSize: 12, lineHeight: 16, fontWeight: 500, letterSpacing: 0)

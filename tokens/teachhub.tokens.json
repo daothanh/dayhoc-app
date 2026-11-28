@@ -68,6 +68,7 @@
     "styles": {
       "h1": { "$value": { "fontWeight": 600, "fontSize": 20, "lineHeight": 28, "letterSpacingEm": -0.015 } },
       "h2": { "$value": { "fontWeight": 600, "fontSize": 17, "lineHeight": 24, "letterSpacingEm": -0.01 } },
+      "h3": { "$value": { "fontWeight": 600, "fontSize": 15, "lineHeight": 22, "letterSpacingEm": -0.005 } },
       "body": { "$value": { "fontWeight": 400, "fontSize": 14, "lineHeight": 20, "letterSpacingEm": 0 } },
       "bodyBold": { "$value": { "fontWeight": 600, "fontSize": 14, "lineHeight": 20, "letterSpacingEm": 0 } },
       "label": { "$value": { "fontWeight": 500, "fontSize": 12, "lineHeight": 16, "letterSpacingEm": 0 } },
